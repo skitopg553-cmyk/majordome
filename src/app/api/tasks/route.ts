@@ -41,14 +41,20 @@ export async function POST(req: Request) {
   return NextResponse.json({ task: data });
 }
 
-// Coche / décoche une tâche.
+// Coche / décoche une tâche ({ id, done }) ou la reporte ({ id, due_at }).
 export async function PATCH(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  const { id, done } = (await req.json().catch(() => ({}))) as { id?: number; done?: boolean };
-  if (typeof id !== "number" || typeof done !== "boolean") {
-    return NextResponse.json({ error: "id et done requis" }, { status: 400 });
+  const { id, done, due_at } = (await req.json().catch(() => ({}))) as { id?: number; done?: boolean; due_at?: string };
+  if (typeof id !== "number" || (typeof done !== "boolean" && typeof due_at !== "string")) {
+    return NextResponse.json({ error: "id et done (ou due_at) requis" }, { status: 400 });
   }
-  const patch = done ? { status: "done", done_at: new Date().toISOString() } : { status: "todo", done_at: null };
+  if (typeof due_at === "string" && Number.isNaN(Date.parse(due_at))) return NextResponse.json({ error: "Date invalide" }, { status: 400 });
+  const patch =
+    typeof due_at === "string"
+      ? { due_at }
+      : done
+        ? { status: "done", done_at: new Date().toISOString() }
+        : { status: "todo", done_at: null };
   const { error } = await supabaseAdmin().from("tasks").update(patch).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

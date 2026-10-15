@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DEMO_PHASE, demoEvents, type DemoEvent } from "@/lib/demo-data";
-import { dayLabel, groupOf, parisDay } from "@/lib/task-groups";
+import { dayLabel, groupOf, nextDays, parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
 import { DemoBanner, Header, hhmm } from "./ui";
 import type { Task, TasksApi } from "./use-tasks";
@@ -34,6 +34,13 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState(2);
   const [showOptions, setShowOptions] = useState(false);
+  const [view, setView] = useState<"jour" | "semaine">("jour");
+
+  // Vue semaine → toucher un jour ouvre la vue jour, positionnée sur ce jour.
+  function openDay(day: string) {
+    setView("jour");
+    requestAnimationFrame(() => document.getElementById(`jour-${day}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   function add() {
     const clean = title.trim();
@@ -64,9 +71,11 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
     .forEach((e) => push(e.start, { kind: "event", at: e.start, e }));
   const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b));
 
-  const row = (t: Task, time = false) => <TaskRow key={t.id} t={t} time={time} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} />;
-  const section = (label: string, children: React.ReactNode, accent = false) => (
-    <div key={label} className="pt-6">
+  const row = (t: Task, time = false) => (
+    <TaskRow key={t.id} t={t} time={time} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onPostpone={() => api.postpone(t)} />
+  );
+  const section = (label: string, children: React.ReactNode, accent = false, id?: string) => (
+    <div key={label} id={id} className="scroll-mt-4 pt-6">
       <h2 className={`mb-1 text-[11px] uppercase tracking-[0.14em] first-letter:uppercase ${accent ? "text-accent" : "text-faint"}`}>{label}</h2>
       <ul className="divide-y divide-line/60">{children}</ul>
     </div>
@@ -126,20 +135,86 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         )}
       </div>
 
+      {/* Jour / Semaine */}
+      <div className="px-4 pt-4">
+        <div className="grid grid-cols-2 rounded-full bg-surface p-1" role="tablist" aria-label="Affichage">
+          {(["jour", "semaine"] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => setView(v)}
+              className={`min-h-10 rounded-full text-[13px] font-medium capitalize transition-colors duration-200 ${view === v ? "bg-raised text-fg" : "text-muted"}`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="px-5">
         <div className="pt-5">
           <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs, tâches réelles" />
         </div>
         {api.error && <p className="pt-3 text-sm text-neg">{api.error}</p>}
-        {late.length > 0 && section("En retard", late.map((t) => row(t)), true)}
-        {timeline.map(([day, items]) =>
-          section(
-            dayLabel(day, now),
-            items.sort((a, b) => a.at.localeCompare(b.at)).map((it) => (it.kind === "task" ? row(it.t, true) : <EventRow key={it.e.id} e={it.e} />)),
-          ),
+
+        {view === "semaine" ? (
+          <ul className="space-y-2 pt-4">
+            {nextDays(now).map((day) => {
+              const items = (days.get(day) ?? []).sort((a, b) => a.at.localeCompare(b.at));
+              const tasksCount = items.filter((i) => i.kind === "task").length + (day === parisDay(now) ? late.length : 0);
+              const eventsCount = items.length - items.filter((i) => i.kind === "task").length;
+              return (
+                <li key={day}>
+                  <button onClick={() => openDay(day)} className="flex w-full items-start gap-4 rounded-2xl bg-surface p-4 text-left active:scale-[0.99]">
+                    <span className="w-24 shrink-0">
+                      <span className="block text-[14px] font-medium first-letter:uppercase">{dayLabel(day, now).replace(/ \d+ \w+$/, "")}</span>
+                      <span className="block text-[12px] text-faint">
+                        {new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" })}
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      {items.length === 0 && tasksCount === 0 ? (
+                        <span className="block pt-0.5 text-[13px] text-faint">Rien de prévu</span>
+                      ) : (
+                        <>
+                          <span className="block text-[12px] text-muted">
+                            {tasksCount > 0 && `${tasksCount} tâche${tasksCount > 1 ? "s" : ""}`}
+                            {tasksCount > 0 && eventsCount > 0 && " · "}
+                            {eventsCount > 0 && `${eventsCount} RDV fictif${eventsCount > 1 ? "s" : ""}`}
+                          </span>
+                          {items.slice(0, 3).map((it) => (
+                            <span key={it.kind === "task" ? `t${it.t.id}` : it.e.id} className="mt-1 block truncate text-[13px]">
+                              <span className="tabular-nums text-faint">{hhmm(it.at)}</span> {it.kind === "task" ? it.t.title : it.e.title}
+                            </span>
+                          ))}
+                          {items.length > 3 && <span className="mt-1 block text-[12px] text-faint">+ {items.length - 3} autres</span>}
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <>
+            {late.length > 0 && section("En retard", late.map((t) => row(t)), true)}
+            {timeline.map(([day, items]) =>
+              section(
+                dayLabel(day, now),
+                items.sort((a, b) => a.at.localeCompare(b.at)).map((it) => (it.kind === "task" ? row(it.t, true) : <EventRow key={it.e.id} e={it.e} />)),
+                false,
+                `jour-${day}`,
+              ),
+            )}
+            {undated.length > 0 && section("Sans date", undated.map((t) => row(t)))}
+            {done.length > 0 && section("Terminées récemment", done.map((t) => row(t)))}
+            {api.loaded && !api.error && todo.length === 0 && timeline.length === 0 && (
+              <p className="pt-12 text-center text-[15px] text-muted">Rien de prévu. Ajoute une tâche ou parle à Majordome.</p>
+            )}
+          </>
         )}
-        {undated.length > 0 && section("Sans date", undated.map((t) => row(t)))}
-        {done.length > 0 && section("Terminées récemment", done.map((t) => row(t)))}
       </div>
     </div>
   );

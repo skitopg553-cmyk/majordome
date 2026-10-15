@@ -33,3 +33,7 @@ Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1
 ## Journal de nuit
 - A (16/10, 00 h 40) : existant vérifié par captures Playwright ; outillage vitest + Playwright (`npm test`, `npm run captures`) ; contraste du gris discret relevé (4,6:1), heure des RDV non répétée, interrupteur pour la voix.
 - B (16/10, 01 h) : logique voix extraite dans `src/lib/voice.ts` (état du point, texte à lire, choix de la voix fr) + 9 tests ; capture de l'état « écoute » avec faux micro ; toucher le gros point = finir et envoyer.
+- C (16/10, 01 h 30) : vue Jour / Semaine dans le Planning, bouton « Demain » (reporter en un geste, même heure ou 9 h, testé été/hiver), API PATCH accepte `due_at`. 18 tests.
+- **Arrêt du run (limite d'usage atteinte)** : reste D (Finances), E, F, G, H, I et la revue produit. Aucune migration écrite pour l'instant.
+- Questions pour Ruben : 1) Valides-tu la tâche planifiée (`scripts/nuit-tache.ps1`, lance `claude` sans contrôle de permissions) ? 2) Reconnecte la CLI (`claude` puis `/login`) avant.
+- Aperçu Vercel de la branche : https://majordome-git-nuit-skitopg553-cmyks-projects.vercel.app (protégé par la connexion Vercel).

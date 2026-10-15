@@ -65,6 +65,8 @@ await page.locator("main > div").first().evaluate((el) => el.scrollTo(0, el.scro
 await shot("1b-accueil-bas");
 await tab("Planning");
 await shot("2-planning");
+await page.getByRole("tab", { name: "semaine" }).click();
+await shot("2b-planning-semaine");
 await tab("Finances");
 await shot("3-finances");
 await tab("Forme");

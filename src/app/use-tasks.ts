@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { postponeToTomorrow } from "@/lib/task-groups";
 
 export type Task = { id: number; title: string; due_at: string | null; priority: number; notes: string | null; status: "todo" | "done" };
 
@@ -57,6 +58,16 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     });
   }
 
+  // « Reporter à demain » en un geste : même heure demain, ou demain 9 h.
+  function postpone(t: Task) {
+    const due_at = postponeToTomorrow(t.due_at, new Date());
+    setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, due_at } : x)));
+    api("PATCH", { id: t.id, due_at }).catch((e) => {
+      setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, due_at: t.due_at } : x)));
+      setError(e.message);
+    });
+  }
+
   function add(title: string, due_at: string | null, priority: number) {
     const tempId = -Date.now(); // id provisoire, remplacé par celui du serveur
     setTasks((cur) => [...cur, { id: tempId, title, due_at, priority, notes: null, status: "todo" }]);
@@ -69,7 +80,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       });
   }
 
-  return { tasks, loaded, error, leaving, load, toggle, add };
+  return { tasks, loaded, error, leaving, load, toggle, add, postpone };
 }
 
 export type TasksApi = ReturnType<typeof useTasks>;
