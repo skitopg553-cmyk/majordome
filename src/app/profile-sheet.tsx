@@ -1,6 +1,7 @@
 "use client";
 
 import MemoryView from "./memory-view";
+import RemindersRow from "./reminders-row";
 
 // Derrière l'avatar (comme dans les apps bancaires) : Mémoire & objectifs + Réglages.
 export default function ProfileSheet({
@@ -53,6 +54,7 @@ export default function ProfileSheet({
               className="relative h-7 w-12 shrink-0 rounded-full bg-raised ring-1 ring-line transition-colors duration-200 after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-muted after:transition-transform after:duration-200 peer-checked:bg-accent/25 peer-checked:ring-accent/50 peer-checked:after:translate-x-5 peer-checked:after:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-accent"
             />
           </label>
+          <RemindersRow accessCode={accessCode} />
           <button onClick={onNewConversation} className="flex min-h-14 w-full items-center text-left text-[15px]">
             Nouvelle conversation
           </button>
