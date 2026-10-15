@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ChatView from "./chat-view";
+import MemoryView from "./memory-view";
 import TasksView from "./tasks-view";
 
 const STORAGE_KEY = "majordome-access-code";
@@ -9,6 +10,7 @@ const STORAGE_KEY = "majordome-access-code";
 const TABS = [
   { id: "chat", label: "Chat", icon: "M4 5h16v11H8l-4 4z" },
   { id: "tasks", label: "Tâches", icon: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" },
+  { id: "memory", label: "Mémoire", icon: "M12 4a5 5 0 0 0-5 5c0 2 1 3 2 4v3h6v-3c1-1 2-2 2-4a5 5 0 0 0-5-5zM10 20h4" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -84,6 +86,7 @@ export default function Home() {
       {/* Les vues restent montées (masquées) : une réponse en cours continue même si on change d'onglet. */}
       <ChatView accessCode={accessCode} hidden={tab !== "chat"} onUnauthorized={unauthorized} />
       <TasksView accessCode={accessCode} hidden={tab !== "tasks"} onUnauthorized={unauthorized} />
+      <MemoryView accessCode={accessCode} hidden={tab !== "memory"} onUnauthorized={unauthorized} />
 
       <nav className="flex border-t border-line bg-ink pb-[env(safe-area-inset-bottom)]">
         {TABS.map((t) => (
