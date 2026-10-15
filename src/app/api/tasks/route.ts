@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isSimilar } from "@/lib/tools";
 
 const COLS = "id,title,due_at,priority,notes,status";
 
@@ -14,6 +15,30 @@ export async function GET(req: Request) {
   const error = todo.error ?? done.error;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ tasks: [...(todo.data ?? []), ...(done.data ?? [])] });
+}
+
+// Ajout rapide depuis l'app, sans passer par l'IA (gratuit et instantané).
+export async function POST(req: Request) {
+  if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
+  const { title, due_at, priority } = (await req.json().catch(() => ({}))) as { title?: string; due_at?: string | null; priority?: number };
+  const clean = title?.trim();
+  if (!clean) return NextResponse.json({ error: "Titre requis" }, { status: 400 });
+  if (due_at && Number.isNaN(Date.parse(due_at))) return NextResponse.json({ error: "Date invalide" }, { status: 400 });
+  if (priority !== undefined && ![1, 2, 3].includes(priority)) return NextResponse.json({ error: "Priorité invalide" }, { status: 400 });
+
+  const db = supabaseAdmin();
+  const open = await db.from("tasks").select("id,title").eq("status", "todo");
+  if (open.error) return NextResponse.json({ error: open.error.message }, { status: 500 });
+  const dup = (open.data ?? []).find((t) => isSimilar(t.title, clean));
+  if (dup) return NextResponse.json({ error: `Déjà dans la liste : « ${dup.title} »` }, { status: 409 });
+
+  const { data, error } = await db
+    .from("tasks")
+    .insert({ title: clean, due_at: due_at || null, priority: priority ?? 2 })
+    .select(COLS)
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ task: data });
 }
 
 // Coche / décoche une tâche.

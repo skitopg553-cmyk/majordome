@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Palette « majordome » : noir chaud, crème, un seul accent laiton. Utilisable en classes Tailwind
+   (bg-ink, text-cream, border-line, text-brass…). */
+@theme {
+  --color-ink: #12100d;
+  --color-surface: #1b1813;
+  --color-raised: #24201a;
+  --color-line: #2f2a22;
+  --color-cream: #ece4d4;
+  --color-muted: #9a917f;
+  --color-faint: #6b6355;
+  --color-brass: #b8955a;
+
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -7,6 +23,79 @@
 html,
 body {
   height: 100%;
-  background: #0f1115;
-  color: #e8e6e1;
+  background: var(--color-ink);
+  color: var(--color-cream);
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-brass) 35%, transparent);
+}
+
+/* Réponses de Majordome rendues en markdown */
+.md > * + * {
+  margin-top: 0.6em;
+}
+.md ul {
+  list-style: disc;
+  padding-left: 1.2em;
+}
+.md ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.md li + li {
+  margin-top: 0.25em;
+}
+.md li::marker {
+  color: var(--color-brass);
+}
+.md strong {
+  font-weight: 600;
+  color: #f6efe1;
+}
+.md a {
+  color: var(--color-brass);
+  text-decoration: underline;
+}
+.md code {
+  font-size: 0.9em;
+  background: var(--color-raised);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+.md h1,
+.md h2,
+.md h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.rise {
+  animation: rise 220ms ease-out;
+}
+
+@keyframes dot {
+  0%, 80%, 100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.dots span {
+  animation: dot 1.2s infinite;
+}
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
 }

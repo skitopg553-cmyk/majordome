@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import ChatView from "./chat-view";
 import TasksView from "./tasks-view";
 
-type Message = { role: "user" | "assistant"; content: string };
-
 const STORAGE_KEY = "majordome-access-code";
-const CLEARED_KEY = "majordome-cleared-at";
 
-export default function ChatPage() {
+const TABS = [
+  { id: "chat", label: "Chat", icon: "M4 5h16v11H8l-4 4z" },
+  { id: "tasks", label: "Tâches", icon: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
+
+export default function Home() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [codeInput, setCodeInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"chat" | "tasks">("chat");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("chat");
 
   // Le code d'accès est mémorisé sur ce téléphone pour ne pas le retaper à chaque fois.
   useEffect(() => {
@@ -25,36 +26,8 @@ export default function ChatPage() {
     } catch {
       /* stockage indisponible : on redemandera le code */
     }
+    setReady(true);
   }, []);
-
-  // Historique : on recharge les derniers messages (après la dernière « Nouvelle conversation »).
-  useEffect(() => {
-    if (!accessCode) return;
-    let clearedAt: string | null = null;
-    try {
-      clearedAt = localStorage.getItem(CLEARED_KEY);
-    } catch {
-      /* ignore */
-    }
-    fetch(`/api/messages${clearedAt ? `?after=${encodeURIComponent(clearedAt)}` : ""}`, { headers: { "x-access-code": accessCode } })
-      .then((r) => (r.ok ? r.json() : { messages: [] }))
-      .then((d) => setMessages((cur) => (cur.length ? cur : d.messages.map((m: Message) => ({ role: m.role, content: m.content })))))
-      .catch(() => {});
-  }, [accessCode]);
-
-  function newConversation() {
-    setMessages([]);
-    setError(null);
-    try {
-      localStorage.setItem(CLEARED_KEY, new Date().toISOString());
-    } catch {
-      /* ignore */
-    }
-  }
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
 
   function saveCode() {
     const code = codeInput.trim();
@@ -64,126 +37,71 @@ export default function ChatPage() {
     } catch {
       /* ignore */
     }
+    setCodeError(null);
     setAccessCode(code);
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || loading || !accessCode) return;
-    const next: Message[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setInput("");
-    setLoading(true);
-    setError(null);
+  // Appelé par les vues quand le serveur répond 401 : on redemande le code.
+  function unauthorized() {
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: JSON.stringify({ messages: next }),
-      });
-      if (res.status === 401) {
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          /* ignore */
-        }
-        setAccessCode(null);
-        throw new Error("Code d'accès incorrect");
-      }
-      if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Erreur inconnue");
-      // Lecture du flux : la bulle de Majordome se remplit au fil de l'eau.
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-      let reply = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        reply += value;
-        setLoading(false);
-        setMessages([...next, { role: "assistant", content: reply }]);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
-    } finally {
-      setLoading(false);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
     }
+    setAccessCode(null);
+    setCodeError("Code d'accès incorrect");
   }
+
+  if (!ready) return null;
 
   if (!accessCode) {
     return (
-      <main className="flex min-h-full items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-4">
-          <h1 className="text-2xl font-semibold">Majordome</h1>
-          <p className="text-sm text-neutral-400">Entre ton code d&apos;accès.</p>
+      <main className="flex min-h-full items-center justify-center px-6">
+        <div className="w-full max-w-xs space-y-6 text-center">
+          <h1 className="font-serif text-5xl font-medium tracking-wide">Majordome</h1>
+          <div className="mx-auto h-px w-12 bg-brass" />
           <input
             type="password"
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && saveCode()}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 outline-none focus:border-neutral-400"
+            placeholder="Code d'accès"
+            aria-label="Code d'accès"
+            className="h-12 w-full rounded-xl border border-line bg-surface px-4 text-center outline-none placeholder:text-faint focus:border-brass"
             autoFocus
           />
-          <button onClick={saveCode} className="w-full rounded-lg bg-neutral-100 py-2 font-medium text-neutral-900">
+          <button onClick={saveCode} className="h-12 w-full rounded-xl bg-cream font-medium text-ink active:opacity-80">
             Entrer
           </button>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {codeError && <p className="text-sm text-red-300">{codeError}</p>}
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex h-full max-w-2xl flex-col">
-      <header className="flex items-center gap-4 border-b border-neutral-800 px-4 py-3">
-        <h1 className="mr-auto font-semibold">Majordome</h1>
-        {tab === "chat" && messages.length > 0 && (
-          <button onClick={newConversation} className="text-xs text-neutral-500">
-            Nouvelle conversation
-          </button>
-        )}
-        {(["chat", "tasks"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={tab === t ? "font-medium" : "text-neutral-500"}>
-            {t === "chat" ? "Chat" : "Tâches"}
-          </button>
-        ))}
-      </header>
+    <main className="mx-auto flex h-dvh max-w-2xl flex-col pt-[env(safe-area-inset-top)]">
+      {/* Les vues restent montées (masquées) : une réponse en cours continue même si on change d'onglet. */}
+      <ChatView accessCode={accessCode} hidden={tab !== "chat"} onUnauthorized={unauthorized} />
+      <TasksView accessCode={accessCode} hidden={tab !== "tasks"} onUnauthorized={unauthorized} />
 
-      {tab === "tasks" && <TasksView accessCode={accessCode} />}
-
-      <div className={`${tab === "chat" ? "" : "hidden "}flex-1 space-y-3 overflow-y-auto px-4 py-4`}>
-        {messages.length === 0 && (
-          <p className="pt-10 text-center text-neutral-500">Bonjour Ruben. Qu&apos;est-ce que je peux faire pour toi ?</p>
-        )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 ${
-              m.role === "user" ? "ml-auto bg-neutral-100 text-neutral-900" : "bg-neutral-800"
+      <nav className="flex border-t border-line bg-ink pb-[env(safe-area-inset-bottom)]">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            aria-current={tab === t.id ? "page" : undefined}
+            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors ${
+              tab === t.id ? "text-brass" : "text-faint"
             }`}
           >
-            {m.content}
-          </div>
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d={t.icon} />
+            </svg>
+            {t.label}
+          </button>
         ))}
-        {loading && <div className="w-fit rounded-2xl bg-neutral-800 px-4 py-2 text-neutral-400">…</div>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <div ref={bottomRef} />
-      </div>
-
-      <footer className={`${tab === "chat" ? "flex" : "hidden"} gap-2 border-t border-neutral-800 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]`}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Écris à Majordome…"
-          className="flex-1 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 outline-none focus:border-neutral-400"
-        />
-        <button
-          onClick={send}
-          disabled={loading || !input.trim()}
-          className="rounded-full bg-neutral-100 px-4 font-medium text-neutral-900 disabled:opacity-40"
-        >
-          Envoyer
-        </button>
-      </footer>
+      </nav>
     </main>
   );
 }

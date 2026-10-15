@@ -57,7 +57,7 @@ const norm = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 // shortcut: similarité = égalité ou inclusion du titre normalisé, pas de flou (Levenshtein) ; à affiner si des doublons passent encore.
-function isSimilar(a: string, b: string) {
+export function isSimilar(a: string, b: string) {
   const x = norm(a), y = norm(b);
   return x !== "" && y !== "" && (x === y || x.includes(y) || y.includes(x));
 }
