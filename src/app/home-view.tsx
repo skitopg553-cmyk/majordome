@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, demoEvents, type DemoProposal } from "@/lib/demo-data";
+import { daySummary } from "@/lib/summary";
 import { dayLabel, groupOf, parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
 import { Avatar, Bar, Card, DemoBanner, euro, greeting, hhmm, Label, Wordmark } from "./ui";
@@ -59,11 +60,7 @@ export default function HomeView({ tasks: api, go, onAvatar }: { tasks: TasksApi
   const pending = DEMO_PROPOSALS.filter((p) => !decided[p.id]).length;
 
   // Résumé du jour calculé en code (pas par l'IA), uniquement à partir des vraies tâches.
-  const summary = !api.loaded
-    ? " "
-    : focus.length === 0
-      ? "Rien d'urgent aujourd'hui. Profite."
-      : `Tu as ${plural(today.length, "tâche")} aujourd'hui${late.length ? `, et ${plural(late.length, "tâche")} en retard` : ""}.`;
+  const summary = api.loaded ? daySummary(today.length, late.length) : " ";
 
   return (
     <div className="space-y-3 px-4 pb-8">
