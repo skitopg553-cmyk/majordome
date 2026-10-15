@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { runAgent } from "@/lib/ai";
+import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
-const SYSTEM_PROMPT = `Tu es Majordome, l'assistant personnel de Ruben.
-Tu es à la fois secrétaire, coach et conseiller. Tu réponds en français, de façon directe et concise.
-Phase actuelle : prototype. Tu n'as encore ni mémoire, ni accès aux tâches, mails ou agenda.
-Si on te demande quelque chose qui nécessite ces accès, dis-le simplement.`;
+const INSTRUCTIONS = `Tu es Majordome, l'assistant personnel de Ruben : secrétaire, coach et conseiller.
+Tu réponds en français, de façon directe et concise.
+
+Tu gères ses tâches et sa mémoire avec tes outils :
+- Dès que Ruben mentionne quelque chose à faire, crée une tâche (add_task). Convertis les dates relatives ("demain 10h", "vendredi") en ISO 8601 avec le fuseau indiqué ci-dessous. Sans heure précise, mets 09:00.
+- S'il dit qu'une chose est faite, utilise complete_task. S'il la décale ou la modifie, update_task.
+- S'il t'apprend un fait durable sur lui (objectif, préférence, habitude, contrainte), utilise remember. Ne mémorise ni les tâches, ni les détails passagers.
+- Après une action, confirme-la en une phrase.
+- Pour "qu'est-ce que j'ai à faire ?", appuie-toi sur la liste des tâches ci-dessous, triée par urgence.
+Tu n'as pas encore accès à ses mails, son agenda ni ses finances : dis-le simplement si on te le demande.`;
 
 export async function POST(req: Request) {
-  // Protection phase 0 : seul quelqu'un qui connaît le code d'accès peut utiliser l'API
+  // Protection : seul quelqu'un qui connaît le code d'accès peut utiliser l'API
   // (sinon n'importe qui ayant l'URL pourrait dépenser tes crédits).
   const accessCode = process.env.MAJORDOME_ACCESS_CODE;
   if (!accessCode || req.headers.get("x-access-code") !== accessCode) {
@@ -21,11 +28,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const reply = await callAI({
+    const reply = await runAgent({
       tier: "sonnet",
-      system: SYSTEM_PROMPT,
+      system: `${INSTRUCTIONS}\n\n${await buildContext()}`,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
       purpose: "chat",
+      tools: TOOLS,
+      executeTool,
     });
     return NextResponse.json({ reply });
   } catch (err) {

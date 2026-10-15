@@ -23,10 +23,10 @@ Appris :
 **Terminé quand** : Ruben discute avec Majordome depuis son téléphone.
 
 ## Phase 1 — Noyau tâches + mémoire (≈2 semaines)
-- [ ] Connexion Supabase Auth (remplace le code d'accès de la phase 0)
-- [ ] Tables `tasks`, `memories`, `goals`
-- [ ] Outils de l'agent : créer / lister / prioriser / terminer une tâche
-- [ ] Mémoire persistante relue à chaque conversation
+- [x] Tables `tasks`, `memories` (objectifs = mémoires catégorie `objectif`)
+- [x] Outils de l'agent : créer / modifier / terminer une tâche, mémoriser / oublier
+- [x] Mémoire + tâches en cours injectées à chaque message
+- [ ] Vue « Tâches » dans l'app (liste à cocher)
 - [ ] Rappels par notifications push PWA
 
 **Terminé quand** : toutes les tâches de Ruben y passent pendant 2 semaines. → Décide si le projet continue.
