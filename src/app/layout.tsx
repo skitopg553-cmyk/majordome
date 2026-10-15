@@ -9,8 +9,7 @@ const sans = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Majordome",
   description: "Assistant personnel IA",
-  manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  // manifest et icônes : générés par src/app/manifest.ts, icon.tsx et apple-icon.tsx (liens ajoutés par Next).
   appleWebApp: { capable: true, title: "Majordome", statusBarStyle: "black-translucent" },
 };
 
