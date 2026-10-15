@@ -3,45 +3,63 @@
 ## Ce qui marche
 | Section | État | Détail |
 |---|---|---|
-| Majordome (orbe + chat plein écran) | **Réel** | Réponse streamée, markdown, historique (table `messages`), dictée Web Speech + lecture à voix haute, repli clavier |
-| Accueil | **Mixte** | Salutation, résumé et tâches du jour **réels** ; prochain RDV, solde + courbe, objectif (photo), « Ta forme », « À valider » **fictifs** (bandeau sur chaque carte) |
-| Planning | **Mixte** | Tâches **réelles** (ajout rapide sans IA, coche, anti-doublon) ; RDV **fictifs** (phase 2, étiquette « fictif ») |
-| Finances | **Fictif** | Coquille style Revolut, données de `src/lib/demo-data.ts` (phase 4) |
-| Forme | **Fictif** | Sommeil, pas, séances, discipline, temps d'écran (phase 5) |
-| Profil (avatar) | **Réel** | Mémoire & objectifs (suppression), réglage voix, nouvelle conversation, déconnexion |
+| Majordome (point central + chat plein écran) | **Réel** | Réponse streamée, markdown, historique (table `messages`), dictée + lecture à voix haute, repli clavier |
+| Accueil | **Mixte** | Salutation, résumé et tâches du jour **réels** ; finances / forme **réelles dès que leurs tables existent**, sinon aperçu ; RDV et « À valider » **fictifs** (bandeau) |
+| Planning | **Mixte** | Tâches **réelles** (vue jour/semaine, ajout rapide sans IA, coche, « Demain », anti-doublon) ; RDV **fictifs** (phase 2) |
+| Finances | **Prêt, en aperçu** | Import CSV + catégorisation + budgets + « plus élevé que d'habitude » codés et testés ; aperçu fictif tant que la migration 0004 n'est pas appliquée |
+| Forme | **Prêt, en aperçu** | Saisie sommeil / séances + semaine codées ; aperçu tant que 0005 n'est pas appliquée ; pas et temps d'écran fictifs (pas de source) |
+| Ta semaine (miroir) | **Aperçu** | Vrai calcul sur une semaine fictive (phase 6) |
+| Profil (avatar) | **Réel** | Mémoire & objectifs, voix, rappels (« Bientôt disponible »), nouvelle conversation, déconnexion |
 
-Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1), `ai_calls` journalisé après réponse.
+Aussi : PWA, Vercel à Paris (cdg1), `ai_calls` journalisé après réponse, **100 tests** (`npm test`), captures 390×844 (`npm run captures`, serveur lancé avec `MAJORDOME_ACCESS_CODE=test-local`).
 
 ## Bugs et limites connus
-- Rien n'a été testé avec la vraie base ni la vraie IA (`.env.local` vide). En local, j'ai vérifié le build et les écrans avec des données simulées. La voix (micro + lecture) n'est pas testée : à essayer sur Android.
-- Temps « avant » estimé depuis `ai_calls` (1,5–2,3 s sans outil, 3–4 s avec un outil). Temps « après » pas mesuré (`[timing]` dans les logs Vercel ; le connecteur Vercel de Claude reçoit une erreur 403).
-- Anti-doublon simple (égalité ou inclusion du titre).
-- « Nouvelle conversation » et le réglage voix sont mémorisés par navigateur.
-- Vue Tâches/Planning pas encore validée en ligne → pas cochée dans la roadmap.
+- Rien de la session de nuit n'a été testé contre la vraie base ni la vraie IA (`.env.local` vide). La voix réelle n'est pas testée sur Android.
+- Temps « après » de `/api/chat` pas mesuré (`[timing]` dans les logs Vercel ; le connecteur Vercel de Claude reçoit une erreur 403).
+- `npm audit` : 2 failles critiques + 1 modérée dans **vitest/tinypool (tests uniquement, jamais déployé)**. Passer à vitest 4 échoue sur un bug npm (`edgesOut`) même avec un lockfile neuf.
+- Anti-doublon simple (égalité ou inclusion du titre). « Nouvelle conversation » et réglages mémorisés par navigateur.
 
-## Dernière session (2026-10-16)
-- Nouvelle identité « majordome. » (#050506, #6CF2FF, Poppins) et Accueil refait d’après la maquette Stitch (`design/stitch/`) : RDV, tâches, solde + courbe, objectif avec photo, forme, « À valider ». Corrigé : la salutation affichait toujours « Bonsoir » (heure lue en NaN).
+## Dernière session (nuit du 15 au 16/10, branche `nuit`)
+Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 
 ## Prochaine étape
-- Ruben teste sur son téléphone (voix comprise) et relève `[timing]`. Ensuite : cocher la vue Tâches, puis les rappels push (phase 1).
+- Ruben relit la branche `nuit`, répond aux questions, valide les migrations, puis décide du merge.
 
-## Session de nuit (branche `nuit`)
-- Mode d'emploi pour l'agent : `docs/nuit.md`. Scripts : `scripts/nuit-tache.ps1` (crée la tâche planifiée) et `scripts/nuit-run.ps1` (un run, sortie dans `nuit.log`).
-- **Tâche planifiée pas encore créée** : elle lance `claude` avec `--dangerously-skip-permissions`, à valider et lancer par Ruben. Avant, il faut reconnecter la CLI (`claude` dans un terminal puis `/login`) : le test du 16/10 a échoué (erreur 401, jeton invalide).
-- Veille sur secteur : déjà sur « jamais » (`powercfg /query` → 0), rien changé. Pour remettre une veille après 30 min : `powercfg /change standby-timeout-ac 30`.
+## Session de nuit
+- Mode d'emploi : `docs/nuit.md`. Scripts : `scripts/nuit-tache.ps1` (crée la tâche planifiée) et `scripts/nuit-run.ps1`.
+- **Tâche planifiée « Majordome-nuit » introuvable** à 01 h 31 (`Get-ScheduledTask`) : le script n'a sans doute pas abouti. Relancer `powershell -ExecutionPolicy Bypass -File scripts\nuit-tache.ps1` dans un terminal pour voir l'erreur.
+- Veille sur secteur : déjà sur « jamais », rien changé. Pour remettre 30 min : `powercfg /change standby-timeout-ac 30`.
+- Aperçu Vercel de la branche : https://majordome-git-nuit-skitopg553-cmyks-projects.vercel.app (connexion Vercel requise).
 
 ## Journal de nuit
-- A (16/10, 00 h 40) : existant vérifié par captures Playwright ; outillage vitest + Playwright (`npm test`, `npm run captures`) ; contraste du gris discret relevé (4,6:1), heure des RDV non répétée, interrupteur pour la voix.
-- B (16/10, 01 h) : logique voix extraite dans `src/lib/voice.ts` (état du point, texte à lire, choix de la voix fr) + 9 tests ; capture de l'état « écoute » avec faux micro ; toucher le gros point = finir et envoyer.
-- C (16/10, 01 h 30) : vue Jour / Semaine dans le Planning, bouton « Demain » (reporter en un geste, même heure ou 9 h, testé été/hiver), API PATCH accepte `due_at`. 18 tests.
-- **Arrêt du run (limite d'usage atteinte)** : reste D (Finances), E, F, G, H, I et la revue produit. Aucune migration écrite pour l'instant.
-- Questions pour Ruben : 1) Valides-tu la tâche planifiée (`scripts/nuit-tache.ps1`, lance `claude` sans contrôle de permissions) ? 2) Reconnecte la CLI (`claude` puis `/login`) avant.
-- Aperçu Vercel de la branche : https://majordome-git-nuit-skitopg553-cmyks-projects.vercel.app (protégé par la connexion Vercel).
-- D (16/10, 02 h) : Finances. Parsing CSV (`;`/`,`, guillemets, « -1 234,56 », JJ/MM/AAAA, Débit/Crédit, encodage Windows-1252), règles modifiables dans `src/lib/finance/categories.json`, Haiku pour les libellés inconnus (40 max par import), dépenses du mois, budgets, « plus élevé que d'habitude » (> 2× la médiane sur 90 j, 3 comparaisons min.), objectifs avec image. Routes `GET /api/finances` (renvoie `ready:false` sans tables → aperçu fictif) et `POST /api/finances/import` (anti-doublon à la réimport). 26 tests. **Migration `0004_finances.sql` écrite, NON appliquée.** Non testé contre la vraie base.
-- Revue produit n°1 (`docs/revue-produit.md`) : phrase de résumé de l'Accueil corrigée (cas « 0 tâche aujourd'hui »), 3 questions ajoutées.
-- E (16/10, 02 h 45) : Forme. Détection du sport dans les titres d'agenda (mots entiers, faux amis exclus : « Courses », « Salle de réunion »…), régularité de la semaine (7 points L→D), saisie rapide d'une séance (type + durée) et de la nuit (± 15 min). Routes `GET/POST /api/forme` (`ready:false` sans tables). Pas et temps d'écran restent fictifs (aucune source avant l'app native). **Migration `0005_forme.sql` écrite, NON appliquée.** Badge « N » de Next désactivé en dev (il masquait l'onglet Accueil). 67 tests.
-- F (16/10, 03 h 15) : phase 2 préparée, **désactivée**. Pré-filtre des mails en code (`src/lib/mail-filter.ts` : expéditeurs de RDV, mots-clés, date/heure, promos écartées), testé sur 20 mails fictifs. Connexion Google lecture seule (`/api/google/connect` + `/callback`, state signé HMAC, 10 min) derrière l'interrupteur `GOOGLE_ENABLED` (vérifié : 404). Guide `docs/google-setup.md`. **Migration `0006_google.sql` écrite, NON appliquée.** 91 tests.
-- G (16/10, 03 h 50) : rappels préparés. `public/sw.js`, ligne « Rappels » dans le profil (« Bientôt disponible » sans clé VAPID), `POST /api/push/subscribe`, `POST /api/push/send` (404 tant que non configuré — vérifié), logique testée (`src/lib/reminders.ts` : 5 min avant, jusqu'à 1 h après, une seule fois). Dépendance ajoutée : `web-push` (chiffrement des notifications). Guide `docs/rappels-setup.md`. **Migration `0007_push.sql` (table + colonne `reminded_at` + pg_cron/pg_net, secret lu dans le Vault) écrite, NON appliquée.** 93 tests.
-- À noter : `npm audit` signale 2 vulnérabilités critiques + 1 modérée dans **vitest/tinypool (outil de test uniquement, jamais déployé)**. La mise à jour vers vitest 4 échoue sur un bug npm (`edgesOut`) : à refaire avec un `package-lock.json` propre.
-- H (16/10, 04 h 20) : miroir préparé. `src/lib/mirror.ts` : `weekSummary` (tâches faites / en retard, dépenses hors épargne, catégorie principale, séances) + `weeklyPrompt` (l'IA ne reçoit que ces chiffres, ton non culpabilisant). Écran « Ta semaine » (aperçu, depuis l'Accueil) = le vrai calcul appliqué à une semaine fictive + un exemple de bilan. 96 tests. Reste à faire en phase 6 : la tâche planifiée du dimanche et l'appel IA (Opus d'après architecture.md).
-- I (16/10, 04 h 50) : finitions. L'Accueil affiche les **vraies** données Finances (dépensé / reçu du mois, 1er objectif) et Forme (nuit, séances, jours actifs) dès que les tables existent, l'aperçu fictif seulement en repli. Squelettes de chargement (Accueil, Planning, Finances, Forme), respect du réglage « réduire les animations ». Poids : ~220 Ko de JS gzip (React + Next + markdown), correct pour une PWA.
+- A — outillage vitest + Playwright, contraste du gris relevé (4,6:1), interrupteur voix.
+- B — logique voix testée (`src/lib/voice.ts`), toucher le point = finir et envoyer.
+- C — Planning : vue Jour / Semaine, « Demain » en un geste (testé été/hiver).
+- D — Finances : CSV (`;`/`,`, « -1 234,56 », JJ/MM/AAAA, Débit/Crédit, Windows-1252), règles `src/lib/finance/categories.json` + Haiku pour l'inconnu, budgets, « > 2× la médiane sur 90 j », objectifs avec image, anti-doublon à la réimport.
+- E — Forme : détection du sport dans les titres d'agenda, semaine L→D, saisie séance / nuit.
+- F — Phase 2 désactivée : pré-filtre des mails (20 exemples), connexion Google lecture seule derrière `GOOGLE_ENABLED`, `docs/google-setup.md`.
+- G — Rappels préparés : service worker, abonnement, envoi (`web-push`), `docs/rappels-setup.md`.
+- H — Miroir préparé : `weekSummary` + `weeklyPrompt`, écran « Ta semaine » en aperçu.
+- I — Accueil branché sur les vraies données dès qu'elles existent, squelettes, animations réduites, ~220 Ko JS gzip.
+- Audit (`/ponytail-audit`) — corrigé : versions figées + `package-lock.json` commité (fini les « latest »), coche annulée proprement hors ligne, rappel non perdu si l'envoi échoue, jours accentués (décembre…) en vue semaine, dictée gardée si une réponse est en cours, test de l'anti-doublon. Restent (petits) : 6 copies de la fonction « sans accents », 5 copies de l'aide fetch, comparaison du code d'accès non constante en temps.
+- Revues produit 1 à 3 : `docs/revue-produit.md`.
+
+## Questions pour Ruben
+1. Pour la tâche planifiée de nuit (lance `claude` sans contrôle de permissions) : tu confirmes ? Le script n'a pas abouti la 1re fois.
+2. Le chat CLI est-il reconnecté (`claude` puis `/login`) ? Le test du 16/10 donnait une erreur 401.
+3. Tant que l'agenda est fictif, on met « Aujourd'hui » (vraies tâches) **avant** le prochain RDV sur l'Accueil ?
+4. Après une demande vocale, le chat se referme-t-il tout seul après la lecture ?
+5. Budget dépassé : on garde le rouge, ou ton neutre (gris + « au-dessus du budget ») ?
+6. Ta banque permet-elle l'export CSV depuis son appli mobile, ou seulement depuis le site ?
+7. Bilan « Ta semaine » : dimanche soir (prévu) ou lundi matin ?
+
+## Migrations à valider (écrites, NON appliquées)
+- `0004_finances.sql` — `transactions`, `budgets`, `savings_goals` (avec `image_url`).
+- `0005_forme.sql` — `sleep_logs`, `workouts`.
+- `0006_google.sql` — `google_tokens` (refresh token, lecture seule).
+- `0007_push.sql` — `push_subscriptions`, colonne `tasks.reminded_at`, pg_cron + pg_net (secret lu dans le Vault).
+Toutes : ajouts uniquement, RLS activé sans règle.
+
+## Variables d'environnement à ajouter (Vercel, quand tu actives)
+- Google (phase 2) : `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_ENABLED=true` → `docs/google-setup.md`.
+- Rappels : `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET` (+ le même dans le Vault Supabase) → `docs/rappels-setup.md`.
