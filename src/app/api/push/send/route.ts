@@ -31,10 +31,11 @@ export async function POST(req: Request) {
   let sent = 0;
   for (const t of due) {
     const payload = JSON.stringify(reminderPayload(t, now));
+    let delivered = 0;
     for (const s of subs.data) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
-        sent++;
+        delivered++;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
         // 404/410 : le téléphone s'est désabonné (app désinstallée…) → abonnement mort, on le retire.
@@ -42,7 +43,9 @@ export async function POST(req: Request) {
         else console.error("Envoi push échoué :", status ?? err);
       }
     }
-    await db.from("tasks").update({ reminded_at: now.toISOString() }).eq("id", t.id);
+    // Marquée « rappelée » seulement si au moins un téléphone l'a reçue : sinon on réessaie au prochain passage (fenêtre d'1 h).
+    if (delivered > 0) await db.from("tasks").update({ reminded_at: now.toISOString() }).eq("id", t.id);
+    sent += delivered;
   }
   return NextResponse.json({ sent, tasks: due.length });
 }

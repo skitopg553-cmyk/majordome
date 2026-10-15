@@ -173,7 +173,9 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
                 <li key={day}>
                   <button onClick={() => openDay(day)} className="flex w-full items-start gap-4 rounded-2xl bg-surface p-4 text-left active:scale-[0.99]">
                     <span className="w-24 shrink-0">
-                      <span className="block text-[14px] font-medium first-letter:uppercase">{dayLabel(day, now).replace(/ \d+ \w+$/, "")}</span>
+                      <span className="block text-[14px] font-medium first-letter:uppercase">{dayLabel(day, now).startsWith("Aujourd") || dayLabel(day, now) === "Demain"
+                          ? dayLabel(day, now)
+                          : new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "long" })}</span>
                       <span className="block text-[12px] text-faint">
                         {new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" })}
                       </span>

@@ -41,18 +41,23 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
   function toggle(t: Task) {
     const done = t.status === "todo";
     const apply = (status: Task["status"]) => setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, status } : x)));
+    const stopLeaving = () =>
+      setLeaving((s) => {
+        const n = new Set(s);
+        n.delete(t.id);
+        return n;
+      });
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (done) {
       setLeaving((s) => new Set(s).add(t.id));
-      setTimeout(() => {
+      timer = setTimeout(() => {
         apply("done");
-        setLeaving((s) => {
-          const n = new Set(s);
-          n.delete(t.id);
-          return n;
-        });
+        stopLeaving();
       }, 350);
     } else apply("todo");
     api("PATCH", { id: t.id, done }).catch((e) => {
+      clearTimeout(timer); // sinon le minuteur remettrait « faite » après l'annulation
+      stopLeaving();
       apply(t.status);
       setError(e.message);
     });

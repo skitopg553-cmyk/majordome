@@ -96,7 +96,8 @@ export default function ChatView({
 
   async function send(raw = input, viaVoice = false) {
     const text = raw.trim();
-    if (!text || busy) return;
+    if (!text) return;
+    if (busy) return setInput(text); // réponse encore en cours : on garde le texte (dicté ou tapé) dans le champ, rien n'est perdu
     const next: Message[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
