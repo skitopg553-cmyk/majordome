@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
+import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
-
-// Même protection que /api/chat : code d'accès dans l'en-tête.
-function denied(req: Request) {
-  const code = process.env.MAJORDOME_ACCESS_CODE;
-  return !code || req.headers.get("x-access-code") !== code;
-}
 
 const COLS = "id,title,due_at,priority,notes,status";
 

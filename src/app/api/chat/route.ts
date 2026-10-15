@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { denied } from "@/lib/access";
 import { runAgent } from "@/lib/ai";
+import { supabaseAdmin } from "@/lib/supabase";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
 const INSTRUCTIONS = `Tu es Majordome, l'assistant personnel de Ruben : secrétaire, coach et conseiller.
@@ -14,12 +16,7 @@ Tu gères ses tâches et sa mémoire avec tes outils :
 Tu n'as pas encore accès à ses mails, son agenda ni ses finances : dis-le simplement si on te le demande.`;
 
 export async function POST(req: Request) {
-  // Protection : seul quelqu'un qui connaît le code d'accès peut utiliser l'API
-  // (sinon n'importe qui ayant l'URL pourrait dépenser tes crédits).
-  const accessCode = process.env.MAJORDOME_ACCESS_CODE;
-  if (!accessCode || req.headers.get("x-access-code") !== accessCode) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  }
+  if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
   const messages = body?.messages;
@@ -44,7 +41,7 @@ export async function POST(req: Request) {
   const run = (async () => {
     const context = await buildContext();
     time("contexte", Date.now() - t0);
-    await runAgent({
+    return runAgent({
       tier: "sonnet",
       system: `${INSTRUCTIONS}\n\n${context}`,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
@@ -74,6 +71,20 @@ export async function POST(req: Request) {
       ctrl.close();
     },
   );
+
+  // Historique : le message de Ruben puis la réponse sont enregistrés après l'envoi (dans l'ordre).
+  const last = messages[messages.length - 1];
+  after(async () => {
+    const reply = await run.catch(() => "");
+    const rows = [
+      ...(last?.role === "user" && typeof last.content === "string" ? [{ role: "user", content: last.content }] : []),
+      ...(reply ? [{ role: "assistant", content: reply }] : []),
+    ];
+    for (const row of rows) {
+      const { error } = await supabaseAdmin().from("messages").insert(row);
+      if (error) console.error("Enregistrement du message échoué :", error.message);
+    }
+  });
 
   try {
     await Promise.race([first, run]); // attend le premier mot (ou la fin, ou une erreur)

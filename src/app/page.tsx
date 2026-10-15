@@ -6,6 +6,7 @@ import TasksView from "./tasks-view";
 type Message = { role: "user" | "assistant"; content: string };
 
 const STORAGE_KEY = "majordome-access-code";
+const CLEARED_KEY = "majordome-cleared-at";
 
 export default function ChatPage() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
@@ -25,6 +26,31 @@ export default function ChatPage() {
       /* stockage indisponible : on redemandera le code */
     }
   }, []);
+
+  // Historique : on recharge les derniers messages (après la dernière « Nouvelle conversation »).
+  useEffect(() => {
+    if (!accessCode) return;
+    let clearedAt: string | null = null;
+    try {
+      clearedAt = localStorage.getItem(CLEARED_KEY);
+    } catch {
+      /* ignore */
+    }
+    fetch(`/api/messages${clearedAt ? `?after=${encodeURIComponent(clearedAt)}` : ""}`, { headers: { "x-access-code": accessCode } })
+      .then((r) => (r.ok ? r.json() : { messages: [] }))
+      .then((d) => setMessages((cur) => (cur.length ? cur : d.messages.map((m: Message) => ({ role: m.role, content: m.content })))))
+      .catch(() => {});
+  }, [accessCode]);
+
+  function newConversation() {
+    setMessages([]);
+    setError(null);
+    try {
+      localStorage.setItem(CLEARED_KEY, new Date().toISOString());
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,6 +135,11 @@ export default function ChatPage() {
     <main className="mx-auto flex h-full max-w-2xl flex-col">
       <header className="flex items-center gap-4 border-b border-neutral-800 px-4 py-3">
         <h1 className="mr-auto font-semibold">Majordome</h1>
+        {tab === "chat" && messages.length > 0 && (
+          <button onClick={newConversation} className="text-xs text-neutral-500">
+            Nouvelle conversation
+          </button>
+        )}
         {(["chat", "tasks"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={tab === t ? "font-medium" : "text-neutral-500"}>
             {t === "chat" ? "Chat" : "Tâches"}
