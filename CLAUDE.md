@@ -14,6 +14,7 @@ Assistant personnel IA (secrétaire, coach, conseiller). Utilisateur unique : Ru
 - Calculs, règles et dates : code classique, jamais le LLM
 
 ## Règles
+- Au début de chaque session, lis docs/etat.md. À la fin de chaque tâche, mets-le à jour (remplace, ne fais pas grossir le fichier).
 - Suivre `docs/roadmap.md` : une seule phase à la fois, ne pas anticiper les phases suivantes.
 - Un seul agent avec des outils (tool use). Pas de multi-agents tant que ce n'est pas décidé dans `docs/decisions.md`.
 - Accès Gmail / Calendar / banque : **lecture seule**. Aucune action irréversible sans confirmation explicite de l'utilisateur.
