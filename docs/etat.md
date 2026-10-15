@@ -24,3 +24,10 @@ Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1
 
 ## Prochaine étape
 - Ruben teste sur son téléphone (voix comprise) et relève `[timing]`. Ensuite : cocher la vue Tâches, puis les rappels push (phase 1).
+
+## Session de nuit (branche `nuit`)
+- Mode d'emploi pour l'agent : `docs/nuit.md`. Scripts : `scripts/nuit-tache.ps1` (crée la tâche planifiée) et `scripts/nuit-run.ps1` (un run, sortie dans `nuit.log`).
+- **Tâche planifiée pas encore créée** : elle lance `claude` avec `--dangerously-skip-permissions`, à valider et lancer par Ruben. Avant, il faut reconnecter la CLI (`claude` dans un terminal puis `/login`) : le test du 16/10 a échoué (erreur 401, jeton invalide).
+- Veille sur secteur : déjà sur « jamais » (`powercfg /query` → 0), rien changé. Pour remettre une veille après 30 min : `powercfg /change standby-timeout-ac 30`.
+
+## Journal de nuit
