@@ -3,12 +3,20 @@
 Règle d'or : une phase à la fois. Une phase est finie quand Ruben **utilise vraiment** ce qu'elle livre.
 
 ## Phase 0 — Fondations (≈1 semaine)
-- [x] Projet Next.js + TypeScript + Tailwind, installable en PWA (code écrit, à valider au premier déploiement)
+- [x] Projet Next.js + TypeScript + Tailwind, installable en PWA
 - [x] Projet Supabase créé (`majordome`, Paris) + migration `0001_ai_calls.sql` appliquée
-- [ ] Déploiement Vercel relié au dépôt GitHub
-- [ ] Clé API Claude avec plafond de dépense
-- [x] Page de chat qui répond via Claude (Sonnet 5.5), protégée par un code d'accès
-- [x] Table `ai_calls` : chaque appel journalisé avec son coût (code écrit)
+- [x] Déploiement Vercel relié au dépôt GitHub (majordome-bice.vercel.app)
+- [x] Clé API IA : démarrage sur OpenAI `gpt-4o-mini` (crédits restants), bascule Claude plus tard
+- [x] Page de chat qui répond, protégée par un code d'accès
+- [x] Table `ai_calls` : chaque appel journalisé (premier appel enregistré le 2026-10-15)
+
+✅ **Phase 0 terminée le 2026-10-15.**
+
+Appris :
+- Les noms de modèles OpenAI sont sensibles à la casse (`gpt-4o-mini`, pas `GPT-4o-mini`).
+- Toute modification de variable Vercel exige un **Redeploy**.
+- `SUPABASE_SERVICE_ROLE_KEY` doit être la clé *secrète* du bon projet (sinon erreur 401 silencieuse).
+- Afficher la vraie cause des erreurs a fait gagner beaucoup de temps.
 
 Étapes manuelles : voir `docs/setup.md`.
 
