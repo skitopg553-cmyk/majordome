@@ -30,6 +30,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Erreur lors de l'appel à l'IA" }, { status: 500 });
+    // Le détail de l'erreur est renvoyé car l'app est protégée par le code d'accès (usage perso) :
+    // ça permet de diagnostiquer sans ouvrir les logs. À retirer si l'app devient publique.
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Erreur IA : ${detail}`.slice(0, 400) }, { status: 500 });
   }
 }
