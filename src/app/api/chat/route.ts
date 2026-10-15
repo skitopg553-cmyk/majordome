@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { callClaude } from "@/lib/ai";
-import { MODELS } from "@/lib/models";
+import { callAI } from "@/lib/ai";
 
 const SYSTEM_PROMPT = `Tu es Majordome, l'assistant personnel de Ruben.
 Tu es à la fois secrétaire, coach et conseiller. Tu réponds en français, de façon directe et concise.
@@ -22,8 +21,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const reply = await callClaude({
-      model: MODELS.sonnet,
+    const reply = await callAI({
+      tier: "sonnet",
       system: SYSTEM_PROMPT,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
       purpose: "chat",
@@ -31,6 +30,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Erreur lors de l'appel à Claude" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur lors de l'appel à l'IA" }, { status: 500 });
   }
 }

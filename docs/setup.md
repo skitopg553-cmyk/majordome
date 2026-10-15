@@ -2,10 +2,11 @@
 
 À faire une seule fois, dans cet ordre.
 
-## 1. Clé API Claude
-1. platform.claude.com → **API keys** → créer une clé nommée `majordome`.
-2. **Limits / Spend limits** → mettre un plafond mensuel bas (ex. 10 $) pour commencer.
-3. Garder la clé pour l'étape 4 (elle ne s'affiche qu'une fois).
+## 1. Clé API IA
+Démarrage sur OpenAI (crédits restants), bascule vers Claude plus tard.
+- **OpenAI** : platform.openai.com → API keys → clé `majordome`. Noter aussi le nom du modèle utilisé.
+- **Claude (plus tard)** : platform.claude.com → API keys → clé `majordome` + plafond de dépense.
+Ne jamais coller une clé dans un chat : uniquement dans Vercel.
 
 ## 2. Supabase
 1. supabase.com → **New project** `majordome`, région Europe (Paris ou Francfort).
@@ -18,7 +19,9 @@ Choisir une longue phrase secrète (ex. 5-6 mots au hasard). Elle protège l'app
 ## 4. Vercel
 1. vercel.com → **Add New → Project** → importer le dépôt GitHub `majordome`.
 2. Avant de déployer, dans **Environment Variables**, ajouter :
-   - `ANTHROPIC_API_KEY`
+   - `AI_PROVIDER` = `openai`
+   - `OPENAI_API_KEY`
+   - `OPENAI_MODEL`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `MAJORDOME_ACCESS_CODE`

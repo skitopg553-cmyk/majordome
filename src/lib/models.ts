@@ -20,7 +20,11 @@ const PRICES: Record<string, Price> = {
 
 /** Coût estimé d'un appel, en dollars. Calcul en code, jamais par le LLM. */
 export function estimateCostUsd(model: string, inputTokens: number, outputTokens: number): number {
-  const price = PRICES[model];
+  // Modèles OpenAI : prix renseignés dans les variables d'environnement (USD / million de tokens),
+  // car on ne les code pas en dur.
+  const envIn = Number(process.env.OPENAI_PRICE_INPUT_PER_MTOK);
+  const envOut = Number(process.env.OPENAI_PRICE_OUTPUT_PER_MTOK);
+  const price = PRICES[model] ?? (envIn && envOut ? { input: envIn, output: envOut } : undefined);
   if (!price) return 0;
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
 }
