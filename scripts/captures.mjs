@@ -35,6 +35,19 @@ await page.route("**/api/**", (route) => {
   return route.continue();
 });
 
+// Faux micro : la dictée « entend » une phrase puis reste en écoute (pour capturer l'état écoute).
+await page.addInitScript(() => {
+  window.SpeechRecognition = window.webkitSpeechRecognition = class {
+    start() {
+      setTimeout(() => this.onresult?.({ results: [[{ transcript: "Ajoute une tâche : rappeler Paul demain" }]] }), 200);
+    }
+    stop() {
+      this.onend?.();
+    }
+    abort() {}
+  };
+});
+
 await page.goto(url);
 await page.evaluate(() => localStorage.setItem("majordome-access-code", "test-local"));
 await page.reload();
@@ -63,5 +76,8 @@ await shot("5b-chat-reponse");
 await page.getByLabel("Fermer la conversation").click();
 await page.getByLabel("Profil, mémoire et réglages").first().click();
 await shot("6-profil");
+await page.getByLabel("Fermer", { exact: true }).click();
+await page.getByLabel("Parler à Majordome").click();
+await shot("7-ecoute");
 
 await browser.close();

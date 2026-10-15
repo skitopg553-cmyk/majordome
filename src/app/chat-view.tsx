@@ -2,7 +2,8 @@
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import Orb, { orbLabel, type OrbState } from "./orb";
+import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
+import Orb, { orbLabel } from "./orb";
 import { greeting, Wordmark } from "./ui";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -21,13 +22,6 @@ const SUGGESTIONS = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const speechRecognition = (): any => (typeof window === "undefined" ? null : (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null);
 
-/** Texte lisible à voix haute : on retire la mise en forme markdown. */
-const plain = (md: string) =>
-  md
-    .replace(/[*_`#>]+/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^\s*[-•]\s+/gm, "")
-    .replace(/⚠️/g, "");
 
 export default function ChatView({
   ref,
@@ -59,7 +53,7 @@ export default function ChatView({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null);
 
-  const state: OrbState = listening ? "listening" : waiting ? "thinking" : busy || speaking ? "speaking" : "idle";
+  const state = orbState({ listening, waiting, busy, speaking });
   useEffect(() => onState(state), [state, onState]);
 
   // Historique : on recharge les derniers messages (après la dernière « Nouvelle conversation »).
@@ -92,10 +86,9 @@ export default function ChatView({
     const synth = window.speechSynthesis;
     if (!synth || !text.trim()) return;
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(plain(text));
+    const u = new SpeechSynthesisUtterance(plainText(text));
     u.lang = "fr-FR";
-    const voices = synth.getVoices();
-    u.voice = voices.find((v) => v.lang === "fr-FR" && /google|natural|premium/i.test(v.name)) ?? voices.find((v) => v.lang.startsWith("fr")) ?? null;
+    u.voice = pickFrenchVoice(synth.getVoices());
     u.onstart = () => setSpeaking(true);
     u.onend = u.onerror = () => setSpeaking(false);
     synth.speak(u);
@@ -252,7 +245,9 @@ export default function ChatView({
           )}
           {listening && (
             <div className="flex flex-col items-center gap-5 py-10" aria-live="polite">
-              <Orb state="listening" size={96} />
+              <button onClick={listen} aria-label="J'ai fini, envoyer" className="rounded-full active:scale-95">
+                <Orb state="listening" size={96} />
+              </button>
               <p className="min-h-6 text-center text-lg font-medium text-fg/90">{interim || "Je t'écoute…"}</p>
             </div>
           )}

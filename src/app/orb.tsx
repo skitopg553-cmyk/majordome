@@ -1,5 +1,7 @@
 // Majordome en personne : un point lumineux qui change d'animation selon ce qu'il fait.
-export type OrbState = "idle" | "listening" | "thinking" | "speaking";
+import type { OrbState } from "@/lib/voice";
+
+export type { OrbState };
 
 const LABEL: Record<OrbState, string> = {
   idle: "Majordome",

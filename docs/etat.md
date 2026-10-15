@@ -32,3 +32,4 @@ Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1
 
 ## Journal de nuit
 - A (16/10, 00 h 40) : existant vérifié par captures Playwright ; outillage vitest + Playwright (`npm test`, `npm run captures`) ; contraste du gris discret relevé (4,6:1), heure des RDV non répétée, interrupteur pour la voix.
+- B (16/10, 01 h) : logique voix extraite dans `src/lib/voice.ts` (état du point, texte à lire, choix de la voix fr) + 9 tests ; capture de l'état « écoute » avec faux micro ; toucher le gros point = finir et envoyer.
