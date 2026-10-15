@@ -47,7 +47,7 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
   task: "M5 12l4 4 10-10",
 };
 
-export default function HomeView({ tasks: api, go, onAvatar }: { tasks: TasksApi; go: Go; onAvatar: () => void }) {
+export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
   const [decided, setDecided] = useState<Record<string, "ok" | "no">>({}); // « À valider » : choix locaux, rien n'est exécuté
   const now = new Date();
   const todo = api.tasks.filter((t) => t.status === "todo" || api.leaving.has(t.id));
@@ -173,6 +173,17 @@ export default function HomeView({ tasks: api, go, onAvatar }: { tasks: TasksApi
         <div className="mt-3">
           <DemoBanner phase={DEMO_PHASE.forme} />
         </div>
+      </Card>
+
+      {/* Ta semaine (miroir, phase 6) — APERÇU */}
+      <Card onClick={onWeek} className="flex items-center justify-between gap-3">
+        <span>
+          <span className="block text-[15px] font-medium">Ta semaine</span>
+          <span className="block text-[13px] text-muted">Le bilan du dimanche soir, en aperçu</span>
+        </span>
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+          <path d="M9 6l6 6-6 6" />
+        </svg>
       </Card>
 
       {/* À valider : propositions que Ruben accepte ou refuse d'un tap — FICTIF (phase 2) */}

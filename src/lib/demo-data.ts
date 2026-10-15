@@ -71,3 +71,32 @@ export const DEMO_FORME = {
   discipline: { score: 78, streak: 6 },
   screenTime: { today: "3 h 41", trend: "−12 % sur 7 jours" },
 };
+
+// Miroir — phase 6 : semaine fictive (relative à aujourd'hui) passée dans le VRAI calcul weekSummary.
+export function demoWeekInput() {
+  const d = (dayOffset: number, h = 12) => at(-dayOffset, h);
+  const day = (dayOffset: number) => d(dayOffset).slice(0, 10);
+  return {
+    tasks: [
+      { status: "done", due_at: d(1, 9), done_at: d(1, 10) },
+      { status: "done", due_at: null, done_at: d(2, 18) },
+      { status: "done", due_at: d(3, 9), done_at: d(3, 11) },
+      { status: "done", due_at: null, done_at: d(0, 8) },
+      { status: "todo", due_at: d(1, 9), done_at: null },
+    ],
+    transactions: [
+      { date: day(1), label: "Carrefour City", amount: -42.3, category: "Courses" },
+      { date: day(2), label: "Uber Eats", amount: -24.9, category: "Restaurants" },
+      { date: day(3), label: "RATP", amount: -16.9, category: "Transport" },
+      { date: day(0), label: "Le Comptoir", amount: -31, category: "Restaurants" },
+    ],
+    workouts: [
+      { date: day(1), kind: "Salle", minutes: 60 },
+      { date: day(3), kind: "Course à pied", minutes: 30 },
+    ],
+  };
+}
+
+// Exemple de bilan rédigé (FICTIF) : montre le ton visé, sans vrais chiffres.
+export const DEMO_WEEK_NOTE =
+  "Belle semaine côté organisation : tu as bouclé l'essentiel. Une tâche traîne encore, rien de grave, on la cale lundi matin. Les restos ont un peu pesé sur le budget. Pour la semaine prochaine : prévois deux séances de sport dans ton planning dès dimanche soir.";
