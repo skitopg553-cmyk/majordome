@@ -6,6 +6,7 @@ import FinancesView from "./finances-view";
 import FormeView from "./forme-view";
 import HomeView from "./home-view";
 import Orb, { type OrbState } from "./orb";
+import { Wordmark } from "./ui";
 import PlanningView from "./planning-view";
 import ProfileSheet from "./profile-sheet";
 import { useTasks } from "./use-tasks";
@@ -69,7 +70,7 @@ export default function Home() {
       <main className="flex min-h-full items-center justify-center px-6">
         <div className="w-full max-w-xs space-y-6 text-center">
           <Orb state="idle" size={72} />
-          <h1 className="font-serif text-5xl font-medium tracking-wide">Majordome</h1>
+          <h1><Wordmark className="text-[40px]" /></h1>
           <input
             type="password"
             value={codeInput}
@@ -77,13 +78,13 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && saveCode()}
             placeholder="Code d'accès"
             aria-label="Code d'accès"
-            className="h-12 w-full rounded-2xl bg-surface px-4 text-center outline-none placeholder:text-faint focus:ring-1 focus:ring-brass/50"
+            className="h-12 w-full rounded-2xl bg-surface px-4 text-center outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50"
             autoFocus
           />
-          <button onClick={saveCode} className="h-12 w-full rounded-2xl bg-cream font-medium text-ink active:opacity-80">
+          <button onClick={saveCode} className="h-12 w-full rounded-2xl bg-fg font-medium text-ink active:opacity-80">
             Entrer
           </button>
-          {codeError && <p className="text-sm text-[#d99a86]">{codeError}</p>}
+          {codeError && <p className="text-sm text-neg">{codeError}</p>}
         </div>
       </main>
     );
@@ -141,7 +142,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
       key={t.id}
       onClick={() => setTab(t.id)}
       aria-current={tab === t.id ? "page" : undefined}
-      className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors ${tab === t.id ? "text-cream" : "text-faint"}`}
+      className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors ${tab === t.id ? "text-fg" : "text-faint"}`}
     >
       <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d={t.icon} />
@@ -171,7 +172,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
           <button
             onClick={type}
             aria-label="Écrire à Majordome"
-            className="absolute left-1/2 top-6 ml-5 flex size-8 items-center justify-center rounded-full border border-line bg-raised text-muted before:absolute before:-inset-1.5 active:text-cream"
+            className="absolute -top-8 left-1/2 ml-7 flex size-8 items-center justify-center rounded-full border border-line bg-raised text-muted before:absolute before:-inset-1.5 active:text-fg"
           >
             <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
               <rect x="3" y="6" width="18" height="12" rx="2" />

@@ -1,9 +1,9 @@
-// Majordome en personne : un orbe laiton qui change d'animation selon ce qu'il fait.
+// Majordome en personne : un point lumineux qui change d'animation selon ce qu'il fait.
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
 const LABEL: Record<OrbState, string> = {
   idle: "Majordome",
-  listening: "Je vous écoute…",
+  listening: "Je t'écoute…",
   thinking: "Je réfléchis…",
   speaking: "Majordome parle",
 };

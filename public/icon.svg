@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#12100d"/>
-  <text x="256" y="345" font-family="'Cormorant Garamond', Georgia, serif" font-size="256" font-weight="500" text-anchor="middle" fill="#b8955a">M</text>
+  <defs>
+    <filter id="g" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="#050506"/>
+  <text x="236" y="318" font-family="Poppins, system-ui, sans-serif" font-size="236" font-weight="600" text-anchor="middle" fill="#f2f3f5">m</text>
+  <circle cx="378" cy="296" r="30" fill="#6cf2ff" filter="url(#g)" opacity="0.7"/>
+  <circle cx="378" cy="296" r="24" fill="#6cf2ff"/>
 </svg>

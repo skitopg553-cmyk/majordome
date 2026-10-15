@@ -3,7 +3,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import Orb, { orbLabel, type OrbState } from "./orb";
-import { greeting } from "./ui";
+import { greeting, Wordmark } from "./ui";
 
 type Message = { role: "user" | "assistant"; content: string };
 export type ChatHandle = { listen: () => void; focusInput: () => void; newConversation: () => void };
@@ -141,7 +141,7 @@ export default function ChatView({
   function listen() {
     const SR = speechRecognition();
     if (!SR) {
-      setError("La dictée n'est pas disponible sur ce navigateur : écrivez votre message.");
+      setError("La dictée n'est pas disponible sur ce navigateur : écris ton message.");
       inputRef.current?.focus();
       return;
     }
@@ -161,7 +161,7 @@ export default function ChatView({
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (e: any) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Micro refusé. Autorisez-le dans les réglages du navigateur, ou écrivez votre message.");
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Micro refusé. Autorise-le dans les réglages du navigateur, ou écris ton message.");
       else if (e.error !== "no-speech" && e.error !== "aborted") setError(`Dictée interrompue (${e.error}).`);
     };
     rec.onend = () => {
@@ -212,11 +212,11 @@ export default function ChatView({
         </button>
         <Orb state={state} size={30} />
         <div className="min-w-0 flex-1">
-          <p className="font-serif text-xl leading-none">Majordome</p>
-          <p className="mt-1 text-xs text-faint">{state === "idle" ? "À votre service" : orbLabel(state)}</p>
+          <Wordmark className="text-[17px] leading-none" />
+          <p className="mt-1 text-xs text-faint">{state === "idle" ? "À ton service" : orbLabel(state)}</p>
         </div>
         {messages.length > 0 && (
-          <button onClick={newConversation} className="min-h-11 px-2 text-xs text-faint active:text-cream">
+          <button onClick={newConversation} className="min-h-11 px-2 text-xs text-faint active:text-fg">
             Nouvelle conversation
           </button>
         )}
@@ -225,12 +225,12 @@ export default function ChatView({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {empty && (
           <div className="flex min-h-full flex-col justify-end gap-2">
-            <p className="mb-4 font-serif text-[26px] leading-snug text-cream/90">{greeting()}, Ruben.<br />Que puis-je faire pour vous ?</p>
+            <p className="mb-4 text-[24px] font-semibold leading-snug tracking-tight">{greeting()} Ruben.<br />Qu&apos;est-ce que je peux faire pour toi ?</p>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => suggest(s)}
-                className="min-h-12 rounded-2xl bg-surface px-4 py-3 text-left text-[15px] text-muted transition-colors active:bg-raised active:text-cream"
+                className="min-h-12 rounded-2xl bg-surface px-4 py-3 text-left text-[15px] text-muted transition-colors active:bg-raised active:text-fg"
               >
                 {s.trim()}
               </button>
@@ -245,7 +245,7 @@ export default function ChatView({
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="rise md max-w-[94%] text-[15.5px] leading-relaxed text-cream/95">
+              <div key={i} className="rise md max-w-[94%] text-[15.5px] leading-relaxed text-fg/95">
                 <Markdown>{m.content}</Markdown>
               </div>
             ),
@@ -253,7 +253,7 @@ export default function ChatView({
           {listening && (
             <div className="flex flex-col items-center gap-5 py-10" aria-live="polite">
               <Orb state="listening" size={96} />
-              <p className="min-h-6 text-center font-serif text-xl text-cream/90">{interim || "Je vous écoute…"}</p>
+              <p className="min-h-6 text-center text-lg font-medium text-fg/90">{interim || "Je t'écoute…"}</p>
             </div>
           )}
           {waiting && (
@@ -266,13 +266,13 @@ export default function ChatView({
               </span>
             </p>
           )}
-          {error && <p className="text-sm text-[#d99a86]">{error}</p>}
+          {error && <p className="text-sm text-neg">{error}</p>}
         </div>
         <div ref={bottomRef} />
       </div>
 
       <footer className="flex items-end gap-2 px-3 pb-3 pt-2">
-        <div className="flex min-h-12 flex-1 items-end rounded-3xl bg-surface pl-4 pr-1 focus-within:ring-1 focus-within:ring-brass/50">
+        <div className="flex min-h-12 flex-1 items-end rounded-3xl bg-surface pl-4 pr-1 focus-within:ring-1 focus-within:ring-accent/50">
           <textarea
             ref={inputRef}
             value={input}
@@ -289,7 +289,7 @@ export default function ChatView({
             className="max-h-40 min-h-12 flex-1 resize-none bg-transparent py-3 text-[15px] leading-snug outline-none [field-sizing:content] placeholder:text-faint"
           />
           {!input.trim() && (
-            <button onClick={listen} aria-label={listening ? "Arrêter la dictée" : "Dicter"} className={`flex size-11 shrink-0 items-center justify-center rounded-full ${listening ? "text-brass" : "text-muted"}`}>
+            <button onClick={listen} aria-label={listening ? "Arrêter la dictée" : "Dicter"} className={`flex size-11 shrink-0 items-center justify-center rounded-full ${listening ? "text-accent" : "text-muted"}`}>
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
                 <rect x="9" y="3" width="6" height="12" rx="3" />
                 <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
@@ -301,7 +301,7 @@ export default function ChatView({
           onClick={() => send()}
           disabled={busy || !input.trim()}
           aria-label="Envoyer"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brass text-ink transition-opacity disabled:opacity-25"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-25"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M12 19V5M5 12l7-7 7 7" />

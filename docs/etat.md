@@ -4,7 +4,7 @@
 | Section | État | Détail |
 |---|---|---|
 | Majordome (orbe + chat plein écran) | **Réel** | Réponse streamée, markdown, historique (table `messages`), dictée Web Speech + lecture à voix haute, repli clavier |
-| Accueil | **Mixte** | Salutation et tâches du jour **réelles** ; prochain RDV, aperçus finances/forme **fictifs** (bandeau) |
+| Accueil | **Mixte** | Salutation, résumé et tâches du jour **réels** ; prochain RDV, solde + courbe, objectif (photo), « Ta forme », « À valider » **fictifs** (bandeau sur chaque carte) |
 | Planning | **Mixte** | Tâches **réelles** (ajout rapide sans IA, coche, anti-doublon) ; RDV **fictifs** (phase 2, étiquette « fictif ») |
 | Finances | **Fictif** | Coquille style Revolut, données de `src/lib/demo-data.ts` (phase 4) |
 | Forme | **Fictif** | Sommeil, pas, séances, discipline, temps d'écran (phase 5) |
@@ -19,8 +19,8 @@ Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1
 - « Nouvelle conversation » et le réglage voix sont mémorisés par navigateur.
 - Vue Tâches/Planning pas encore validée en ligne → pas cochée dans la roadmap.
 
-## Dernière session (2026-10-15)
-- Vitesse (cdg1, streaming, logs après réponse), historique persistant, refonte du design, puis **nouvelle structure** : barre Accueil / Planning / Majordome / Finances / Forme, orbe vocal, chat plein écran, profil derrière l'avatar, coquilles fictives.
+## Dernière session (2026-10-16)
+- Nouvelle identité « majordome. » (#050506, #6CF2FF, Poppins) et Accueil refait d’après la maquette Stitch (`design/stitch/`) : RDV, tâches, solde + courbe, objectif avec photo, forme, « À valider ». Corrigé : la salutation affichait toujours « Bonsoir » (heure lue en NaN).
 
 ## Prochaine étape
 - Ruben teste sur son téléphone (voix comprise) et relève `[timing]`. Ensuite : cocher la vue Tâches, puis les rappels push (phase 1).

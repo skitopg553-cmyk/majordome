@@ -36,7 +36,7 @@ export default function FinancesView({ onAvatar }: { onAvatar: () => void }) {
             <li key={b.label}>
               <div className="mb-1.5 flex justify-between text-[15px]">
                 <span>{b.label}</span>
-                <span className={`tabular-nums ${b.spent > b.limit ? "text-[#d99a86]" : "text-muted"}`}>
+                <span className={`tabular-nums ${b.spent > b.limit ? "text-neg" : "text-muted"}`}>
                   {euro(b.spent, false)} <span className="text-faint">/ {euro(b.limit, false)}</span>
                 </span>
               </div>
@@ -64,14 +64,14 @@ export default function FinancesView({ onAvatar }: { onAvatar: () => void }) {
         <ul className="divide-y divide-line/60">
           {F.transactions.map((t) => (
             <li key={t.label + t.when} className="flex items-center gap-3 py-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-raised font-serif text-brass">{t.label[0]}</span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-raised text-accent">{t.label[0]}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px]">{t.label}</span>
                 <span className="block text-xs text-faint">
                   {t.category} · {t.when}
                 </span>
               </span>
-              <span className={`tabular-nums ${t.amount > 0 ? "text-brass" : ""}`}>
+              <span className={`tabular-nums ${t.amount > 0 ? "text-pos" : ""}`}>
                 {t.amount > 0 ? "+" : ""}
                 {euro(t.amount)}
               </span>

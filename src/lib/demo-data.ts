@@ -25,9 +25,23 @@ export function demoEvents(): DemoEvent[] {
   ];
 }
 
+// « À valider » — phase 2 : propositions détectées (mails, agenda) que Ruben accepte ou refuse.
+// Rien n'est fait sans son accord.
+export type DemoProposal = { id: string; kind: "agenda" | "mail" | "task"; title: string; detail: string };
+export const DEMO_PROPOSALS: DemoProposal[] = [
+  { id: "p1", kind: "agenda", title: "Ajouter le RDV coiffeur à ton agenda ?", detail: "Trouvé dans un mail · samedi 10 h" },
+  { id: "p2", kind: "mail", title: "Répondre à Léa pour décaler le point ?", detail: "Elle propose jeudi 14 h" },
+  { id: "p3", kind: "task", title: "Créer la tâche « Payer la facture EDF » ?", detail: "Échéance dans le mail : le 25" },
+];
+
 // Finances — phase 4 (import CSV + catégorisation)
 export const DEMO_FINANCES = {
   balance: 2847.32,
+  // Solde en fin de journée, 30 derniers jours (mini-courbe de l'Accueil)
+  balanceHistory: [
+    2512, 2498, 2530, 2521, 2560, 2548, 2575, 2602, 2590, 2621, 2655, 2640, 2668, 2690, 2684, 2712, 2705, 2733, 2758, 2749, 2771,
+    2795, 2788, 2806, 2820, 2814, 2831, 2826, 2840, 2847,
+  ],
   monthSpent: 1236.4,
   monthBudget: 1800,
   budgets: [
@@ -36,9 +50,10 @@ export const DEMO_FINANCES = {
     { label: "Transport", spent: 64, limit: 90 },
     { label: "Loisirs", spent: 95, limit: 120 },
   ],
+  // image_url : prévu dans le futur modèle de données des objectifs (image de fond de la carte).
   goals: [
-    { label: "Voyage au Japon", saved: 1850, target: 4000, due: "Avril" },
-    { label: "Épargne de précaution", saved: 5200, target: 6000, due: "Décembre" },
+    { label: "Voyage en Australie", saved: 1850, target: 4000, due: "Avril", image_url: "/objectif.jpg" as string | null },
+    { label: "Épargne de précaution", saved: 5200, target: 6000, due: "Décembre", image_url: null as string | null },
   ],
   transactions: [
     { label: "Carrefour City", category: "Courses", amount: -23.4, when: "Aujourd'hui" },

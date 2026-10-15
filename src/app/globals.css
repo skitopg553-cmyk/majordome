@@ -1,19 +1,28 @@
 @import "tailwindcss";
 
-/* Palette « majordome » : noir chaud, crème, un seul accent laiton. Utilisable en classes Tailwind
-   (bg-ink, text-cream, border-line, text-brass…). */
+/* Palette « majordome. » : noir profond, surfaces graphite, UN SEUL accent fluo (#6CF2FF).
+   Vert / rouge réservés aux montants +/− (pos / neg), en discret.
+   Utilisable en classes Tailwind (bg-ink, bg-surface, text-fg, text-accent, text-pos…). */
 @theme {
-  --color-ink: #12100d;
-  --color-surface: #1b1813;
-  --color-raised: #24201a;
-  --color-line: #2f2a22;
-  --color-cream: #ece4d4;
-  --color-muted: #9a917f;
-  --color-faint: #6b6355;
-  --color-brass: #b8955a;
+  --color-ink: #050506;
+  --color-surface: #111215;
+  --color-raised: #1a1b20;
+  --color-line: #24262c;
+  --color-fg: #f2f3f5;
+  --color-muted: #9b9ea8;
+  --color-faint: #5f636d;
+  --color-accent: #6cf2ff;
+  --color-pos: #5fd39a;
+  --color-neg: #f08a8a;
 
-  --font-serif: var(--font-cormorant), Georgia, serif;
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+}
+
+/* Halo de l'accent (point du logo, orbe, éléments actifs) */
+.glow {
+  box-shadow:
+    0 0 8px rgba(108, 242, 255, 0.85),
+    0 0 22px rgba(108, 242, 255, 0.35);
 }
 
 :root {
@@ -24,12 +33,12 @@ html,
 body {
   height: 100%;
   background: var(--color-ink);
-  color: var(--color-cream);
+  color: var(--color-fg);
   -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-brass) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
 /* Réponses de Majordome rendues en markdown */
@@ -48,14 +57,14 @@ body {
   margin-top: 0.25em;
 }
 .md li::marker {
-  color: var(--color-brass);
+  color: var(--color-accent);
 }
 .md strong {
   font-weight: 600;
-  color: #f6efe1;
+  color: #ffffff;
 }
 .md a {
-  color: var(--color-brass);
+  color: var(--color-accent);
   text-decoration: underline;
 }
 .md code {
@@ -67,8 +76,7 @@ body {
 .md h1,
 .md h2,
 .md h3 {
-  font-family: var(--font-serif);
-  font-size: 1.2em;
+  font-size: 1.1em;
   font-weight: 600;
 }
 
@@ -93,10 +101,11 @@ body {
   inset: 0;
   border-radius: inherit;
   overflow: hidden;
-  background: radial-gradient(circle at 34% 28%, #f4e2bb 0%, #c9a66b 32%, #8d6c3c 68%, #3a2c18 100%);
+  /* gros point lumineux : cœur presque blanc, bord cyan, halo */
+  background: radial-gradient(circle at 42% 38%, #f2feff 0%, #a9f8ff 22%, #6cf2ff 52%, #1fb8cc 100%);
   box-shadow:
-    inset 0 -6px 14px rgba(0, 0, 0, 0.35),
-    0 10px 30px -6px rgba(184, 149, 90, 0.45);
+    0 0 18px rgba(108, 242, 255, 0.55),
+    0 0 48px rgba(108, 242, 255, 0.22);
 }
 /* reflet tournant (visible surtout en réflexion) */
 .orb-core::after {
@@ -112,7 +121,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  border: 1.5px solid var(--color-brass);
+  border: 1.5px solid var(--color-accent);
   opacity: 0;
 }
 .orb-idle .orb-core {

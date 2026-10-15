@@ -12,7 +12,7 @@ function Ring({ value, max, children }: { value: number; max: number; children: 
     <div className="relative size-24 shrink-0">
       <svg viewBox="0 0 80 80" className="size-full -rotate-90" aria-hidden>
         <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-raised)" strokeWidth="6" />
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-brass)" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, value / max))} />
+        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-accent)" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, value / max))} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
     </div>
@@ -40,7 +40,7 @@ export default function FormeView({ onAvatar }: { onAvatar: () => void }) {
           {S.sleep.week.map((h, i) => (
             <div key={i} className="flex h-full flex-1 flex-col items-center gap-1.5">
               <div className="flex w-full flex-1 items-end">
-                <div className={`w-full rounded-md ${i === S.sleep.week.length - 1 ? "bg-brass" : "bg-raised"}`} style={{ height: `${(h / maxSleep) * 100}%` }} title={hm(h)} />
+                <div className={`w-full rounded-md ${i === S.sleep.week.length - 1 ? "bg-accent" : "bg-raised"}`} style={{ height: `${(h / maxSleep) * 100}%` }} title={hm(h)} />
               </div>
               <span className="text-[10px] text-faint">{DAYS[i]}</span>
             </div>
@@ -83,7 +83,7 @@ export default function FormeView({ onAvatar }: { onAvatar: () => void }) {
             <div>
               <dt className="text-xs text-faint">Temps d&apos;écran aujourd&apos;hui</dt>
               <dd>
-                {S.screenTime.today} <span className="text-xs text-brass">{S.screenTime.trend}</span>
+                {S.screenTime.today} <span className="text-xs text-accent">{S.screenTime.trend}</span>
               </dd>
             </div>
           </dl>

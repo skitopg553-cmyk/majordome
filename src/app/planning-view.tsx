@@ -14,10 +14,10 @@ function EventRow({ e }: { e: DemoEvent }) {
   return (
     <li className="flex items-start gap-3 py-2.5">
       <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-faint">{hhmm(e.start)}</span>
-      <span className="mt-1 h-4 w-0.5 shrink-0 rounded-full bg-brass/50" aria-hidden />
+      <span className="mt-1 h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[15px] text-cream/80">{e.title}</span>
+          <span className="truncate text-[15px] text-fg/80">{e.title}</span>
           <span className="shrink-0 rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wider text-faint">fictif</span>
         </span>
         <span className="mt-0.5 block text-xs text-faint">
@@ -67,7 +67,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const row = (t: Task, time = false) => <TaskRow key={t.id} t={t} time={time} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} />;
   const section = (label: string, children: React.ReactNode, accent = false) => (
     <div key={label} className="pt-6">
-      <h2 className={`mb-1 text-[11px] uppercase tracking-[0.14em] first-letter:uppercase ${accent ? "text-brass" : "text-faint"}`}>{label}</h2>
+      <h2 className={`mb-1 text-[11px] uppercase tracking-[0.14em] first-letter:uppercase ${accent ? "text-accent" : "text-faint"}`}>{label}</h2>
       <ul className="divide-y divide-line/60">{children}</ul>
     </div>
   );
@@ -84,20 +84,20 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="Nouvelle tâche…"
             aria-label="Nouvelle tâche"
-            className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-brass/50"
+            className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50"
           />
           <button
             onClick={() => setShowOptions((v) => !v)}
             aria-label="Date et priorité"
             aria-expanded={showOptions}
-            className={`flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface ${showOptions || due ? "text-brass" : "text-faint"}`}
+            className={`flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface ${showOptions || due ? "text-accent" : "text-faint"}`}
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
               <rect x="4" y="5" width="16" height="15" rx="2" />
               <path d="M4 10h16M9 3v4M15 3v4" />
             </svg>
           </button>
-          <button onClick={add} disabled={!title.trim()} aria-label="Ajouter" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-brass text-ink disabled:opacity-25">
+          <button onClick={add} disabled={!title.trim()} aria-label="Ajouter" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink disabled:opacity-25">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -110,13 +110,13 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
               value={due}
               onChange={(e) => setDue(e.target.value)}
               aria-label="Échéance"
-              className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-3 text-sm text-muted outline-none [color-scheme:dark] focus:ring-1 focus:ring-brass/50"
+              className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-3 text-sm text-muted outline-none [color-scheme:dark] focus:ring-1 focus:ring-accent/50"
             />
             <select
               value={priority}
               onChange={(e) => setPriority(Number(e.target.value))}
               aria-label="Priorité"
-              className="h-12 rounded-2xl bg-surface px-3 text-sm text-muted outline-none focus:ring-1 focus:ring-brass/50"
+              className="h-12 rounded-2xl bg-surface px-3 text-sm text-muted outline-none focus:ring-1 focus:ring-accent/50"
             >
               <option value={1}>Haute</option>
               <option value={2}>Normale</option>
@@ -130,7 +130,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         <div className="pt-5">
           <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs, tâches réelles" />
         </div>
-        {api.error && <p className="pt-3 text-sm text-[#d99a86]">{api.error}</p>}
+        {api.error && <p className="pt-3 text-sm text-neg">{api.error}</p>}
         {late.length > 0 && section("En retard", late.map((t) => row(t)), true)}
         {timeline.map(([day, items]) =>
           section(

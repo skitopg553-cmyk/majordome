@@ -32,26 +32,26 @@ export default function ProfileSheet({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
         <div className="flex flex-col items-center pb-6 text-center">
-          <span className="flex size-20 items-center justify-center rounded-full border border-brass/40 bg-raised font-serif text-4xl text-brass">R</span>
-          <p className="mt-3 font-serif text-2xl">Ruben</p>
+          <span className="flex size-20 items-center justify-center rounded-full bg-raised text-3xl font-medium ring-1 ring-line">R</span>
+          <p className="mt-3 text-xl font-semibold">Ruben</p>
         </div>
 
-        <h2 className="font-serif text-xl">Mémoire & objectifs</h2>
+        <h2 className="text-lg font-semibold">Mémoire & objectifs</h2>
         <MemoryView accessCode={accessCode} onUnauthorized={onUnauthorized} />
 
-        <h2 className="mb-2 mt-10 font-serif text-xl">Réglages</h2>
+        <h2 className="mb-2 mt-10 text-lg font-semibold">Réglages</h2>
         <div className="divide-y divide-line/60 rounded-3xl bg-surface px-4">
           <label className="flex min-h-14 items-center justify-between gap-4">
             <span>
               <span className="block text-[15px]">Lire les réponses à voix haute</span>
-              <span className="block text-xs text-faint">Quand vous parlez à Majordome</span>
+              <span className="block text-xs text-faint">Quand tu parles à Majordome</span>
             </span>
-            <input type="checkbox" checked={speak} onChange={(e) => onSpeakChange(e.target.checked)} className="size-5 accent-[var(--color-brass)]" />
+            <input type="checkbox" checked={speak} onChange={(e) => onSpeakChange(e.target.checked)} className="size-5 accent-[var(--color-accent)]" />
           </label>
           <button onClick={onNewConversation} className="flex min-h-14 w-full items-center text-left text-[15px]">
             Nouvelle conversation
           </button>
-          <button onClick={onLogout} className="flex min-h-14 w-full items-center text-left text-[15px] text-[#d99a86]">
+          <button onClick={onLogout} className="flex min-h-14 w-full items-center text-left text-[15px] text-neg">
             Se déconnecter de cet appareil
           </button>
         </div>
