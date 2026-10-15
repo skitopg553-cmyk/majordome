@@ -46,7 +46,12 @@ export default function ProfileSheet({
               <span className="block text-[15px]">Lire les réponses à voix haute</span>
               <span className="block text-xs text-faint">Quand tu parles à Majordome</span>
             </span>
-            <input type="checkbox" checked={speak} onChange={(e) => onSpeakChange(e.target.checked)} className="size-5 accent-[var(--color-accent)]" />
+            {/* Interrupteur : vraie case à cocher (accessible), dessinée en pilule */}
+            <input type="checkbox" role="switch" checked={speak} onChange={(e) => onSpeakChange(e.target.checked)} className="peer sr-only" />
+            <span
+              aria-hidden
+              className="relative h-7 w-12 shrink-0 rounded-full bg-raised ring-1 ring-line transition-colors duration-200 after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-muted after:transition-transform after:duration-200 peer-checked:bg-accent/25 peer-checked:ring-accent/50 peer-checked:after:translate-x-5 peer-checked:after:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-accent"
+            />
           </label>
           <button onClick={onNewConversation} className="flex min-h-14 w-full items-center text-left text-[15px]">
             Nouvelle conversation

@@ -10,7 +10,7 @@
   --color-line: #24262c;
   --color-fg: #f2f3f5;
   --color-muted: #9b9ea8;
-  --color-faint: #5f636d;
+  --color-faint: #7a7e89; /* ≥ 4,5:1 sur les surfaces */
   --color-accent: #6cf2ff;
   --color-pos: #5fd39a;
   --color-neg: #f08a8a;

@@ -31,3 +31,4 @@ Aussi : PWA (icônes PNG, écran de démarrage), fonctions Vercel à Paris (cdg1
 - Veille sur secteur : déjà sur « jamais » (`powercfg /query` → 0), rien changé. Pour remettre une veille après 30 min : `powercfg /change standby-timeout-ac 30`.
 
 ## Journal de nuit
+- A (16/10, 00 h 40) : existant vérifié par captures Playwright ; outillage vitest + Playwright (`npm test`, `npm run captures`) ; contraste du gris discret relevé (4,6:1), heure des RDV non répétée, interrupteur pour la voix.

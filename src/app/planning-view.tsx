@@ -21,7 +21,7 @@ function EventRow({ e }: { e: DemoEvent }) {
           <span className="shrink-0 rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wider text-faint">fictif</span>
         </span>
         <span className="mt-0.5 block text-xs text-faint">
-          {hhmm(e.start)} – {hhmm(e.end)}
+          jusqu&apos;à {hhmm(e.end)}
           {e.place ? ` · ${e.place}` : ""}
         </span>
       </span>
