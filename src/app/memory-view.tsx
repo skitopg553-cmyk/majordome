@@ -11,7 +11,8 @@ const CATEGORIES: [Memory["category"], string][] = [
   ["info", "Infos"],
 ];
 
-export default function MemoryView({ accessCode, hidden, onUnauthorized }: { accessCode: string; hidden: boolean; onUnauthorized: () => void }) {
+// Contenu du panneau profil (chargé à chaque ouverture : l'IA a pu mémoriser des choses entre-temps).
+export default function MemoryView({ accessCode, onUnauthorized }: { accessCode: string; onUnauthorized: () => void }) {
   const [memories, setMemories] = useState<Memory[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,16 +31,14 @@ export default function MemoryView({ accessCode, hidden, onUnauthorized }: { acc
     [accessCode, onUnauthorized],
   );
 
-  // Rechargé à chaque ouverture de l'onglet (l'IA a pu mémoriser des choses entre-temps).
   useEffect(() => {
-    if (hidden) return;
     api("GET")
       .then((d) => {
         setMemories(d.memories);
         setError(null);
       })
       .catch((e) => setError(e.message));
-  }, [hidden, api]);
+  }, [api]);
 
   // Suppression optimiste après confirmation : on remet le souvenir si le serveur refuse.
   function forget(m: Memory) {
@@ -52,11 +51,8 @@ export default function MemoryView({ accessCode, hidden, onUnauthorized }: { acc
   }
 
   return (
-    <section className={`${hidden ? "hidden" : "flex"} min-h-0 flex-1 flex-col`}>
-      <header className="flex h-14 items-center px-5">
-        <h1 className="font-serif text-2xl font-medium tracking-wide">Mémoire</h1>
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6">
+    <section>
+      <div>
         <p className="text-sm text-faint">Ce que Majordome sait de vous. Dites-lui en conversation ce qu&apos;il doit retenir.</p>
         {error && <p className="pt-3 text-sm text-red-300">{error}</p>}
         {CATEGORIES.map(([cat, label]) => {

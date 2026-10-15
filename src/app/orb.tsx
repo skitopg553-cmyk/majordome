@@ -1,0 +1,19 @@
+// Majordome en personne : un orbe laiton qui change d'animation selon ce qu'il fait.
+export type OrbState = "idle" | "listening" | "thinking" | "speaking";
+
+const LABEL: Record<OrbState, string> = {
+  idle: "Majordome",
+  listening: "Je vous écoute…",
+  thinking: "Je réfléchis…",
+  speaking: "Majordome parle",
+};
+
+export const orbLabel = (s: OrbState) => LABEL[s];
+
+export default function Orb({ state, size = 64 }: { state: OrbState; size?: number }) {
+  return (
+    <span className={`orb orb-${state}`} style={{ width: size, height: size }} aria-hidden>
+      <span className="orb-core" />
+    </span>
+  );
+}

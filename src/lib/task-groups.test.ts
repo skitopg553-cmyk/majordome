@@ -1,6 +1,6 @@
 // Lancer avec : node --experimental-strip-types src/lib/task-groups.test.ts
 import assert from "node:assert/strict";
-import { groupOf } from "./task-groups.ts";
+import { dayLabel, groupOf } from "./task-groups.ts";
 
 const now = new Date("2026-10-15T20:00:00+02:00"); // jeudi 20 h à Paris
 
@@ -12,5 +12,9 @@ assert.equal(groupOf("2026-10-16T22:00:00+02:00", now), "Demain");
 assert.equal(groupOf("2026-10-17T09:00:00+02:00", now), "Plus tard");
 // Passage à l'heure d'hiver (nuit du 24 au 25 octobre 2026)
 assert.equal(groupOf("2026-10-25T09:00:00+01:00", new Date("2026-10-24T20:00:00+02:00")), "Demain");
+
+assert.equal(dayLabel("2026-10-15", now), "Aujourd'hui");
+assert.equal(dayLabel("2026-10-16", now), "Demain");
+assert.equal(dayLabel("2026-10-17", now), "samedi 17 octobre");
 
 console.log("task-groups : OK");

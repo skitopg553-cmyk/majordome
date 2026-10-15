@@ -82,6 +82,101 @@ body {
   animation: rise 220ms ease-out;
 }
 
+/* ---- Orbe de Majordome : repos, écoute, réflexion, parole ---- */
+.orb {
+  position: relative;
+  display: inline-block;
+  border-radius: 9999px;
+}
+.orb-core {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: radial-gradient(circle at 34% 28%, #f4e2bb 0%, #c9a66b 32%, #8d6c3c 68%, #3a2c18 100%);
+  box-shadow:
+    inset 0 -6px 14px rgba(0, 0, 0, 0.35),
+    0 10px 30px -6px rgba(184, 149, 90, 0.45);
+}
+/* reflet tournant (visible surtout en réflexion) */
+.orb-core::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(from 0deg, transparent 0 60%, rgba(255, 244, 220, 0.55) 75%, transparent 90%);
+  opacity: 0;
+}
+/* anneau qui s'étend (écoute) */
+.orb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid var(--color-brass);
+  opacity: 0;
+}
+.orb-idle .orb-core {
+  animation: orb-breathe 4.5s ease-in-out infinite;
+}
+.orb-listening::before {
+  animation: orb-ring 1.4s ease-out infinite;
+}
+.orb-listening .orb-core {
+  animation: orb-breathe 1.4s ease-in-out infinite;
+}
+.orb-thinking .orb-core::after {
+  opacity: 1;
+  animation: orb-spin 1.6s linear infinite;
+}
+.orb-speaking .orb-core {
+  animation: orb-speak 0.5s ease-in-out infinite alternate;
+}
+@keyframes orb-breathe {
+  50% {
+    transform: scale(1.045);
+  }
+}
+@keyframes orb-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes orb-speak {
+  from {
+    transform: scale(0.97);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb *,
+  .orb::before,
+  .orb .orb-core::after {
+    animation: none !important;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.sheet-up {
+  animation: sheet-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 @keyframes dot {
   0%, 80%, 100% {
     opacity: 0.25;

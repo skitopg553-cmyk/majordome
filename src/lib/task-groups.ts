@@ -4,7 +4,17 @@ export const GROUPS = ["En retard", "Aujourd'hui", "Demain", "Plus tard", "Sans 
 export type Group = (typeof GROUPS)[number];
 
 /** Jour civil à Paris au format AAAA-MM-JJ (en-CA donne directement ce format). */
-const parisDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+export const parisDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+
+/** Libellé d'un jour (AAAA-MM-JJ) : « Aujourd'hui », « Demain » ou « samedi 17 octobre ». */
+export function dayLabel(day: string, now: Date) {
+  const today = parisDay(now);
+  const noon = (d: string) => new Date(`${d}T12:00:00Z`).getTime();
+  const diff = Math.round((noon(day) - noon(today)) / 86_400_000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return "Demain";
+  return new Date(noon(day)).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+}
 
 export function groupOf(dueAt: string | null, now: Date): Group {
   if (!dueAt) return "Sans date";

@@ -1,25 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import ChatView from "./chat-view";
-import MemoryView from "./memory-view";
-import TasksView from "./tasks-view";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ChatView, { type ChatHandle } from "./chat-view";
+import FinancesView from "./finances-view";
+import FormeView from "./forme-view";
+import HomeView from "./home-view";
+import Orb, { type OrbState } from "./orb";
+import PlanningView from "./planning-view";
+import ProfileSheet from "./profile-sheet";
+import { useTasks } from "./use-tasks";
 
 const STORAGE_KEY = "majordome-access-code";
+const SPEAK_KEY = "majordome-speak";
 
-const TABS = [
-  { id: "chat", label: "Chat", icon: "M4 5h16v11H8l-4 4z" },
-  { id: "tasks", label: "Tâches", icon: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" },
-  { id: "memory", label: "Mémoire", icon: "M12 4a5 5 0 0 0-5 5c0 2 1 3 2 4v3h6v-3c1-1 2-2 2-4a5 5 0 0 0-5-5zM10 20h4" },
-] as const;
-type Tab = (typeof TABS)[number]["id"];
+type Tab = "home" | "planning" | "finances" | "forme";
+const LEFT: { id: Tab; label: string; icon: string }[] = [
+  { id: "home", label: "Accueil", icon: "M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" },
+  { id: "planning", label: "Planning", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h3" },
+];
+const RIGHT: { id: Tab; label: string; icon: string }[] = [
+  { id: "finances", label: "Finances", icon: "M3 7h18v11H3zM3 11h18M7 15h3" },
+  { id: "forme", label: "Forme", icon: "M3 12h4l2-5 4 10 2-5h6" },
+];
 
 export default function Home() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("chat");
 
   // Le code d'accès est mémorisé sur ce téléphone pour ne pas le retaper à chaque fois.
   useEffect(() => {
@@ -43,16 +51,16 @@ export default function Home() {
     setAccessCode(code);
   }
 
-  // Appelé par les vues quand le serveur répond 401 : on redemande le code.
-  function unauthorized() {
+  // Appelé quand le serveur répond 401 (ou à la déconnexion) : on redemande le code.
+  const forgetCode = useCallback((message: string | null) => {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }
     setAccessCode(null);
-    setCodeError("Code d'accès incorrect");
-  }
+    setCodeError(message);
+  }, []);
 
   if (!ready) return null;
 
@@ -60,8 +68,8 @@ export default function Home() {
     return (
       <main className="flex min-h-full items-center justify-center px-6">
         <div className="w-full max-w-xs space-y-6 text-center">
+          <Orb state="idle" size={72} />
           <h1 className="font-serif text-5xl font-medium tracking-wide">Majordome</h1>
-          <div className="mx-auto h-px w-12 bg-brass" />
           <input
             type="password"
             value={codeInput}
@@ -69,42 +77,135 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && saveCode()}
             placeholder="Code d'accès"
             aria-label="Code d'accès"
-            className="h-12 w-full rounded-xl border border-line bg-surface px-4 text-center outline-none placeholder:text-faint focus:border-brass"
+            className="h-12 w-full rounded-2xl bg-surface px-4 text-center outline-none placeholder:text-faint focus:ring-1 focus:ring-brass/50"
             autoFocus
           />
-          <button onClick={saveCode} className="h-12 w-full rounded-xl bg-cream font-medium text-ink active:opacity-80">
+          <button onClick={saveCode} className="h-12 w-full rounded-2xl bg-cream font-medium text-ink active:opacity-80">
             Entrer
           </button>
-          {codeError && <p className="text-sm text-red-300">{codeError}</p>}
+          {codeError && <p className="text-sm text-[#d99a86]">{codeError}</p>}
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="mx-auto flex h-dvh max-w-2xl flex-col pt-[env(safe-area-inset-top)]">
-      {/* Les vues restent montées (masquées) : une réponse en cours continue même si on change d'onglet. */}
-      <ChatView accessCode={accessCode} hidden={tab !== "chat"} onUnauthorized={unauthorized} />
-      <TasksView accessCode={accessCode} hidden={tab !== "tasks"} onUnauthorized={unauthorized} />
-      <MemoryView accessCode={accessCode} hidden={tab !== "memory"} onUnauthorized={unauthorized} />
+  return <App accessCode={accessCode} onForget={forgetCode} />;
+}
 
-      <nav className="flex border-t border-line bg-ink pb-[env(safe-area-inset-bottom)]">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? "page" : undefined}
-            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors ${
-              tab === t.id ? "text-brass" : "text-faint"
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d={t.icon} />
-            </svg>
-            {t.label}
+function App({ accessCode, onForget }: { accessCode: string; onForget: (message: string | null) => void }) {
+  const [tab, setTab] = useState<Tab>("home");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [orb, setOrb] = useState<OrbState>("idle");
+  const [speak, setSpeak] = useState(true);
+  const chat = useRef<ChatHandle>(null);
+  const unauthorized = useCallback(() => onForget("Code d'accès incorrect"), [onForget]);
+  const tasks = useTasks(accessCode, unauthorized);
+  const { load } = tasks;
+
+  useEffect(() => {
+    try {
+      setSpeak(localStorage.getItem(SPEAK_KEY) !== "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Tâches rechargées en revenant sur l'Accueil / le Planning, ou en fermant le chat (l'IA a pu en créer).
+  useEffect(() => {
+    if (!chatOpen && (tab === "home" || tab === "planning")) load();
+  }, [tab, chatOpen, load]);
+
+  function changeSpeak(v: boolean) {
+    setSpeak(v);
+    try {
+      localStorage.setItem(SPEAK_KEY, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Appui sur l'orbe : on ouvre le chat et on lance la dictée dans le même geste (exigé par le navigateur).
+  function talk() {
+    setChatOpen(true);
+    chat.current?.listen();
+  }
+
+  function type() {
+    setChatOpen(true);
+    chat.current?.focusInput();
+  }
+
+  const tabButton = (t: { id: Tab; label: string; icon: string }) => (
+    <button
+      key={t.id}
+      onClick={() => setTab(t.id)}
+      aria-current={tab === t.id ? "page" : undefined}
+      className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] tracking-wide transition-colors ${tab === t.id ? "text-cream" : "text-faint"}`}
+    >
+      <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d={t.icon} />
+      </svg>
+      {t.label}
+    </button>
+  );
+
+  const openProfile = () => setProfileOpen(true);
+
+  return (
+    <main className="mx-auto flex h-dvh max-w-2xl flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
+        {tab === "home" && <HomeView tasks={tasks} go={setTab} onAvatar={openProfile} />}
+        {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
+        {tab === "finances" && <FinancesView onAvatar={openProfile} />}
+        {tab === "forme" && <FormeView onAvatar={openProfile} />}
+      </div>
+
+      {/* Barre du bas : 4 sections + Majordome au centre, plus gros et surélevé */}
+      <nav className="relative grid grid-cols-5 border-t border-line/70 bg-ink/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        {LEFT.map(tabButton)}
+        <div className="relative flex justify-center">
+          <button onClick={talk} aria-label="Parler à Majordome" className="absolute -top-7 rounded-full border-[5px] border-ink transition-transform active:scale-95">
+            <Orb state={chatOpen ? orb : "idle"} size={64} />
           </button>
-        ))}
+          <button
+            onClick={type}
+            aria-label="Écrire à Majordome"
+            className="absolute left-1/2 top-6 ml-5 flex size-8 items-center justify-center rounded-full border border-line bg-raised text-muted before:absolute before:-inset-1.5 active:text-cream"
+          >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+              <rect x="3" y="6" width="18" height="12" rx="2" />
+              <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" />
+            </svg>
+          </button>
+        </div>
+        {RIGHT.map(tabButton)}
       </nav>
+
+      <ChatView
+        ref={chat}
+        accessCode={accessCode}
+        open={chatOpen}
+        speak={speak}
+        onClose={() => setChatOpen(false)}
+        onUnauthorized={unauthorized}
+        onState={setOrb}
+      />
+
+      {profileOpen && (
+        <ProfileSheet
+          accessCode={accessCode}
+          speak={speak}
+          onSpeakChange={changeSpeak}
+          onNewConversation={() => {
+            chat.current?.newConversation();
+            setProfileOpen(false);
+          }}
+          onLogout={() => onForget(null)}
+          onClose={() => setProfileOpen(false)}
+          onUnauthorized={unauthorized}
+        />
+      )}
     </main>
   );
 }
