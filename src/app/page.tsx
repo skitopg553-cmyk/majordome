@@ -158,7 +158,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
       <div className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView tasks={tasks} go={setTab} onAvatar={openProfile} />}
         {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
-        {tab === "finances" && <FinancesView onAvatar={openProfile} />}
+        {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
         {tab === "forme" && <FormeView onAvatar={openProfile} />}
       </div>
 

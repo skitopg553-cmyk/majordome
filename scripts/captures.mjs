@@ -22,6 +22,25 @@ const memories = [
   { id: 2, content: "Préfère les réponses courtes", category: "preference" },
 ];
 
+// Finances : d'abord l'aperçu fictif (tables absentes), puis des données réelles simulées.
+let financesReady = false;
+const today = new Date().toISOString().slice(0, 10);
+const daysAgo = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
+const finances = {
+  ready: true,
+  transactions: [
+    { id: 1, date: today, label: "CB CARREFOUR CITY", amount: -23.4, category: "Courses" },
+    { id: 2, date: daysAgo(1), label: "PRLV NAVIGO", amount: -86.4, category: "Transport" },
+    { id: 3, date: daysAgo(2), label: "VIR SALAIRE ACME", amount: 1450, category: "Revenu" },
+    { id: 4, date: daysAgo(3), label: "UBER EATS", amount: -64, category: "Restaurants" },
+    { id: 5, date: daysAgo(20), label: "UBER EATS", amount: -18, category: "Restaurants" },
+    { id: 6, date: daysAgo(35), label: "UBER EATS", amount: -21, category: "Restaurants" },
+    { id: 7, date: daysAgo(50), label: "UBER EATS", amount: -15, category: "Restaurants" },
+  ],
+  budgets: [{ category: "Courses", limit: 300 }, { category: "Restaurants", limit: 60 }],
+  goals: [{ id: 1, label: "Voyage en Australie", target: 4000, saved: 1850, due_label: "Avril", image_url: "/objectif.jpg" }],
+};
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 await page.route("**/api/**", (route) => {
@@ -31,6 +50,7 @@ await page.route("**/api/**", (route) => {
   if (u.pathname === "/api/tasks") return json(m === "GET" ? { tasks } : m === "POST" ? { task: { id: 99, ...route.request().postDataJSON(), notes: null, status: "todo" } } : { ok: true });
   if (u.pathname === "/api/memories") return json(m === "GET" ? { memories } : { ok: true });
   if (u.pathname === "/api/messages") return json({ messages: [] });
+  if (u.pathname === "/api/finances") return json(financesReady ? finances : { ready: false });
   if (u.pathname === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "Voici ta journée :\n\n- **Appeler le médecin** avant 18 h\n- Renvoyer le dossier (*en retard*)" });
   return route.continue();
 });
@@ -69,6 +89,10 @@ await page.getByRole("tab", { name: "semaine" }).click();
 await shot("2b-planning-semaine");
 await tab("Finances");
 await shot("3-finances");
+financesReady = true;
+await tab("Forme");
+await tab("Finances");
+await shot("3b-finances-reelles");
 await tab("Forme");
 await shot("4-forme");
 await page.getByLabel("Écrire à Majordome").click();

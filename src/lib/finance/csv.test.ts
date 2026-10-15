@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBankCsv, parseFrenchAmount, parseFrenchDate, splitCsvLine } from "./csv";
+import { importKeys, parseBankCsv, parseFrenchAmount, parseFrenchDate, splitCsvLine } from "./csv";
 
 describe("parseFrenchAmount", () => {
   it("lit la virgule décimale, les espaces de milliers et l'euro", () => {
@@ -62,5 +62,14 @@ describe("parseBankCsv", () => {
   it("explique quand le fichier n'est pas un relevé", () => {
     expect(parseBankCsv("nom;prénom\nRuben;C").error).toMatch(/En-tête introuvable/);
     expect(parseBankCsv("Date;Nom\n01/01/2026;x").error).toMatch(/introuvables/);
+  });
+});
+
+describe("importKeys", () => {
+  it("distingue deux opérations identiques et redonne les mêmes clés à la réimport", () => {
+    const t = { date: "2026-10-05", label: "CB CAFE", amount: -2.5 };
+    const keys = importKeys([t, t, { ...t, amount: -3 }]);
+    expect(keys).toEqual(["2026-10-05|cb cafe|-2.50|1", "2026-10-05|cb cafe|-2.50|2", "2026-10-05|cb cafe|-3.00|1"]);
+    expect(importKeys([t, t, { ...t, amount: -3 }])).toEqual(keys);
   });
 });

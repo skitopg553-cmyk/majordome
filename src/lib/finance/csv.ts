@@ -68,7 +68,21 @@ function findColumns(header: string[]) {
   };
 }
 
-export type CsvResult = { transactions: RawTransaction[]; skipped: number; error?: string };
+/**
+ * Clé anti-doublon pour la réimport d'un même relevé : date|libellé|montant|n° d'occurrence dans le fichier.
+ * Deux opérations identiques le même jour gardent deux clés différentes (#1, #2).
+ */
+export function importKeys(txs: RawTransaction[]): string[] {
+  const seen = new Map<string, number>();
+  return txs.map((t) => {
+    const base = `${t.date}|${t.label.toLowerCase()}|${t.amount.toFixed(2)}`;
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return `${base}|${n}`;
+  });
+}
+
+export type CsvResult ={ transactions: RawTransaction[]; skipped: number; error?: string };
 
 export function parseBankCsv(text: string): CsvResult {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
