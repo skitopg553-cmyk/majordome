@@ -13,4 +13,11 @@ Format : date — décision — pourquoi.
 - 2026-10-15 — **Pas de Supabase Auth pour l'instant** : l'app est mono-utilisateur, le code d'accès suffit. À revoir seulement si l'app est ouverte à d'autres.
 - 2026-10-15 — **Pas de table `goals`** : un objectif est une mémoire de catégorie `objectif`. Une table de moins.
 - 2026-10-15 — **Contexte injecté plutôt qu'outils de lecture** : mémoires et tâches en cours sont ajoutées au prompt à chaque message (code), l'agent n'a des outils que pour écrire. Moins d'allers-retours, moins cher. À revoir si les volumes grossissent.
+- 2026-10-15 — **Fonctions Vercel à Paris (`cdg1`, `vercel.json`)**, à côté de Supabase (eu-west-3). Le plan Hobby autorise une seule région, ça suffit.
+- 2026-10-15 — **Streaming de la réponse** : `runAgent` streame chaque appel modèle (OpenAI et Claude) et transmet le texte via `onText`. Les outils restent exécutés entre deux appels. `ai_calls` est inséré via `after()` pour ne pas retarder la réponse.
+- 2026-10-15 — **Table `messages`** pour l'historique du chat (30 derniers rechargés). « Nouvelle conversation » ne supprime rien : elle mémorise une date dans le navigateur et on ne réaffiche que ce qui suit.
+- 2026-10-15 — **Direction design** : noir chaud `#12100d`, crème `#ece4d4`, un seul accent laiton `#b8955a`, Cormorant Garamond (titres) + Inter (texte), barre d'onglets en bas. Palette dans le `@theme` de `globals.css`.
+- 2026-10-15 — **Ajout rapide de tâche sans IA** (`POST /api/tasks`), avec le même anti-doublon (`isSimilar`) que l'agent. Mises à jour optimistes côté écran.
+- 2026-10-15 — **`react-markdown`** pour afficher les réponses (n'interprète pas le HTML : pas d'injection).
+- 2026-10-15 — **Icônes PWA générées par Next (`ImageResponse`)** plutôt que des PNG à la main : aucune dépendance en plus, une seule source.
 - 2026-10-15 — **Le dépôt est la source de vérité** entre le chat (planification) et Claude Code (construction) : roadmap et décisions vivent ici.
