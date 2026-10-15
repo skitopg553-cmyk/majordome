@@ -4,7 +4,7 @@ Règle d'or : une phase à la fois. Une phase est finie quand Ruben **utilise vr
 
 ## Phase 0 — Fondations (≈1 semaine)
 - [x] Projet Next.js + TypeScript + Tailwind, installable en PWA (code écrit, à valider au premier déploiement)
-- [ ] Projet Supabase créé + migration `0001_ai_calls.sql` appliquée
+- [x] Projet Supabase créé (`majordome`, Paris) + migration `0001_ai_calls.sql` appliquée
 - [ ] Déploiement Vercel relié au dépôt GitHub
 - [ ] Clé API Claude avec plafond de dépense
 - [x] Page de chat qui répond via Claude (Sonnet 5.5), protégée par un code d'accès
