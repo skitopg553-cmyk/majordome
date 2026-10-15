@@ -27,3 +27,19 @@ Point de vue : Ruben, 21 ans, alternant en BTS, freelance, très occupé, sur An
 3. Tant que l'agenda est fictif, on met la carte « Aujourd'hui » (vraies tâches) **avant** le prochain rendez-vous sur l'Accueil ?
 4. Après une demande vocale, le chat se referme-t-il tout seul quelques secondes après la fin de la lecture ?
 5. Budget dépassé : on garde le rouge, ou on passe à un ton neutre (gris + « au-dessus du budget ») ?
+
+## Revue n°2 (16/10, après les tâches D à F)
+
+### 7 h 30
+- ⚠️ Une fois les tables Forme et Finances créées, les cartes « Solde » et « Ta forme » de l'Accueil restent **fictives** (avec bandeau) alors que les vraies données existent dans leurs onglets. → À brancher en tâche I (finitions) : l'Accueil lira `/api/finances` et `/api/forme` et gardera l'aperçu seulement en repli.
+
+### 13 h
+- ✅ Planning : « Demain » reporte une tâche en un geste, sans ouvrir de formulaire.
+- ✅ Forme : noter une séance = 3 touches (« + Séance », le sport, « Ajouter »).
+
+### 22 h
+- ✅ Forme : « Aucune séance cette semaine pour l'instant. » plutôt qu'un 0/4 rouge. Le sommeil non noté apparaît en trait gris, sans reproche.
+- ⚠️ Finances : importer un CSV depuis un téléphone Android n'est pas trivial (export dans l'appli bancaire → dossier Téléchargements → sélecteur de fichiers). C'est faisable mais pas « en 5 secondes ». → Question 6.
+
+### Questions pour Ruben
+6. Ta banque permet-elle l'export CSV depuis son appli mobile, ou seulement depuis le site ? Si c'est le site seulement, on garde l'import pour un usage « une fois par mois sur ordinateur » ?
