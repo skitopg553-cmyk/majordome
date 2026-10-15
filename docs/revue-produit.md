@@ -43,3 +43,20 @@ Point de vue : Ruben, 21 ans, alternant en BTS, freelance, très occupé, sur An
 
 ### Questions pour Ruben
 6. Ta banque permet-elle l'export CSV depuis son appli mobile, ou seulement depuis le site ? Si c'est le site seulement, on garde l'import pour un usage « une fois par mois sur ordinateur » ?
+
+## Revue n°3 (16/10, après les tâches G à I + audit)
+
+### 7 h 30
+- ✅ L'Accueil passe tout seul aux vraies données Finances / Forme dès que les tables existent ; plus de carte fictive quand le vrai existe.
+- ✅ Squelettes de chargement : la liste ne « saute » plus à l'arrivée des tâches.
+
+### 13 h
+- ✅ Corrigé : une phrase dictée pendant que Majordome répond encore n'est plus perdue (elle reste dans le champ).
+- ✅ Les rappels (une fois activés) préviennent 5 min avant ; si le téléphone était injoignable, on réessaie pendant 1 h au lieu d'abandonner.
+
+### 22 h
+- ✅ « Ta semaine » : 3 chiffres + un mot de Majordome au ton bienveillant (aperçu). Le prompt interdit d'inventer des chiffres et de culpabiliser.
+- ⚠️ Le bilan n'existe qu'en aperçu tant que la phase 6 n'est pas lancée. → Question 7.
+
+### Questions pour Ruben
+7. Le bilan « Ta semaine » : on le veut le dimanche soir (prévu) ou le lundi matin, au moment où tu planifies ?
