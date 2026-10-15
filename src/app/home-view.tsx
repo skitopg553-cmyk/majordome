@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, demoEvents, type DemoProposal } from "@/lib/demo-data";
+import { hoursLabel } from "@/lib/forme";
 import { daySummary } from "@/lib/summary";
 import { dayLabel, groupOf, parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
@@ -159,7 +160,7 @@ export default function HomeView({ tasks: api, go, onAvatar }: { tasks: TasksApi
         <Label>Ta forme</Label>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           {[
-            ["Sommeil", `${Math.floor(s.sleep.hours)} h ${String(Math.round((s.sleep.hours % 1) * 60)).padStart(2, "0")}`],
+            ["Sommeil", hoursLabel(s.sleep.hours)],
             ["Pas", s.steps.count.toLocaleString("fr-FR")],
             ["Sport", `${s.workouts.done} / ${s.workouts.goal}`],
           ].map(([k, v]) => (

@@ -159,7 +159,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
         {tab === "home" && <HomeView tasks={tasks} go={setTab} onAvatar={openProfile} />}
         {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
         {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
-        {tab === "forme" && <FormeView onAvatar={openProfile} />}
+        {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
       </div>
 
       {/* Barre du bas : 4 sections + Majordome au centre, plus gros et surélevé */}

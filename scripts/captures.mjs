@@ -24,8 +24,9 @@ const memories = [
 
 // Finances : d'abord l'aperçu fictif (tables absentes), puis des données réelles simulées.
 let financesReady = false;
-const today = new Date().toISOString().slice(0, 10);
-const daysAgo = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
+const parisDate = (d) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }); // comme l'app
+const today = parisDate(new Date());
+const daysAgo = (n) => parisDate(new Date(Date.now() - n * 86400e3));
 const finances = {
   ready: true,
   transactions: [
@@ -41,6 +42,13 @@ const finances = {
   goals: [{ id: 1, label: "Voyage en Australie", target: 4000, saved: 1850, due_label: "Avril", image_url: "/objectif.jpg" }],
 };
 
+let formeReady = false;
+const forme = {
+  ready: true,
+  sleeps: [daysAgo(3), daysAgo(2), daysAgo(1), today].map((date, i) => ({ date, hours: [6.5, 7.25, 5.75, 7.5][i] })),
+  workouts: [{ date: daysAgo(1), kind: "Salle", minutes: 60 }],
+};
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 await page.route("**/api/**", (route) => {
@@ -50,6 +58,7 @@ await page.route("**/api/**", (route) => {
   if (u.pathname === "/api/tasks") return json(m === "GET" ? { tasks } : m === "POST" ? { task: { id: 99, ...route.request().postDataJSON(), notes: null, status: "todo" } } : { ok: true });
   if (u.pathname === "/api/memories") return json(m === "GET" ? { memories } : { ok: true });
   if (u.pathname === "/api/messages") return json({ messages: [] });
+  if (u.pathname === "/api/forme") return json(formeReady ? forme : { ready: false });
   if (u.pathname === "/api/finances") return json(financesReady ? finances : { ready: false });
   if (u.pathname === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "Voici ta journée :\n\n- **Appeler le médecin** avant 18 h\n- Renvoyer le dossier (*en retard*)" });
   return route.continue();
@@ -68,6 +77,8 @@ await page.addInitScript(() => {
   };
 });
 
+page.on("console", (m) => m.type() === "error" && console.log("[console]", m.text().slice(0, 300)));
+page.on("pageerror", (e) => console.log("[pageerror]", e.message.slice(0, 300)));
 await page.goto(url);
 await page.evaluate(() => localStorage.setItem("majordome-access-code", "test-local"));
 await page.reload();
@@ -95,6 +106,11 @@ await tab("Finances");
 await shot("3b-finances-reelles");
 await tab("Forme");
 await shot("4-forme");
+formeReady = true;
+await tab("Accueil");
+await tab("Forme");
+await page.getByRole("button", { name: "+ Séance" }).click();
+await shot("4b-forme-reelle");
 await page.getByLabel("Écrire à Majordome").click();
 await shot("5-chat");
 await page.getByRole("button", { name: "Qu'est-ce que j'ai à faire aujourd'hui ?" }).click();
