@@ -3,16 +3,19 @@
 Règle d'or : une phase à la fois. Une phase est finie quand Ruben **utilise vraiment** ce qu'elle livre.
 
 ## Phase 0 — Fondations (≈1 semaine)
-- [ ] Projet Next.js + TypeScript + Tailwind, installable en PWA
-- [ ] Projet Supabase + connexion (Auth par e-mail)
+- [x] Projet Next.js + TypeScript + Tailwind, installable en PWA (code écrit, à valider au premier déploiement)
+- [ ] Projet Supabase créé + migration `0001_ai_calls.sql` appliquée
 - [ ] Déploiement Vercel relié au dépôt GitHub
 - [ ] Clé API Claude avec plafond de dépense
-- [ ] Page de chat qui répond via Claude (Sonnet 5.5)
-- [ ] Table `ai_calls` : chaque appel journalisé avec son coût
+- [x] Page de chat qui répond via Claude (Sonnet 5.5), protégée par un code d'accès
+- [x] Table `ai_calls` : chaque appel journalisé avec son coût (code écrit)
+
+Étapes manuelles : voir `docs/setup.md`.
 
 **Terminé quand** : Ruben discute avec Majordome depuis son téléphone.
 
 ## Phase 1 — Noyau tâches + mémoire (≈2 semaines)
+- [ ] Connexion Supabase Auth (remplace le code d'accès de la phase 0)
 - [ ] Tables `tasks`, `memories`, `goals`
 - [ ] Outils de l'agent : créer / lister / prioriser / terminer une tâche
 - [ ] Mémoire persistante relue à chaque conversation
