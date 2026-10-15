@@ -7,6 +7,7 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 type Tier = "sonnet" | "haiku";
 type Exec = (name: string, args: Record<string, unknown>) => Promise<string>;
 type Log = (model: string, inputTokens: number, outputTokens: number, startedAt: number) => Promise<void>;
+export type Timing = (label: string, ms: number) => void;
 
 // Fournisseur choisi par variable d'environnement : "anthropic" (défaut) ou "openai".
 // Basculer = changer AI_PROVIDER dans Vercel, sans toucher au code.
@@ -16,7 +17,7 @@ const PROVIDER = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase();
 const MAX_STEPS = 6;
 const GAVE_UP = "Je n'ai pas réussi à terminer cette demande (trop d'étapes).";
 
-async function openaiLoop(tier: Tier, system: string, messages: ChatMessage[], tools: ToolDef[], exec: Exec, maxTokens: number, log: Log) {
+async function openaiLoop(tier: Tier, system: string, messages: ChatMessage[], tools: ToolDef[], exec: Exec, maxTokens: number, log: Log, time: Timing) {
   const model = tier === "haiku" ? process.env.OPENAI_MODEL_SMALL ?? process.env.OPENAI_MODEL : process.env.OPENAI_MODEL;
   if (!model) throw new Error("OPENAI_MODEL manquant");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +36,7 @@ async function openaiLoop(tier: Tier, system: string, messages: ChatMessage[], t
       }),
     });
     const data = await res.json();
+    time(`ia${step}`, Date.now() - startedAt);
     if (!res.ok) throw new Error(`OpenAI ${res.status} : ${data?.error?.message ?? "erreur"}`);
     await log(model, data.usage?.prompt_tokens ?? 0, data.usage?.completion_tokens ?? 0, startedAt);
 
@@ -50,13 +52,15 @@ async function openaiLoop(tier: Tier, system: string, messages: ChatMessage[], t
       } catch {
         /* arguments invalides : l'outil renverra une erreur */
       }
+      const t0 = Date.now();
       msgs.push({ role: "tool", tool_call_id: call.id, content: await exec(call.function.name, args) });
+      time(`outil_${call.function.name}`, Date.now() - t0);
     }
   }
   return GAVE_UP;
 }
 
-async function anthropicLoop(tier: Tier, system: string, messages: ChatMessage[], tools: ToolDef[], exec: Exec, maxTokens: number, log: Log) {
+async function anthropicLoop(tier: Tier, system: string, messages: ChatMessage[], tools: ToolDef[], exec: Exec, maxTokens: number, log: Log, time: Timing) {
   const model = MODELS[tier];
   const anthropic = new Anthropic(); // lit ANTHROPIC_API_KEY
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,6 +79,7 @@ async function anthropicLoop(tier: Tier, system: string, messages: ChatMessage[]
           tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters as any }))
         : undefined,
     });
+    time(`ia${step}`, Date.now() - startedAt);
     await log(model, res.usage.input_tokens, res.usage.output_tokens, startedAt);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,7 +92,9 @@ async function anthropicLoop(tier: Tier, system: string, messages: ChatMessage[]
     msgs.push({ role: "assistant", content: blocks }); // renvoyé tel quel (y compris la réflexion)
     const results = [];
     for (const t of toolUses) {
+      const t0 = Date.now();
       results.push({ type: "tool_result", tool_use_id: t.id, content: await exec(t.name, t.input ?? {}) });
+      time(`outil_${t.name}`, Date.now() - t0);
     }
     msgs.push({ role: "user", content: results });
   }
@@ -107,10 +114,12 @@ export async function runAgent(opts: {
   tools?: ToolDef[];
   executeTool?: Exec;
   maxTokens?: number;
+  onTiming?: Timing; // chronométrage (ms) des appels modèle et des outils
 }): Promise<string> {
   const tools = opts.tools ?? [];
   const exec: Exec = opts.executeTool ?? (async () => JSON.stringify({ ok: false, error: "aucun outil" }));
   const maxTokens = opts.maxTokens ?? 2048;
+  const time: Timing = opts.onTiming ?? (() => {});
 
   // Claude exige que la conversation commence par un message de l'utilisateur.
   const messages = [...opts.messages];
@@ -133,6 +142,6 @@ export async function runAgent(opts: {
   };
 
   return PROVIDER === "openai"
-    ? openaiLoop(opts.tier, opts.system, messages, tools, exec, maxTokens, log)
-    : anthropicLoop(opts.tier, opts.system, messages, tools, exec, maxTokens, log);
+    ? openaiLoop(opts.tier, opts.system, messages, tools, exec, maxTokens, log, time)
+    : anthropicLoop(opts.tier, opts.system, messages, tools, exec, maxTokens, log, time);
 }

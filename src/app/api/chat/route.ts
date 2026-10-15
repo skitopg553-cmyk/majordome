@@ -27,16 +27,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Aucun message" }, { status: 400 });
   }
 
+  // Chronométrage : visible dans les logs Vercel ("[timing]") et dans l'en-tête Server-Timing.
+  const t0 = Date.now();
+  const timings: [string, number][] = [];
+  const time = (label: string, ms: number) => timings.push([label, ms]);
+
   try {
+    const context = await buildContext();
+    time("contexte", Date.now() - t0);
     const reply = await runAgent({
       tier: "sonnet",
-      system: `${INSTRUCTIONS}\n\n${await buildContext()}`,
+      system: `${INSTRUCTIONS}\n\n${context}`,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
       purpose: "chat",
       tools: TOOLS,
       executeTool,
+      onTiming: time,
     });
-    return NextResponse.json({ reply });
+    time("total", Date.now() - t0);
+    console.log("[timing]", timings.map(([l, ms]) => `${l}=${ms}ms`).join(" "));
+    return NextResponse.json(
+      { reply },
+      { headers: { "Server-Timing": timings.map(([l, ms], i) => `${l.replace(/\W/g, "_")}_${i};dur=${ms}`).join(", ") } },
+    );
   } catch (err) {
     console.error(err);
     // Le détail de l'erreur est renvoyé car l'app est protégée par le code d'accès (usage perso) :
