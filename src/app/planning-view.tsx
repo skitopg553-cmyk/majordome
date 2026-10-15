@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DEMO_PHASE, demoEvents, type DemoEvent } from "@/lib/demo-data";
 import { dayLabel, groupOf, nextDays, parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
-import { DemoBanner, Header, hhmm } from "./ui";
+import { DemoBanner, Header, hhmm, SkeletonRows } from "./ui";
 import type { Task, TasksApi } from "./use-tasks";
 
 type Item = { kind: "task"; at: string; t: Task } | { kind: "event"; at: string; e: DemoEvent };
@@ -157,6 +157,11 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
           <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs, tâches réelles" />
         </div>
         {api.error && <p className="pt-3 text-sm text-neg">{api.error}</p>}
+        {!api.loaded && (
+          <div className="pt-6">
+            <SkeletonRows rows={4} />
+          </div>
+        )}
 
         {view === "semaine" ? (
           <ul className="space-y-2 pt-4">

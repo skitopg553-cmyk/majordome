@@ -85,3 +85,17 @@ export function greeting(now = new Date()) {
 }
 
 export const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+
+/** Lignes fantômes pendant le chargement (même hauteur que les vraies : rien ne saute à l'arrivée). */
+export function SkeletonRows({ rows = 2 }: { rows?: number }) {
+  return (
+    <div className="mt-1 space-y-0" aria-hidden>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex min-h-12 items-center gap-3 py-2.5">
+          <span className="size-5 shrink-0 animate-pulse rounded-full bg-raised" />
+          <span className="h-3.5 animate-pulse rounded-full bg-raised" style={{ width: `${60 - i * 15}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}

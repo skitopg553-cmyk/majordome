@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, demoEvents, type DemoProposal } from "@/lib/demo-data";
-import { hoursLabel } from "@/lib/forme";
+import { goalProgress, monthTotals, type Tx } from "@/lib/finance/stats";
+import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { daySummary } from "@/lib/summary";
 import { dayLabel, groupOf, parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
-import { Avatar, Bar, Card, DemoBanner, euro, greeting, hhmm, Label, Wordmark } from "./ui";
+import { Avatar, Bar, Card, DemoBanner, euro, greeting, hhmm, Label, SkeletonRows, Wordmark } from "./ui";
 import type { TasksApi } from "./use-tasks";
 
 type Go = (tab: "planning" | "finances" | "forme") => void;
@@ -47,7 +48,10 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
   task: "M5 12l4 4 10-10",
 };
 
-export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
+type Fin = { ready: false } | { ready: true; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
+type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
+
+export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
   const [decided, setDecided] = useState<Record<string, "ok" | "no">>({}); // « À valider » : choix locaux, rien n'est exécuté
   const now = new Date();
   const todo = api.tasks.filter((t) => t.status === "todo" || api.leaving.has(t.id));
@@ -56,9 +60,23 @@ export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: 
   const focus = [...late, ...today].sort((a, b) => a.priority - b.priority || (a.due_at ?? "").localeCompare(b.due_at ?? ""));
   const next = demoEvents().find((e) => new Date(e.end) > now);
   const f = DEMO_FINANCES;
-  const goal = f.goals[0];
   const s = DEMO_FORME;
   const pending = DEMO_PROPOSALS.filter((p) => !decided[p.id]).length;
+
+  // Vraies données Finances / Forme si les tables existent ; sinon (ou en cas d'erreur) l'aperçu fictif reste.
+  const [fin, setFin] = useState<Fin | null>(null);
+  const [forme, setForme] = useState<Forme | null>(null);
+  useEffect(() => {
+    const get = (url: string) => fetch(url, { headers: { "x-access-code": accessCode } }).then((r) => (r.ok ? r.json() : { ready: false })).catch(() => ({ ready: false }));
+    get("/api/finances").then(setFin);
+    get("/api/forme").then(setForme);
+  }, [accessCode]);
+  const realMonth = fin?.ready ? monthTotals(fin.transactions, parisDay(now).slice(0, 7)) : null;
+  const realGoal = fin?.ready ? fin.goals[0] : undefined;
+  const goal = realGoal ?? f.goals[0];
+  const realForme = forme?.ready
+    ? { lastNight: forme.sleeps.find((x) => x.date === parisDay(now))?.hours ?? null, week: weekStats(forme.workouts, forme.sleeps, now) }
+    : null;
 
   // Résumé du jour calculé en code (pas par l'IA), uniquement à partir des vraies tâches.
   const summary = api.loaded ? daySummary(today.length, late.length) : " ";
@@ -111,6 +129,7 @@ export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: 
           </button>
         </div>
         {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
+        {!api.loaded && <SkeletonRows />}
         {api.loaded && focus.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Aucune tâche pour aujourd&apos;hui.</p>}
         {focus.length > 0 && (
           <ul className="mt-1 divide-y divide-line">
@@ -122,32 +141,44 @@ export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: 
         {focus.length > 5 && <p className="pt-1 text-xs text-faint">+ {focus.length - 5} autres dans le Planning</p>}
       </Card>
 
-      {/* Solde + mini-courbe — FICTIF (phase 4) */}
-      <Card onClick={() => go("finances")}>
-        <Label>Solde</Label>
-        <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(f.balance, false)}</p>
-        <p className="mt-1.5 text-[13px] text-muted">{euro(f.monthSpent, false)} dépensés ce mois-ci</p>
-        <Sparkline values={f.balanceHistory} />
-        <div className="mt-2">
-          <DemoBanner phase={DEMO_PHASE.finances} />
-        </div>
-      </Card>
+      {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
+      {fin?.ready && fin.transactions.length > 0 ? (
+        <Card onClick={() => go("finances")}>
+          <Label>Ce mois-ci</Label>
+          <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(realMonth!.spent, false)}</p>
+          <p className="mt-1.5 text-[13px] text-muted">
+            dépensés{realMonth!.income ? ` · ${euro(realMonth!.income, false)} reçus` : ""}
+          </p>
+        </Card>
+      ) : (
+        <Card onClick={() => go("finances")}>
+          <Label>Solde</Label>
+          <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(f.balance, false)}</p>
+          <p className="mt-1.5 text-[13px] text-muted">{euro(f.monthSpent, false)} dépensés ce mois-ci</p>
+          <Sparkline values={f.balanceHistory} />
+          <div className="mt-2">
+            <DemoBanner phase={DEMO_PHASE.finances} />
+          </div>
+        </Card>
+      )}
 
-      {/* Ton objectif, avec photo — FICTIF (phase 4) */}
+      {/* Ton objectif, avec photo — réel s'il existe, sinon FICTIF (phase 4) */}
       <button onClick={() => go("finances")} className="relative block h-48 w-full overflow-hidden rounded-[22px] bg-surface text-left transition-transform active:scale-[0.985]">
         {goal.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={goal.image_url} alt="" className="absolute inset-0 size-full object-cover brightness-[0.75]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-transparent" />
-        <div className="absolute left-4 top-4 rounded-full bg-ink/70 px-2.5 py-1 backdrop-blur">
-          <DemoBanner phase={DEMO_PHASE.finances} />
-        </div>
+        {!realGoal && (
+          <div className="absolute left-4 top-4 rounded-full bg-ink/70 px-2.5 py-1 backdrop-blur">
+            <DemoBanner phase={DEMO_PHASE.finances} />
+          </div>
+        )}
         <div className="absolute inset-x-4 bottom-4">
           <p className="text-[13px] font-medium text-fg/80">Ton objectif</p>
-          <p className="text-[19px] font-semibold tracking-tight">{goal.label}</p>
+          <p className="truncate text-[19px] font-semibold tracking-tight">{goal.label}</p>
           <p className="mt-0.5 text-[13px] tabular-nums text-fg/75">
-            {euro(goal.saved, false)} / {euro(goal.target, false)} · {Math.round((goal.saved / goal.target) * 100)} %
+            {euro(goal.saved, false)} / {euro(goal.target, false)} · {goalProgress(goal.saved, goal.target)} %
           </p>
           <div className="mt-2.5">
             <Bar value={goal.saved} max={goal.target} />
@@ -155,24 +186,33 @@ export default function HomeView({ tasks: api, go, onAvatar, onWeek }: { tasks: 
         </div>
       </button>
 
-      {/* Ta forme : 3 chiffres — FICTIF (phase 5) */}
+      {/* Ta forme : 3 chiffres — RÉELS si la saisie existe, sinon FICTIFS (phase 5) */}
       <Card onClick={() => go("forme")}>
         <Label>Ta forme</Label>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          {[
-            ["Sommeil", hoursLabel(s.sleep.hours)],
-            ["Pas", s.steps.count.toLocaleString("fr-FR")],
-            ["Sport", `${s.workouts.done} / ${s.workouts.goal}`],
-          ].map(([k, v]) => (
+          {(realForme
+            ? [
+                ["Nuit", realForme.lastNight !== null ? hoursLabel(realForme.lastNight) : "—"],
+                ["Séances", String(realForme.week.sessions)],
+                ["Jours actifs", `${realForme.week.activeDays} / 7`],
+              ]
+            : [
+                ["Sommeil", hoursLabel(s.sleep.hours)],
+                ["Pas", s.steps.count.toLocaleString("fr-FR")],
+                ["Sport", `${s.workouts.done} / ${s.workouts.goal}`],
+              ]
+          ).map(([k, v]) => (
             <div key={k} className="rounded-2xl bg-raised px-2 py-3">
               <p className="text-[12px] text-muted">{k}</p>
               <p className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight">{v}</p>
             </div>
           ))}
         </div>
-        <div className="mt-3">
-          <DemoBanner phase={DEMO_PHASE.forme} />
-        </div>
+        {!realForme && (
+          <div className="mt-3">
+            <DemoBanner phase={DEMO_PHASE.forme} />
+          </div>
+        )}
       </Card>
 
       {/* Ta semaine (miroir, phase 6) — APERÇU */}

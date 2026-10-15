@@ -203,3 +203,16 @@ body {
 .dots span:nth-child(3) {
   animation-delay: 0.3s;
 }
+
+/* Réglage « Réduire les animations » du téléphone : on coupe les entrées et pulsations. */
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .sheet-up,
+  .dots span,
+  .animate-pulse {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
