@@ -32,10 +32,19 @@ export async function POST(req: Request) {
   const timings: [string, number][] = [];
   const time = (label: string, ms: number) => timings.push([label, ms]);
 
-  try {
+  // La réponse est streamée : le texte part vers le navigateur dès que l'IA l'écrit.
+  const enc = new TextEncoder();
+  let ctrl!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({ start: (c) => void (ctrl = c) });
+  let sent = false;
+  let firstText!: () => void;
+  const first = new Promise<void>((r) => (firstText = r));
+  const report = () => console.log("[timing]", timings.map(([l, ms]) => `${l}=${ms}ms`).join(" "));
+
+  const run = (async () => {
     const context = await buildContext();
     time("contexte", Date.now() - t0);
-    const reply = await runAgent({
+    await runAgent({
       tier: "sonnet",
       system: `${INSTRUCTIONS}\n\n${context}`,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
@@ -43,13 +52,32 @@ export async function POST(req: Request) {
       tools: TOOLS,
       executeTool,
       onTiming: time,
+      onText: (d) => {
+        if (!sent) time("premier_mot", Date.now() - t0);
+        sent = true;
+        ctrl.enqueue(enc.encode(d));
+        firstText();
+      },
     });
-    time("total", Date.now() - t0);
-    console.log("[timing]", timings.map(([l, ms]) => `${l}=${ms}ms`).join(" "));
-    return NextResponse.json(
-      { reply },
-      { headers: { "Server-Timing": timings.map(([l, ms], i) => `${l.replace(/\W/g, "_")}_${i};dur=${ms}`).join(", ") } },
-    );
+  })();
+  run.then(
+    () => {
+      time("total", Date.now() - t0);
+      report();
+      ctrl.close();
+    },
+    (err) => {
+      // Erreur après le début du texte : on la signale à la fin de la bulle.
+      if (!sent) return;
+      console.error(err);
+      ctrl.enqueue(enc.encode(`\n\n⚠️ Erreur IA : ${err instanceof Error ? err.message : String(err)}`.slice(0, 400)));
+      ctrl.close();
+    },
+  );
+
+  try {
+    await Promise.race([first, run]); // attend le premier mot (ou la fin, ou une erreur)
+    return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   } catch (err) {
     console.error(err);
     // Le détail de l'erreur est renvoyé car l'app est protégée par le code d'accès (usage perso) :

@@ -55,7 +55,6 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json", "x-access-code": accessCode },
         body: JSON.stringify({ messages: next }),
       });
-      const data = await res.json();
       if (res.status === 401) {
         try {
           localStorage.removeItem(STORAGE_KEY);
@@ -65,8 +64,17 @@ export default function ChatPage() {
         setAccessCode(null);
         throw new Error("Code d'accès incorrect");
       }
-      if (!res.ok) throw new Error(data.error ?? "Erreur inconnue");
-      setMessages([...next, { role: "assistant", content: data.reply }]);
+      if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Erreur inconnue");
+      // Lecture du flux : la bulle de Majordome se remplit au fil de l'eau.
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let reply = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        reply += value;
+        setLoading(false);
+        setMessages([...next, { role: "assistant", content: reply }]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
