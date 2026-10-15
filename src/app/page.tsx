@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import TasksView from "./tasks-view";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -13,6 +14,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"chat" | "tasks">("chat");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Le code d'accès est mémorisé sur ce téléphone pour ne pas le retaper à chaque fois.
@@ -97,11 +99,18 @@ export default function ChatPage() {
 
   return (
     <main className="mx-auto flex h-full max-w-2xl flex-col">
-      <header className="border-b border-neutral-800 px-4 py-3">
-        <h1 className="font-semibold">Majordome</h1>
+      <header className="flex items-center gap-4 border-b border-neutral-800 px-4 py-3">
+        <h1 className="mr-auto font-semibold">Majordome</h1>
+        {(["chat", "tasks"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={tab === t ? "font-medium" : "text-neutral-500"}>
+            {t === "chat" ? "Chat" : "Tâches"}
+          </button>
+        ))}
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      {tab === "tasks" && <TasksView accessCode={accessCode} />}
+
+      <div className={`${tab === "chat" ? "" : "hidden "}flex-1 space-y-3 overflow-y-auto px-4 py-4`}>
         {messages.length === 0 && (
           <p className="pt-10 text-center text-neutral-500">Bonjour Ruben. Qu&apos;est-ce que je peux faire pour toi ?</p>
         )}
@@ -120,7 +129,7 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <footer className="flex gap-2 border-t border-neutral-800 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className={`${tab === "chat" ? "flex" : "hidden"} gap-2 border-t border-neutral-800 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]`}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

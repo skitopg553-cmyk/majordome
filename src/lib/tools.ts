@@ -52,6 +52,16 @@ export const TOOLS: ToolDef[] = [
   },
 ];
 
+// Comparaison sans accents, casse ni ponctuation : "Appeler le médecin !" == "appeler le medecin".
+const norm = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// shortcut: similarité = égalité ou inclusion du titre normalisé, pas de flou (Levenshtein) ; à affiner si des doublons passent encore.
+function isSimilar(a: string, b: string) {
+  const x = norm(a), y = norm(b);
+  return x !== "" && y !== "" && (x === y || x.includes(y) || y.includes(x));
+}
+
 /** Exécute un outil et renvoie un résultat texte court pour le modèle. */
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
   const db = supabaseAdmin();
@@ -60,9 +70,19 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
 
   let res: { data: unknown; error: { message: string } | null };
   switch (name) {
-    case "add_task":
+    case "add_task": {
+      const open = await db.from("tasks").select("id,title").eq("status", "todo");
+      if (open.error) return JSON.stringify({ ok: false, error: open.error.message });
+      const dup = (open.data ?? []).find((t) => isSimilar(t.title, String(args.title ?? "")));
+      if (dup) {
+        return JSON.stringify({
+          ok: false,
+          error: `tâche similaire déjà existante : #${dup.id} « ${dup.title} ». Utilise update_task si besoin, sinon n'en crée pas une autre.`,
+        });
+      }
       res = await db.from("tasks").insert(pick(["title", "due_at", "priority", "notes"])).select("id").single();
       break;
+    }
     case "update_task":
       res = await db.from("tasks").update(pick(["title", "due_at", "priority", "notes"])).eq("id", Number(args.id)).select("id");
       break;
