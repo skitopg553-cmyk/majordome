@@ -11,3 +11,8 @@ next-env.d.ts
 .env*.local
 
 .DS_Store
+
+# session de nuit
+nuit.log
+.nuit.lock
+captures/
