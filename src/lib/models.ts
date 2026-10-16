@@ -16,6 +16,9 @@ const PRICES: Record<string, Price> = {
   // Haiku 5.5 : tarif pour les prompts ≤ 100k tokens (les nôtres seront bien en dessous)
   "claude-haiku-5-5": { input: 0.1, output: 0.5 },
   "claude-opus-5-5": { input: 4, output: 20 },
+  // OpenAI, tarif public (non revérifié depuis mon ajout : à contrôler sur openai.com/api/pricing). Avant, ce modèle n'avait aucun prix
+  // (variables OPENAI_PRICE_* jamais renseignées) : tous ses appels passés sont enregistrés à 0 $, ils ne sont pas recalculés.
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
 };
 
 /** Coût estimé d'un appel, en dollars. Calcul en code, jamais par le LLM. */

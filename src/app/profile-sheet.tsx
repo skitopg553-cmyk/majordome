@@ -1,5 +1,6 @@
 "use client";
 
+import CostCard from "./cost-card";
 import MemoryView from "./memory-view";
 import RemindersRow from "./reminders-row";
 
@@ -61,6 +62,10 @@ export default function ProfileSheet({
           <button onClick={onLogout} className="flex min-h-14 w-full items-center text-left text-[15px] text-neg">
             Se déconnecter de cet appareil
           </button>
+        </div>
+
+        <div className="mt-3">
+          <CostCard accessCode={accessCode} onUnauthorized={onUnauthorized} />
         </div>
       </div>
     </section>
