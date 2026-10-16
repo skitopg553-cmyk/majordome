@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
 import Orb, { orbLabel } from "./orb";
 import { splitReply, splitSettings, undoLabel, type Undo } from "@/lib/undo";
+import { friendlyError, isNetworkError } from "@/lib/offline";
 import { greeting, Wordmark } from "./ui";
 
 const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
@@ -147,6 +148,19 @@ export default function ChatView({
     synth.speak(u);
   }
 
+  // Au retour du réseau, le message gardé repart tout seul (une seule fois).
+  const retryText = useRef<string | null>(null);
+  const sendRef = useRef<(raw?: string) => void>(() => {});
+  useEffect(() => {
+    const online = () => {
+      const t = retryText.current;
+      retryText.current = null;
+      if (t) sendRef.current(t);
+    };
+    window.addEventListener("online", online);
+    return () => window.removeEventListener("online", online);
+  }, []);
+
   async function send(raw = input, viaVoice = false) {
     const text = raw.trim();
     if (!text) return;
@@ -185,7 +199,13 @@ export default function ChatView({
       if (actions.length) showUndo(actions);
       for (const s of splitSettings(streamed).settings) onSpeakChange(s.value);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      if (!reply) {
+        // Rien reçu : aucune perte. Le message revient dans le champ (et la bulle disparaît) ; en cas de panne de réseau, il repart tout seul au retour de la connexion.
+        setMessages(messages);
+        setInput((cur) => cur || text);
+        if (isNetworkError(e)) retryText.current = text;
+      }
+      setError(friendlyError(e));
     } finally {
       setWaiting(false);
       setBusy(false);
@@ -195,6 +215,8 @@ export default function ChatView({
       else closeSoon();
     }
   }
+
+  sendRef.current = (raw) => void send(raw);
 
   // Dictée : appelée directement dans le clic (le navigateur exige un geste de l'utilisateur).
   function listen() {

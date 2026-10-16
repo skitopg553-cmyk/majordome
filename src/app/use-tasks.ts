@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { drainQueue, enqueue, friendlyError, isNetworkError } from "@/lib/offline";
 import { postponeToTomorrow } from "@/lib/task-groups";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 
@@ -34,7 +35,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
         setTasks(d.tasks);
         setError(null);
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(friendlyError(e)))
       .finally(() => setLoaded(true));
   }, [api]);
 
@@ -60,7 +61,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       clearTimeout(timer); // sinon le minuteur remettrait « faite » après l'annulation
       stopLeaving();
       apply(t.status);
-      setError(e.message);
+      setError(friendlyError(e));
     });
   }
 
@@ -70,7 +71,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     setTasks((cur) => cur.filter((x) => x.id !== t.id));
     deleteEntry(accessCode, { table: "tasks", id: t.id }, onUnauthorized).catch((e) => {
       setTasks((cur) => (cur.some((x) => x.id === t.id) ? cur : [...cur, t]));
-      setError(e.message);
+      setError(friendlyError(e));
     });
   }
 
@@ -79,7 +80,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, ...fields, notes: "notes" in fields ? fields.notes || null : x.notes } : x)));
     return api("PATCH", { id: t.id, ...fields }).catch((e) => {
       setTasks((cur) => cur.map((x) => (x.id === t.id ? t : x)));
-      setError(e.message);
+      setError(friendlyError(e));
     });
   }
 
@@ -89,7 +90,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, due_at } : x)));
     api("PATCH", { id: t.id, due_at }).catch((e) => {
       setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, due_at: t.due_at } : x)));
-      setError(e.message);
+      setError(friendlyError(e));
     });
   }
 
@@ -100,10 +101,38 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     api("POST", { title, due_at, priority })
       .then((d) => setTasks((cur) => cur.map((x) => (x.id === tempId ? d.task : x))))
       .catch((e) => {
+        if (isNetworkError(e)) {
+          // Hors ligne : la tâche reste affichée et part au retour du réseau (file en mémoire du téléphone).
+          enqueue(localStorage, { title, due_at, priority });
+          setError("Hors ligne : ta tâche sera ajoutée dès que le réseau revient.");
+          return;
+        }
         setTasks((cur) => cur.filter((x) => x.id !== tempId));
-        setError(e.message);
+        setError(friendlyError(e));
       });
   }
+
+  // Rejoue les ajouts faits hors ligne : au démarrage et à chaque retour du réseau.
+  useEffect(() => {
+    const replay = async () => {
+      const sent = await drainQueue(localStorage, async (t) => {
+        try {
+          const res = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json", "x-access-code": accessCode }, body: JSON.stringify(t) });
+          if (res.ok) return "ok";
+          return res.status === 401 || res.status >= 500 ? "retry" : "drop"; // 400 / 409 : refusée pour de bon
+        } catch {
+          return "retry";
+        }
+      });
+      if (sent) {
+        setError(null);
+        load();
+      }
+    };
+    void replay();
+    window.addEventListener("online", replay);
+    return () => window.removeEventListener("online", replay);
+  }, [accessCode, load]);
 
   return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove, update };
 }

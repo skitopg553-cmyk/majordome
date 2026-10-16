@@ -140,3 +140,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - T4 FAIT : raccourcis Android (Parler / Ajouter une tâche / Ajouter une dépense : ouvrent le chat prêt à écrire) + partage d'un relevé CSV/XLSX vers l'app (le service worker garde le fichier, l'app lance l'import). **Non testé sur Android** : il faut réinstaller / rouvrir la PWA pour que le téléphone relise le manifest.
 - T5 Nutrition (compléter Ciqual : 123 aliments gardent encore des valeurs approchées) — gain : moyen / coût : moyen. En cours.
 - T5 FAIT : 166 aliments sur 261 maintenant lus dans le fichier officiel Ciqual (95 gardent des valeurs approchées) ; test sur 3 valeurs déjà en place.
+- T6 Robustesse hors ligne — gain : fort (13 h, réseau faible) / coût : moyen. En cours.
+- T6 FAIT : hors ligne — un message du chat jamais perdu (revient dans le champ, repart tout seul au retour du réseau), ajouts de tâches mis en file et rejoués, erreurs réseau / IA / serveur en français simple. Vérifié par simulation Playwright (réseau coupé puis rétabli). Pas de mode hors-ligne complet (pas de cache des écrans).
