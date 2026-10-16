@@ -208,6 +208,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
         }}
         onUnauthorized={unauthorized}
         onState={setOrb}
+        onSpeakChange={changeSpeak}
       />
 
       {weekOpen && <WeekSheet onClose={() => setWeekOpen(false)} />}

@@ -10,11 +10,51 @@ import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
-type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo; snapshot?: { balance: number; asOf: string } | null };
+type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo; snapshot?: { balance: number; asOf: string } | null; savings?: Savings };
+type Savings = { capacity: { months: number; fixed: number; free: number }; saved: number; advice: { label: string; text: string }[] };
 type Row = { category: string; spent: number; limit: number | null; over: boolean };
 
 const ym = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
 const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
+
+/** Épargne possible : Engagé (charges fixes) / Libre (ce qu'on peut mettre de côté par mois) / Mis de côté (total des objectifs). Calculé en code. */
+function SavingsCard({ s }: { s: Savings }) {
+  if (s.capacity.months === 0) {
+    return (
+      <Card>
+        <Label>Épargne</Label>
+        <p className="mt-1 text-[14px] text-muted">Il faut au moins un mois complet d&apos;opérations pour calculer ce que tu peux mettre de côté.</p>
+      </Card>
+    );
+  }
+  const cols = [
+    { name: "Engagé", value: s.capacity.fixed, tone: "" },
+    { name: "Libre", value: s.capacity.free, tone: "text-accent" },
+    { name: "Mis de côté", value: s.saved, tone: "" },
+  ];
+  return (
+    <Card>
+      <Label>Épargne par mois</Label>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {cols.map((c) => (
+          <div key={c.name}>
+            <p className="text-[12px] text-muted">{c.name}</p>
+            <p className={`text-[20px] font-semibold tabular-nums tracking-tight ${c.tone}`}>{euro(c.value, false)}</p>
+          </div>
+        ))}
+      </div>
+      {s.advice.length > 0 && (
+        <ul className="mt-3 space-y-1.5 border-t border-line pt-3">
+          {s.advice.map((a) => (
+            <li key={a.label} className="text-[14px] leading-snug text-muted">
+              {a.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
 
 /** CSV (UTF-8 ou Windows-1252) ou Excel .xlsx → texte CSV. L'ancien format .xls n'est pas géré : on le dit clairement. */
 async function fileToCsv(file: File) {
@@ -313,6 +353,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
                 </div>
               </div>
             </Card>
+            {data.savings && <SavingsCard s={data.savings} />}
             {rows.length > 0 && (
               <Card>
                 <div className="mb-3">

@@ -1,5 +1,6 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
 import { clampText, MAX_MEMORY, taskFields } from "./limits";
+import { executeMoreTool, MORE_TOOLS, moreContext } from "./more-tools";
 import { supabaseAdmin } from "./supabase";
 import { fold } from "./text";
 import type { Undo } from "./undo";
@@ -58,7 +59,7 @@ const TASK_TOOLS: ToolDef[] = [
 ];
 
 // Tâches + mémoire + vie (Forme, budgets, dépenses) : tout ce que l'agent peut écrire.
-export const TOOLS: ToolDef[] = [...TASK_TOOLS, ...LIFE_TOOLS];
+export const TOOLS: ToolDef[] = [...TASK_TOOLS, ...LIFE_TOOLS, ...MORE_TOOLS];
 
 // Comparaison sans accents, casse ni ponctuation : "Appeler le médecin !" == "appeler le medecin".
 const norm = (s: string) =>
@@ -135,7 +136,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     }
     default: {
       const life = await executeLifeTool(name, args);
-      return life ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
+      return life ?? (await executeMoreTool(name, args)) ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
     }
   }
   if (res.error) return JSON.stringify({ ok: false, error: res.error.message });
@@ -176,5 +177,6 @@ ${memLines.join("\n") || "(rien pour l'instant)"}
 ${taskLines.join("\n") || "(aucune)"}
 
 ## Vie de Ruben (déjà noté dans l'app)
-${await lifeContext(now)}`;
+${await lifeContext(now)}
+${await moreContext(now)}`;
 }

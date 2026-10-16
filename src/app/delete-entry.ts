@@ -1,5 +1,5 @@
 // Suppression définitive d'une entrée depuis un écran. Toujours précédée d'une confirmation (confirmDelete).
-export type DeleteTarget = { table: string; id: number } | { table: "sleep_logs" | "steps_logs"; date: string };
+export type DeleteTarget = { table: string; id: number } | { table: "sleep_logs" | "steps_logs" | "screen_time_logs"; date: string };
 
 export const confirmDelete = (what: string) => window.confirm(`Supprimer ${what} ?\n\nCette action est définitive.`);
 

@@ -5,7 +5,7 @@ import { sanitizeMessages } from "@/lib/chat-input";
 import { INSTRUCTIONS } from "@/lib/instructions";
 import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
-import { ACTIONS_MARK, extractUndo, type Undo } from "@/lib/undo";
+import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
 export async function POST(req: Request) {
@@ -32,12 +32,16 @@ export async function POST(req: Request) {
   // Actions annulables : chaque outil qui écrit renvoie « undo » ; on le retire avant de répondre au modèle (inutile pour lui)
   // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
   const actions: Undo[] = [];
+  const settings: DeviceSetting[] = []; // réglages de l'appareil demandés (lecture à voix haute) : appliqués par l'écran
+
   let toolCalls = 0; // outils appelés dans ce message (par le système ou par le modèle) : sert à repérer un faux « c'est noté »
   const last = messages[messages.length - 1];
   const executeAndCollect = async (name: string, args: Record<string, unknown>) => {
     toolCalls++;
     const { result, undo } = extractUndo(await executeTool(name, args));
     if (undo) actions.push(undo);
+    const { setting } = extractSetting(result);
+    if (setting) settings.push(setting);
     return result;
   };
 
@@ -76,6 +80,7 @@ export async function POST(req: Request) {
         persisted = reply + FALSE_CLAIM_WARNING;
       }
       if (actions.length) ctrl.enqueue(enc.encode(ACTIONS_MARK + JSON.stringify(actions)));
+      if (settings.length) ctrl.enqueue(enc.encode(SETTINGS_MARK + JSON.stringify(settings)));
       ctrl.close();
     },
     (err) => {

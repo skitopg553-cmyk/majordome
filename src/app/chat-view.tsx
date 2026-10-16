@@ -4,7 +4,7 @@ import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
 import Orb, { orbLabel } from "./orb";
-import { splitReply, undoLabel, type Undo } from "@/lib/undo";
+import { splitReply, splitSettings, undoLabel, type Undo } from "@/lib/undo";
 import { greeting, Wordmark } from "./ui";
 
 const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
@@ -34,6 +34,7 @@ export default function ChatView({
   onClose,
   onUnauthorized,
   onState,
+  onSpeakChange,
 }: {
   ref: React.Ref<ChatHandle>;
   accessCode: string;
@@ -42,6 +43,7 @@ export default function ChatView({
   onClose: () => void;
   onUnauthorized: () => void;
   onState: (s: OrbState) => void;
+  onSpeakChange: (v: boolean) => void; // l'IA a changé la lecture à voix haute
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -181,6 +183,7 @@ export default function ChatView({
       }
       const { actions } = splitReply(streamed);
       if (actions.length) showUndo(actions);
+      for (const s of splitSettings(streamed).settings) onSpeakChange(s.value);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
     } finally {

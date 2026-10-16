@@ -16,7 +16,8 @@ describe("parseUndoSteps (ce que le navigateur peut demander)", () => {
       [{ op: "restore", table: "tasks", id: 1, values: { id: 99 } }],
       [{ op: "restore", table: "tasks", id: 1, values: { title: { a: 1 } } }],
       [{ op: "restore", table: "tasks", id: 1, values: {} }],
-      [{ op: "insert", table: "tasks", values: { title: "x" } }], // recréer seulement les souvenirs
+      [{ op: "insert", table: "tasks", values: { id: 5 } }], // recréer : seulement les colonnes autorisées
+      [{ op: "insert", table: "ai_calls", values: { x: 1 } }],
       [{ op: "nettoyer", table: "tasks", id: 1 }],
       [],
       "tasks",
@@ -74,5 +75,24 @@ describe("extractUndo (ce que voit le modèle, ce que voit l'écran)", () => {
   it("un undo invalide n'est jamais transmis à l'écran", () => {
     const raw = JSON.stringify({ ok: true, undo: { label: "piège", steps: [{ op: "delete", table: "ai_calls", id: 1 }] } });
     expect(extractUndo(raw)).toEqual({ result: raw });
+  });
+});
+
+describe("réglages d'appareil dans le flux", () => {
+  const mark = String.fromCharCode(29);
+  it("séparés du texte et des actions, sans casser splitReply", async () => {
+    const { splitSettings, extractSetting } = await import("./undo");
+    const undo: Undo = { label: "Tâche", steps: [{ op: "delete", table: "tasks", id: 3 }] };
+    const raw = `Ok.${ACTIONS_MARK}${JSON.stringify([undo])}${mark}${JSON.stringify([{ name: "read_aloud", value: false }])}`;
+    expect(splitSettings(raw).settings).toEqual([{ name: "read_aloud", value: false }]);
+    expect(splitReply(raw)).toEqual({ text: "Ok.", actions: [undo] });
+    expect(splitReply(`Ok.${mark}[{"name":"read_aloud","value":true}]`)).toEqual({ text: "Ok.", actions: [] });
+    expect(extractSetting(JSON.stringify({ ok: true, setting: { name: "read_aloud", value: true } })).setting).toEqual({ name: "read_aloud", value: true });
+  });
+  it("refuse un réglage inconnu ou un flux coupé", async () => {
+    const { splitSettings, extractSetting } = await import("./undo");
+    expect(splitSettings(`x${mark}[{"name":"supprimer_tout","value":true}]`).settings).toEqual([]);
+    expect(splitSettings(`x${mark}[{"name":"read_`).settings).toEqual([]);
+    expect(extractSetting(JSON.stringify({ setting: { name: "autre", value: true } })).setting).toBeUndefined();
   });
 });

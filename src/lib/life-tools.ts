@@ -54,23 +54,23 @@ export const LIFE_TOOLS: ToolDef[] = [
   },
 ];
 
-const out = (o: unknown) => JSON.stringify(o);
-const noTable = (what: string) => out({ ok: false, error: `${what} : la base n'est pas prête pour cela (migration manquante). Dis-le simplement à Ruben.` });
+export const out = (o: unknown) => JSON.stringify(o);
+export const noTable = (what: string) => out({ ok: false, error: `${what} : la base n'est pas prête pour cela (migration manquante). Dis-le simplement à Ruben.` });
 
-type Db = ReturnType<typeof supabaseAdmin>;
-type Row = Record<string, string | number | null>;
+export type Db = ReturnType<typeof supabaseAdmin>;
+export type Row = Record<string, string | number | null>;
 
 /** Seulement les colonnes qu'on a le droit de remettre (voir undo.ts). */
-const restorable = (table: string, row: Row): Row => Object.fromEntries((RESTORABLE[table] ?? []).filter((k) => k in row).map((k) => [k, row[k]]));
+export const restorable = (table: string, row: Row): Row => Object.fromEntries((RESTORABLE[table] ?? []).filter((k) => k in row).map((k) => [k, row[k]]));
 
 /** Annulation d'un ajout-ou-remplacement : si la ligne n'existait pas on la supprime, sinon on remet son ancien contenu. */
-const undoFor = (label: string, table: string, id: number, previous: Row | null): Undo => ({
+export const undoFor = (label: string, table: string, id: number, previous: Row | null): Undo => ({
   label,
   steps: [previous ? { op: "restore", table, id, values: restorable(table, previous) } : { op: "delete", table, id }],
 });
 
 /** upsert sur une colonne unique, en gardant l'ancienne ligne pour pouvoir annuler. */
-async function upsertWithUndo(db: Db, table: string, key: string, values: Row, label: string) {
+export async function upsertWithUndo(db: Db, table: string, key: string, values: Row, label: string) {
   const before = await db.from(table).select("*").eq(key, values[key]).maybeSingle();
   if (isMissingTable(before.error)) return { error: before.error, undo: undefined };
   const r = await db.from(table).upsert(values as never, { onConflict: key }).select("id").single(); // « as never » : le nom de table est dynamique, le client ne peut pas le typer

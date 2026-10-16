@@ -5,11 +5,12 @@ import { DEMO_FORME as S, DEMO_PHASE } from "@/lib/demo-data";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { addDays, parisDay } from "@/lib/task-groups";
 import { confirmDelete, deleteEntry, type DeleteTarget } from "./delete-entry";
+import { NutritionCard, ScreenCard, type NutritionData } from "./forme-cards";
 import { Bar, Card, DemoBanner, Header, Label } from "./ui";
 
 const DAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const KINDS = ["Salle", "Course à pied", "Vélo", "Natation", "Foot", "Yoga"];
-type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: (Workout & { id?: number })[]; steps?: { date: string; steps: number }[] };
+type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: (Workout & { id?: number })[]; steps?: { date: string; steps: number }[]; nutrition?: NutritionData | null; screen?: { date: string; minutes: number }[] | null };
 
 /** Anneau de progression (pas, score). */
 function Ring({ value, max, children }: { value: number; max: number; children: React.ReactNode }) {
@@ -280,6 +281,8 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
             <p className="mt-1 text-[15px] text-muted">Pas encore notés. Dis à Majordome combien tu en as faits.</p>
           )}
         </Card>
+        {data.nutrition && <NutritionCard data={data.nutrition} onDelete={(m) => remove({ table: "food_logs", id: m.id }, `« ${m.label} » (${m.grams} g)`)} />}
+        {data.screen && <ScreenCard rows={data.screen} accessCode={accessCode} onUnauthorized={onUnauthorized} onSaved={load} onDelete={(date) => remove({ table: "screen_time_logs", date }, "le temps d'écran d'aujourd'hui")} />}
       </div>
     );
   }

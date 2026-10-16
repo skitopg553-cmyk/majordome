@@ -7,10 +7,13 @@ export const RESTORABLE: Record<string, string[]> = {
   memories: ["content", "category"],
   savings_goals: ["label", "target", "saved", "due_label"],
   workouts: ["date", "kind", "minutes"],
-  sleep_logs: ["hours"],
-  steps_logs: ["steps"],
-  budgets: ["monthly_limit"],
-  transactions: [],
+  sleep_logs: ["date", "hours"],
+  steps_logs: ["date", "steps"],
+  budgets: ["category", "monthly_limit"],
+  transactions: ["date", "label", "amount", "category", "import_key"],
+  food_logs: ["date", "label", "grams", "kcal", "protein", "carbs", "fat", "estimated"],
+  nutrition_goals: ["kcal", "protein", "carbs", "fat"],
+  screen_time_logs: ["date", "minutes"],
 };
 
 /** Tables dont une ligne peut être supprimée depuis l'app (toujours après confirmation). */
@@ -19,7 +22,7 @@ export const DELETABLE = Object.keys(RESTORABLE);
 export type UndoStep =
   | { op: "delete"; table: string; id: number } // l'IA a créé la ligne : on la supprime
   | { op: "restore"; table: string; id: number; values: Record<string, string | number | null> } // l'IA a modifié la ligne : on remet l'ancien contenu
-  | { op: "insert"; table: string; values: Record<string, string | number | null> }; // l'IA a supprimé la ligne : on la recrée (souvenirs seulement)
+  | { op: "insert"; table: string; values: Record<string, string | number | null> }; // l'IA a supprimé la ligne : on la recrée (mêmes colonnes autorisées que pour restore)
 export type Undo = { label: string; steps: UndoStep[] };
 
 const isId = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
@@ -47,7 +50,7 @@ export function parseUndoSteps(input: unknown): UndoStep[] | null {
       const v = cleanValues(table, values);
       if (!v) return null;
       steps.push({ op, table, id, values: v });
-    } else if (op === "insert" && table === "memories") {
+    } else if (op === "insert") {
       const v = cleanValues(table, values);
       if (!v) return null;
       steps.push({ op, table, values: v });
@@ -57,13 +60,13 @@ export function parseUndoSteps(input: unknown): UndoStep[] | null {
 }
 
 /** Suppression manuelle : par identifiant, ou par date pour le sommeil et les pas (une ligne par jour). */
-export type DeleteRequest = { table: string; id: number } | { table: "sleep_logs" | "steps_logs"; date: string };
+export type DeleteRequest = { table: string; id: number } | { table: "sleep_logs" | "steps_logs" | "screen_time_logs"; date: string };
 export function parseDeleteRequest(input: unknown): DeleteRequest | null {
   if (!input || typeof input !== "object") return null;
   const { table, id, date } = input as Record<string, unknown>;
   if (typeof table !== "string" || !DELETABLE.includes(table)) return null;
   if (isId(id)) return { table, id };
-  if ((table === "sleep_logs" || table === "steps_logs") && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) return { table, date };
+  if ((table === "sleep_logs" || table === "steps_logs" || table === "screen_time_logs") && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) return { table, date };
   return null;
 }
 
@@ -75,6 +78,7 @@ export function undoLabel(actions: Undo[]) {
 /** Ce que le serveur envoie après le texte de la réponse : un séparateur de fin d'enregistrement (U+001E) puis le JSON des actions annulables. */
 export const ACTIONS_MARK = "\u001e";
 export function splitReply(raw: string): { text: string; actions: Undo[] } {
+  raw = splitSettings(raw).rest;
   const i = raw.indexOf(ACTIONS_MARK);
   if (i === -1) return { text: raw, actions: [] };
   let actions: Undo[] = [];
@@ -85,6 +89,33 @@ export function splitReply(raw: string): { text: string; actions: Undo[] } {
     /* trailer incomplet (flux coupé) : on ignore, le texte reste intact */
   }
   return { text: raw.slice(0, i), actions };
+}
+
+/** Réglages de l'appareil demandés par l'IA (« lis tes réponses à voix haute ») : un seul réglage existe, stocké dans le navigateur. Envoyés après les actions, derrière U+001D. */
+export const SETTINGS_MARK = "\u001d";
+export type DeviceSetting = { name: "read_aloud"; value: boolean };
+export const isDeviceSetting = (s: unknown): s is DeviceSetting => !!s && typeof s === "object" && (s as DeviceSetting).name === "read_aloud" && typeof (s as DeviceSetting).value === "boolean";
+export function splitSettings(raw: string): { rest: string; settings: DeviceSetting[] } {
+  const i = raw.indexOf(SETTINGS_MARK);
+  if (i === -1) return { rest: raw, settings: [] };
+  let settings: DeviceSetting[] = [];
+  try {
+    const parsed = JSON.parse(raw.slice(i + 1));
+    if (Array.isArray(parsed)) settings = parsed.filter(isDeviceSetting);
+  } catch {
+    /* trailer incomplet : ignoré */
+  }
+  return { rest: raw.slice(0, i), settings };
+}
+/** Sépare le réglage d'appareil du résultat d'un outil (comme extractUndo) : le modèle n'a pas besoin du détail technique. */
+export function extractSetting(raw: string): { result: string; setting?: DeviceSetting } {
+  try {
+    const o = JSON.parse(raw);
+    if (o && isDeviceSetting(o.setting)) return { result: raw, setting: o.setting };
+  } catch {
+    /* pas du JSON */
+  }
+  return { result: raw };
 }
 
 /**

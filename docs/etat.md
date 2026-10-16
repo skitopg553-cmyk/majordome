@@ -87,3 +87,25 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - **Test sur téléphone** : connecter la banque puis « Actualiser » ; demander à l'IA d'ajouter une tâche et appuyer sur « Annuler » ; dire « retiens que… » puis regarder l'onglet Mémoire ; importer un vrai export Revolut ; ouvrir le profil → coût de l'IA.
 - **Choix à ta place** : voir « Choix faits à ta place » plus haut. Aucune variable Vercel ni clé touchée.
 - **Reste** : liste de l'audit ci-dessus.
+
+## Session du soir (branche `soir`) — journal
+### Migrations à appliquer (rien n'est appliqué)
+- `0009_bank_connections.sql`, `0010_balance_snapshots.sql` (voir plus haut) et **`0011_nutrition_screen.sql`** (tables `food_logs`, `nutrition_goals`, `screen_time_logs`). Sans la 0011 : Forme n'affiche pas les cartes Repas / Écran, et l'IA répond « migration manquante ».
+### Tâche 1 — tout est pilotable à la voix : fait. Donnée → outils de l'IA
+| Donnée | Créer / modifier | Supprimer |
+|---|---|---|
+| Tâches | `add_task`, `update_task`, `complete_task` | `delete_entry` (task) |
+| Souvenirs | `remember`, `update_memory` | `forget` |
+| Objectifs d'épargne | `set_goal`, `add_to_goal` | `delete_entry` (goal) |
+| Budgets | `set_budget` | `delete_entry` (budget) |
+| Opérations | `add_transaction`, `update_transaction` | `delete_entry` (transaction) |
+| Séances | `log_workout`, `update_workout` | `delete_entry` (workout) |
+| Sommeil / Pas | `log_sleep`, `log_steps` (remplacent) | `delete_entry` (sleep / steps) |
+| Repas | `log_food` | `delete_entry` (food) |
+| Objectif nutrition | `set_nutrition_goals` | — (une seule ligne, se modifie) |
+| Temps d'écran | `log_screen_time` | `delete_entry` (screen_time) |
+| Réglage « lecture à voix haute » | `set_setting` | — |
+- Non pilotables, volontairement : code d'accès et « Nouvelle conversation » (propres au navigateur), connexion bancaire (consentement de ta banque), import d'un fichier. Toute suppression par l'IA : seulement sur demande claire, avec bouton Annuler.
+### Tâche 2 — épargne : faite. `add_to_goal` (nom souple, question si ambigu), carte « Épargne par mois » (Engagé / Libre / Mis de côté) et une phrase par objectif daté. 11 tests.
+### Tâche 3 — nutrition : faite. `log_food` + table de ~250 aliments (source Ciqual, valeurs à vérifier, voir decisions.md), objectif calorique/macros à la voix, carte « Aujourd'hui » dans Forme, repas « estimé » marqués. 16 tests.
+### Tâche 4 — temps d'écran : fait. Voix, bouton, capture lue par l'IA avec confirmation, route `POST /api/screen-time` pour Tasker (`docs/temps-ecran.md`), tendance 7 j vs 7 j. 9 tests.
