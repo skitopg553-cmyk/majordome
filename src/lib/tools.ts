@@ -1,4 +1,5 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
+import { clampText, MAX_MEMORY, taskFields } from "./limits";
 import { supabaseAdmin } from "./supabase";
 import { fold } from "./text";
 import type { Undo } from "./undo";
@@ -84,21 +85,25 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
   const idOf = (d: unknown) => (d && typeof d === "object" && "id" in d ? Number((d as { id: unknown }).id) : NaN);
   switch (name) {
     case "add_task": {
+      const f = taskFields(args, { requireTitle: true }); // titre borné, échéance ISO AVEC fuseau : sinon le modèle reçoit l'erreur et corrige
+      if (!f.ok) return JSON.stringify({ ok: false, error: f.error });
       const open = await db.from("tasks").select("id,title").eq("status", "todo");
       if (open.error) return JSON.stringify({ ok: false, error: open.error.message });
-      const dup = (open.data ?? []).find((t) => isSimilar(t.title, String(args.title ?? "")));
+      const dup = (open.data ?? []).find((t) => isSimilar(t.title, f.fields.title!));
       if (dup) {
         return JSON.stringify({
           ok: false,
           error: `tâche similaire déjà existante : #${dup.id} « ${dup.title} ». Utilise update_task si besoin, sinon n'en crée pas une autre.`,
         });
       }
-      res = await db.from("tasks").insert(pick(["title", "due_at", "priority", "notes"])).select("id").single();
-      if (!res.error) undo = { label: `Tâche « ${String(args.title)} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
+      res = await db.from("tasks").insert(f.fields).select("id").single();
+      if (!res.error) undo = { label: `Tâche « ${f.fields.title} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
       break;
     }
     case "update_task": {
-      const patch = pick(["title", "due_at", "priority", "notes"]);
+      const f = taskFields(args, { requireTitle: false });
+      if (!f.ok) return JSON.stringify({ ok: false, error: f.error });
+      const patch = f.fields;
       const keys = Object.keys(patch);
       const before = keys.length ? await db.from("tasks").select(keys.join(",")).eq("id", Number(args.id)).maybeSingle() : null;
       res = await db.from("tasks").update(patch).eq("id", Number(args.id)).select("id");
@@ -113,10 +118,12 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     }
     case "remember": {
       // Pas deux fois le même souvenir (par le modèle ou par un ordre explicite) : même règle que pour les tâches.
+      const content = clampText(args.content, MAX_MEMORY);
+      if (!content) return JSON.stringify({ ok: false, error: "content requis (texte non vide)" });
       const known = await db.from("memories").select("id,content").limit(300);
-      const dup = (known.data ?? []).find((m) => isSimilar(m.content, String(args.content ?? "")));
+      const dup = (known.data ?? []).find((m) => isSimilar(m.content, content));
       if (dup) return JSON.stringify({ ok: false, error: `souvenir similaire déjà noté : #${dup.id} « ${dup.content} ». Ne le note pas deux fois.` });
-      res = await db.from("memories").insert(pick(["content", "category"])).select("id").single();
+      res = await db.from("memories").insert({ ...pick(["category"]), content }).select("id").single();
       if (!res.error) undo = { label: "Souvenir", steps: [{ op: "delete", table: "memories", id: idOf(res.data) }] };
       break;
     }

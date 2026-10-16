@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { denied } from "@/lib/access";
 import { runAgent } from "@/lib/ai";
+import { sanitizeMessages } from "@/lib/chat-input";
 import { INSTRUCTIONS } from "@/lib/instructions";
 import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -11,10 +12,8 @@ export async function POST(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const messages = body?.messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json({ error: "Aucun message" }, { status: 400 });
-  }
+  const messages = sanitizeMessages(body?.messages); // rôles et tailles contrôlés (voir src/lib/chat-input.ts)
+  if (!messages) return NextResponse.json({ error: "Message invalide" }, { status: 400 });
 
   // Chronométrage : visible dans les logs Vercel ("[timing]") et dans l'en-tête Server-Timing.
   const t0 = Date.now();
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
     return runAgent({
       tier: "sonnet",
       system: `${INSTRUCTIONS}\n\n${context}${doneNote}`,
-      messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
+      messages, // déjà limité aux 20 derniers messages (maîtrise des coûts)
       purpose: "chat",
       tools: TOOLS,
       executeTool: executeAndCollect,

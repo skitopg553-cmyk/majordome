@@ -6,21 +6,35 @@ import { ambiguousPrompt, categorizeByRules, parseAmbiguousReply } from "./categ
 import type { IngestItem } from "./bank";
 
 const MAX_AMBIGUOUS = 40; // au-delà, « Autre » : on borne le coût de l'appel Haiku
-const CHUNK = 150; // taille des paquets de clés interrogées (URL de requête limitée)
+const PAGE = 1000; // Supabase renvoie au plus 1000 lignes par requête
+const MAX_PAGES = 50;
 
 export type IngestResult = { ok: true; imported: number; duplicates: number; viaAi: number } | { ok: false; status: 500 | 503; error: string };
 
-export async function ingestTransactions(items: IngestItem[]): Promise<IngestResult> {
-  const db = supabaseAdmin();
+type Db = ReturnType<typeof supabaseAdmin>;
+type KeysResult = { keys: Set<string>; error?: { code?: string; message: string } };
 
-  // Clés déjà en base : on ne les catégorise pas (pas d'appel IA inutile) et on ne les réécrit pas.
-  const existing = new Set<string>();
-  for (let i = 0; i < items.length; i += CHUNK) {
-    const r = await db.from("transactions").select("import_key").in("import_key", items.slice(i, i + CHUNK).map((x) => x.key));
-    if (isMissingTable(r.error)) return { ok: false, status: 503, error: "Les tables Finances ne sont pas encore créées (migration 0004 à valider)." };
-    if (r.error) return { ok: false, status: 500, error: r.error.message };
-    for (const row of r.data ?? []) existing.add(row.import_key);
+/**
+ * Clés déjà en base pour la période des opérations reçues. On lit PAR PLAGE DE DATES et on compare en code : on ne met JAMAIS un libellé
+ * dans un filtre `.in(...)` (un libellé avec des guillemets ou des virgules, comme « Burger "King", Fries », cassait la requête : l'import entier échouait).
+ */
+export async function loadExistingKeys(db: Db, from: string, to: string): Promise<KeysResult> {
+  const keys = new Set<string>();
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const r = await db.from("transactions").select("import_key").gte("date", from).lte("date", to).order("id").range(page * PAGE, page * PAGE + PAGE - 1);
+    if (r.error) return { keys, error: r.error };
+    for (const row of r.data ?? []) keys.add(row.import_key);
+    if ((r.data?.length ?? 0) < PAGE) break;
   }
+  return { keys };
+}
+
+export async function ingestTransactions(items: IngestItem[], db: Db = supabaseAdmin()): Promise<IngestResult> {
+  // Clés déjà en base : on ne les catégorise pas (pas d'appel IA inutile) et on ne les réécrit pas.
+  const dates = items.map((x) => x.date).sort();
+  const { keys: existing, error: keysError } = await loadExistingKeys(db, dates[0], dates[dates.length - 1]);
+  if (isMissingTable(keysError ?? null)) return { ok: false, status: 503, error: "Les tables Finances ne sont pas encore créées (migration 0004 à valider)." };
+  if (keysError) return { ok: false, status: 500, error: keysError.message };
   const fresh = items.filter((x) => !existing.has(x.key));
   if (!fresh.length) return { ok: true, imported: 0, duplicates: items.length, viaAi: 0 };
 

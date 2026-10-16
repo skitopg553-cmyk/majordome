@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
+import { parseDueAt, taskFields } from "@/lib/limits";
 import { isSimilar } from "@/lib/tools";
 
 const COLS = "id,title,due_at,priority,notes,status";
@@ -20,11 +21,12 @@ export async function GET(req: Request) {
 // Ajout rapide depuis l'app, sans passer par l'IA (gratuit et instantané).
 export async function POST(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  const { title, due_at, priority } = (await req.json().catch(() => ({}))) as { title?: string; due_at?: string | null; priority?: number };
-  const clean = title?.trim();
-  if (!clean) return NextResponse.json({ error: "Titre requis" }, { status: 400 });
-  if (due_at && Number.isNaN(Date.parse(due_at))) return NextResponse.json({ error: "Date invalide" }, { status: 400 });
-  if (priority !== undefined && ![1, 2, 3].includes(priority)) return NextResponse.json({ error: "Priorité invalide" }, { status: 400 });
+  // Titre borné, échéance stricte (avec fuseau), priorité 1-3 : mêmes règles que l'outil de l'IA (src/lib/limits.ts).
+  const f = taskFields((await req.json().catch(() => ({}))) as Record<string, unknown>, { requireTitle: true });
+  if (!f.ok) return NextResponse.json({ error: f.error }, { status: 400 });
+  const clean = f.fields.title!;
+  const due_at = f.fields.due_at;
+  const priority = f.fields.priority;
 
   const db = supabaseAdmin();
   const open = await db.from("tasks").select("id,title").eq("status", "todo");
@@ -48,7 +50,7 @@ export async function PATCH(req: Request) {
   if (typeof id !== "number" || (typeof done !== "boolean" && typeof due_at !== "string")) {
     return NextResponse.json({ error: "id et done (ou due_at) requis" }, { status: 400 });
   }
-  if (typeof due_at === "string" && Number.isNaN(Date.parse(due_at))) return NextResponse.json({ error: "Date invalide" }, { status: 400 });
+  if (typeof due_at === "string" && !parseDueAt(due_at)) return NextResponse.json({ error: "Date invalide : date ISO 8601 avec fuseau attendue" }, { status: 400 });
   const patch =
     typeof due_at === "string"
       ? { due_at }
