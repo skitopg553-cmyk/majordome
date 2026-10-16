@@ -1,5 +1,12 @@
 # État de Majordome
 
+## RÉSUMÉ DES RETOUCHES (branche `retouches`) — à lire d'abord
+- **Fait** : agenda ≠ tâches (heure précise → Planning seulement ; sans heure → Accueil seulement, widget « Tâches » : retard → aujourd'hui → sans date, 5 visibles puis « +N », coche animée + vibration) · l'IA suit la règle · Planning : le jour suit le doigt avec ressort (fondu si animations réduites), date réelle « Sam. 17 oct. », point accent sur aujourd'hui · lecture de capture d'écran retirée (carte Temps d'écran = aperçu fictif ; table et route gardées) · table nutritionnelle : 138 aliments sur 261 maintenant lus dans le fichier officiel Ciqual (test sur 3 valeurs).
+- **À tester sur ton téléphone** : cocher une tâche sur l'Accueil (animation + vibration) ; dire « rappelle-moi d'appeler Paul demain » (→ tâche, Accueil) puis « RDV dentiste demain à 14h » (→ agenda, Planning) ; glisser les jours du Planning avec le doigt ; toucher la date d'un autre jour (retour à aujourd'hui).
+- **Choix faits à ta place** : « sans heure » = échéance à 00:00 Paris ou aucune ; tâches à venir (jours suivants) listées après « sans date » ; événement ajouté dans Planning = date + heure obligatoires ; seuls les éléments d'agenda déclenchent un rappel ; l'agenda fictif et les propositions d'agenda sont retirés de l'Accueil ; 123 aliments gardent encore des valeurs approximatives (Ciqual sans appariement sûr).
+- **Migration** : aucune nouvelle (0011 déjà écrite, toujours à appliquer par toi).
+
+
 ## RÉSUMÉ DU SOIR (branche `soir`) — à lire d'abord
 - **Fait** : 1 tout pilotable à la voix (tableau plus bas) · 2 épargne : Engagé / Libre / Mis de côté + une phrase par objectif · 3 nutrition (`log_food`, ~250 aliments, objectif kcal/macros) · 4 temps d'écran (voix, capture, Tasker) · 5 Planning refait (jour, frise des heures, semaine en points, fiche d'une tâche) · 6 verrou du code d'accès.
 - **À FAIRE PAR TOI** : appliquer dans Supabase les migrations `0009`, `0010` (si pas déjà fait) et **`0011_nutrition_screen.sql`** (repas, objectif nutrition, temps d'écran). Rien n'a été appliqué par moi.

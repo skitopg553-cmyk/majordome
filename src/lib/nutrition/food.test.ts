@@ -17,6 +17,19 @@ describe("table d'aliments", () => {
   });
 });
 
+describe("valeurs officielles Ciqual 2020", () => {
+  const byCode = (code: number) => FOODS.find((f) => f.ciqual === code)!.per100;
+  it("3 aliments vérifiés contre le fichier officiel (kcal, protéines, glucides, lipides pour 100 g)", () => {
+    expect(byCode(9104)).toEqual({ kcal: 145, protein: 2.92, carbs: 31.8, fat: 0.41 }); // Riz blanc, cuit, non salé
+    expect(byCode(19023)).toEqual({ kcal: 65.1, protein: 3.32, carbs: 4.85, fat: 3.63 }); // Lait entier, UHT
+    expect(byCode(16400)).toEqual({ kcal: 753, protein: 0.7, carbs: 0.9, fat: 82.9 }); // Beurre à 82 % MG, doux
+  });
+  it("plus de la moitié de la table vient du fichier officiel, et l'aliment trouvé porte ses valeurs", () => {
+    expect(FOODS.filter((f) => f.ciqual).length).toBeGreaterThan(FOODS.length / 2);
+    expect(lookupFood("riz")?.per100.kcal).toBe(145);
+  });
+});
+
 describe("lookupFood", () => {
   it("retrouve un aliment avec article, pluriel, accents ou précision", () => {
     expect(lookupFood("riz")?.name).toBe("Riz blanc cuit");
@@ -57,15 +70,15 @@ describe("quantités", () => {
 describe("parseFood : « j'ai mangé 50 g de riz »", () => {
   it("calcule en code à partir de la table", () => {
     const r = parseFood({ food: "riz", quantity: 50, unit: "g" }, now);
-    expect(r).toEqual({ ok: true, value: { date: "2026-10-16", label: "Riz blanc cuit", grams: 50, macros: { kcal: 65, protein: 1.4, carbs: 14, fat: 0.2 }, estimated: 0 } });
+    expect(r).toEqual({ ok: true, value: { date: "2026-10-16", label: "Riz blanc cuit", grams: 50, macros: { kcal: 72.5, protein: 1.5, carbs: 15.9, fat: 0.2 }, estimated: 0 } });
   });
   it("2 œufs", () => {
     const r = parseFood({ food: "œufs", quantity: 2, unit: "piece" }, now);
-    expect(r).toMatchObject({ ok: true, value: { grams: 110, macros: { kcal: 157.3 }, estimated: 0 } });
+    expect(r).toMatchObject({ ok: true, value: { grams: 110, macros: { kcal: 147.4 }, estimated: 0 } });
   });
   it("l'aliment connu l'emporte sur une estimation du modèle", () => {
     const r = parseFood({ food: "riz", quantity: 100, unit: "g", estimate_per_100g: { kcal: 1, protein: 0, carbs: 0, fat: 0 } }, now);
-    expect(r).toMatchObject({ ok: true, value: { macros: { kcal: 130 }, estimated: 0 } });
+    expect(r).toMatchObject({ ok: true, value: { macros: { kcal: 145 }, estimated: 0 } });
   });
   it("aliment inconnu : exige une estimation, la marque « estimé »", () => {
     expect(parseFood({ food: "gâteau de la grand-mère", quantity: 100, unit: "g" }, now)).toMatchObject({ ok: false, error: expect.stringContaining("estimate_per_100g") });

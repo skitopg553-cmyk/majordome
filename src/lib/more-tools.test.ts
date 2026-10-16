@@ -91,10 +91,10 @@ describe("log_food", () => {
   it("le code calcule : 50 g de riz", async () => {
     const r = await call("log_food", { food: "riz", quantity: 50, unit: "g" });
     expect(r.ok).toBe(true);
-    expect(r.saved).toMatchObject({ aliment: "Riz blanc cuit", grammes: 50, kcal: 65, estime: false });
-    expect(r.total_du_jour.kcal).toBe(65);
+    expect(r.saved).toMatchObject({ aliment: "Riz blanc cuit", grammes: 50, kcal: 72.5, estime: false });
+    expect(r.total_du_jour.kcal).toBe(73);
     expect(h.tables.food_logs).toHaveLength(1);
-    expect(h.tables.food_logs[0]).toMatchObject({ kcal: 65, estimated: 0 });
+    expect(h.tables.food_logs[0]).toMatchObject({ kcal: 72.5, estimated: 0 });
   });
   it("aliment inconnu : refus sans estimation (rien d'écrit), « estimé » avec estimation", async () => {
     expect((await call("log_food", { food: "gâteau maison de Mamie", quantity: 100 })).ok).toBe(false);

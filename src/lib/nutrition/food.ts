@@ -1,5 +1,6 @@
 // Nutrition : le modèle comprend la phrase (aliment + quantité + unité), le CODE calcule kcal et macros.
-// Source des valeurs (pour 100 g) : table Ciqual de l'ANSES (licence ouverte), ~250 aliments courants recopiés et arrondis dans foods.json.
+// Source des valeurs (pour 100 g) : table Ciqual 2020 de l'ANSES (licence ouverte). ~260 aliments courants dans foods.json ; ceux qui ont un code Ciqual (7e valeur)
+// sont lus dans le fichier officiel (scripts/ciqual-build.mjs), les autres gardent des valeurs approximatives à vérifier.
 import foods from "./foods.json";
 import { fold } from "../text";
 import { resolveDate } from "../life";
@@ -8,7 +9,7 @@ type Res<T> = { ok: true; value: T } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
 export type Macros = { kcal: number; protein: number; carbs: number; fat: number };
-export type Food = { name: string; aliases: string[]; per100: Macros; pieceG: number };
+export type Food = { name: string; aliases: string[]; per100: Macros; pieceG: number; ciqual?: number }; // ciqual : code de la table officielle, si la valeur en vient
 
 const STOP = new Set(["de", "du", "des", "d", "la", "le", "les", "l", "un", "une", "au", "aux", "a", "en", "et"]);
 const tokens = (s: string) =>
@@ -17,9 +18,9 @@ const tokens = (s: string) =>
     .filter((w) => w && !STOP.has(w))
     .map((w) => (w.length > 3 && /[sx]$/.test(w) ? w.slice(0, -1) : w)); // pluriel simple : « pommes » = « pomme »
 
-export const FOODS: Food[] = (foods as unknown as [string, number, number, number, number, number][]).map(([names, kcal, protein, carbs, fat, pieceG]) => {
+export const FOODS: Food[] = (foods as unknown as [string, number, number, number, number, number, number?][]).map(([names, kcal, protein, carbs, fat, pieceG, ciqual]) => {
   const all = names.split("|");
-  return { name: all[0], aliases: all, per100: { kcal, protein, carbs, fat }, pieceG };
+  return { name: all[0], aliases: all, per100: { kcal, protein, carbs, fat }, pieceG, ciqual };
 });
 const INDEX = FOODS.map((f) => ({ food: f, aliases: f.aliases.map(tokens) }));
 
