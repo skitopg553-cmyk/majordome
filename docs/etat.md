@@ -23,7 +23,7 @@ Aussi : PWA, Vercel à Paris (cdg1), `ai_calls` journalisé après réponse, **1
 Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 
 ## Prochaine étape
-- Ruben relit la branche `nuit`, répond aux questions, valide les migrations, puis décide du merge.
+- Branche `nuit` fusionnée dans `main` et validée sur téléphone (16/10). Suite : activer les rappels (dernière case de la phase 1).
 
 ## Session de nuit
 - Mode d'emploi : `docs/nuit.md`. Scripts : `scripts/nuit-tache.ps1` (crée la tâche planifiée) et `scripts/nuit-run.ps1`.

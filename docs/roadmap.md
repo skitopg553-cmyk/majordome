@@ -26,8 +26,8 @@ Appris :
 - [x] Tables `tasks`, `memories` (objectifs = mémoires catégorie `objectif`)
 - [x] Outils de l'agent : créer / modifier / terminer une tâche, mémoriser / oublier
 - [x] Mémoire + tâches en cours injectées à chaque message
-- [ ] Vue « Tâches » dans l'app (liste à cocher)
-- [ ] Rappels par notifications push PWA
+- [x] Vue « Tâches » dans l'app (liste à cocher) — devenue le Planning (jour / semaine, ajout rapide, « Demain »), validée sur téléphone le 2026-10-16
+- [ ] Rappels par notifications push PWA — code prêt (`docs/rappels-setup.md`), reste à activer
 
 **Terminé quand** : toutes les tâches de Ruben y passent pendant 2 semaines. → Décide si le projet continue.
 
@@ -39,7 +39,7 @@ Appris :
 **Terminé quand** : le briefing est lu chaque matin parce qu'il est utile.
 
 ## Phase 3 — Voix (≈1-2 semaines)
-- [ ] Dictée (Web Speech API ou Whisper) + réponse vocale
+- [x] Dictée (Web Speech API) + réponse vocale — faite en avance (voir decisions.md), Whisper non utilisé
 - [ ] Raccourci / widget Android
 - [ ] (Annexe, non bloquant) mot d'activation : Porcupine ou Tasker
 
