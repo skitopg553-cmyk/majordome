@@ -109,3 +109,4 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 ### Tâche 2 — épargne : faite. `add_to_goal` (nom souple, question si ambigu), carte « Épargne par mois » (Engagé / Libre / Mis de côté) et une phrase par objectif daté. 11 tests.
 ### Tâche 3 — nutrition : faite. `log_food` + table de ~250 aliments (source Ciqual, valeurs à vérifier, voir decisions.md), objectif calorique/macros à la voix, carte « Aujourd'hui » dans Forme, repas « estimé » marqués. 16 tests.
 ### Tâche 4 — temps d'écran : fait. Voix, bouton, capture lue par l'IA avec confirmation, route `POST /api/screen-time` pour Tasker (`docs/temps-ecran.md`), tendance 7 j vs 7 j. 9 tests.
+### Tâche 6 — sécurité : faite. 5 mauvais codes depuis la même IP → 10 min d'attente (en mémoire, voir decisions.md). Pendant l'attente le bon code est aussi refusé (message « Code d'accès incorrect »). 6 tests.
