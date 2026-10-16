@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeMoreTool } from "./more-tools";
+import { materializeToday } from "./recurring-store";
+import { supabaseAdmin } from "./supabase";
 import { extractUndo, parseUndoSteps } from "./undo";
 
 // Faux client Supabase en mémoire : assez pour tester les outils sans base ni réseau.
@@ -37,6 +39,7 @@ vi.mock("./supabase", async (orig) => ({
         upsert: (v: R, o: { onConflict: string }) => ((q.op = "upsert"), (q.values = v), (q.key = o.onConflict), b),
         eq: (k: string, v: unknown) => (q.filters.push([k, v]), b),
         gte: () => b,
+        or: () => b,
         order: () => b,
         limit: () => b,
         single: () => ((q.single = true), b),
@@ -172,5 +175,38 @@ describe("set_setting", () => {
     expect(await call("set_setting", { name: "read_aloud", value: false })).toEqual({ ok: true, setting: { name: "read_aloud", value: false } });
     expect((await call("set_setting", { name: "code_acces", value: true })).ok).toBe(false);
     expect((await call("set_setting", { name: "read_aloud", value: "non" })).ok).toBe(false);
+  });
+});
+
+describe("add_recurring_task", () => {
+  it("la phrase est comprise en code, la règle enregistrée, annulable", async () => {
+    const r = await call("add_recurring_task", { title: "Sortir les poubelles", every: "tous les lundis", time: "20:00" });
+    expect(r.ok).toBe(true);
+    expect(r.saved.quand).toBe("chaque lundi à 20:00");
+    expect(h.tables.recurring_tasks[0]).toMatchObject({ title: "Sortir les poubelles", kind: "weekly", weekday: 1, at_time: "20:00" });
+    expect(r.undo.steps).toEqual([{ op: "delete", table: "recurring_tasks", id: 100 }]);
+  });
+  it("refuse une récurrence floue ou une heure invalide, et ne crée rien", async () => {
+    expect((await call("add_recurring_task", { title: "x", every: "de temps en temps" })).ok).toBe(false);
+    expect((await call("add_recurring_task", { title: "x", every: "chaque jour", time: "25:61" })).ok).toBe(false);
+    expect((await call("add_recurring_task", { title: " ", every: "chaque jour" })).ok).toBe(false);
+    expect(h.tables.recurring_tasks ?? []).toHaveLength(0);
+  });
+  it("se supprime à la voix (delete_entry recurring)", async () => {
+    h.tables.recurring_tasks = [{ id: 7, title: "Poubelles", kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null }];
+    expect((await call("delete_entry", { kind: "recurring", id: 7 })).ok).toBe(true);
+    expect(h.tables.recurring_tasks).toHaveLength(0);
+  });
+});
+
+describe("materializeToday (tâches récurrentes du jour)", () => {
+  const now = new Date("2026-10-16T10:00:00+02:00"); // vendredi
+  const rule = (id: number, extra: Record<string, unknown>) => ({ id, title: "R" + id, kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null, ...extra });
+  it("crée une tâche par règle qui tombe aujourd'hui, avec ou sans heure, et note le jour", async () => {
+    h.tables.recurring_tasks = [rule(1, {}), rule(2, { kind: "weekly", weekday: 1 }), rule(3, { at_time: "09:30" }), rule(4, { last_generated: "2026-10-16" })];
+    h.tables.tasks = [];
+    expect(await materializeToday(supabaseAdmin() as never, now)).toBe(2);
+    expect(h.tables.tasks.map((t) => [t.title, t.due_at])).toEqual([["R1", "2026-10-15T22:00:00.000Z"], ["R3", "2026-10-16T07:30:00.000Z"]]);
+    expect(h.tables.recurring_tasks.map((r) => r.last_generated)).toEqual(["2026-10-16", null, "2026-10-16", "2026-10-16"]);
   });
 });

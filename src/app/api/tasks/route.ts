@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
 import { taskFields, taskPatch } from "@/lib/limits";
+import { materializeToday } from "@/lib/recurring-store";
 import { isSimilar } from "@/lib/tools";
 
 const COLS = "id,title,due_at,priority,notes,status";
@@ -9,6 +10,7 @@ const COLS = "id,title,due_at,priority,notes,status";
 export async function GET(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   const db = supabaseAdmin();
+  await materializeToday(db).catch((e) => console.error("récurrentes :", e)); // les tâches « tous les lundis »… du jour (sans effet si la table n'existe pas)
   const [todo, done] = await Promise.all([
     db.from("tasks").select(COLS).eq("status", "todo").order("due_at", { ascending: true, nullsFirst: false }),
     db.from("tasks").select(COLS).eq("status", "done").order("done_at", { ascending: false }).limit(10),

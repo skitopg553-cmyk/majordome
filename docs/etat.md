@@ -135,3 +135,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - T1 FAIT : « Ta semaine » = vraies données (tâches, dépenses vs semaine d'avant, sport, sommeil, kcal) calculées en code ; 2-3 phrases de l'IA (haiku, cachées 6 h), jetées si elles citent un chiffre absent des faits. Temps d'écran : pas de donnée réelle, donc absent. Route GET /api/week.
 - T2 Briefing du jour — gain : fort (comprendre sa journée en 5 s) / coût : petit. En cours.
 - T2 FAIT : briefing de l'Accueil (3 lignes en code : prochain agenda, tâches, Libre ou budget dépassé) à la place de l'ancienne phrase.
+- T3 Tâches récurrentes — gain : fort (zéro oubli) / coût : gros. En cours. Migration 0012 écrite, non appliquée.
+- T3 FAIT : tâches récurrentes à la voix (« tous les lundis », « chaque jour », « tous les mois le 5 », heure facultative = agenda). Compris et calculé en code (src/lib/recurrence.ts) ; créées au chargement des tâches ; supprimables à la voix. **Migration 0012_recurring_tasks.sql à appliquer** (sans elle : aucune récurrence, aucune erreur).

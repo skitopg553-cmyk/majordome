@@ -4,7 +4,9 @@ import { matchGoal, type Goal } from "./finance/savings";
 import { dayTotals, parseFood, parseNutritionGoals } from "./nutrition/food";
 import { out, noTable, restorable, undoFor, upsertWithUndo, type Row } from "./life-tools";
 import { parseExpense, parseWorkout } from "./life";
-import { clampText, MAX_MEMORY } from "./limits";
+import { clampText, MAX_MEMORY, MAX_TITLE } from "./limits";
+import { parseAtTime, parseRecurrence, ruleLabel } from "./recurrence";
+import { listRules } from "./recurring-store";
 import { isMissingTable, supabaseAdmin } from "./supabase";
 import { parisDay } from "./task-groups";
 import { fold } from "./text";
@@ -63,13 +65,19 @@ export const MORE_TOOLS: ToolDef[] = [
     parameters: { type: "object", properties: { name: { type: "string", enum: ["read_aloud"] }, value: { type: "boolean" } }, required: ["name", "value"] },
   },
   {
+    name: "add_recurring_task",
+    description:
+      "Créer une tâche qui REVIENT : « tous les lundis », « chaque jour », « tous les mois le 5 ». Transmets la phrase de récurrence telle que dite dans every (le code la comprend). Avec une heure précise (time, HH:MM) c'est un rendez-vous d'agenda ; sans heure, une simple tâche. La tâche apparaît le jour même, au premier chargement de l'app.",
+    parameters: { type: "object", properties: { title: { type: "string" }, every: { type: "string", description: "ex. « tous les lundis »" }, time: { type: "string", description: "HH:MM, facultatif" } }, required: ["title", "every"] },
+  },
+  {
     name: "delete_entry",
     description:
-      "SUPPRIMER une donnée, UNIQUEMENT si Ruben le demande clairement (« supprime la dépense Netflix », « efface ma nuit d'hier »). Jamais de ta propre initiative. Un bouton Annuler s'affiche juste après. kind : task, goal, budget, transaction, workout, sleep, steps, food. Par id (#n du contexte) pour task, goal, transaction, workout, food ; par date pour sleep, steps ; par nom pour goal (label) et budget (category).",
+      "SUPPRIMER une donnée, UNIQUEMENT si Ruben le demande clairement (« supprime la dépense Netflix », « efface ma nuit d'hier »). Jamais de ta propre initiative. Un bouton Annuler s'affiche juste après. kind : task, goal, budget, transaction, workout, sleep, steps, food, recurring (une tâche récurrente). Par id (#n du contexte) pour task, goal, transaction, workout, food ; par date pour sleep, steps ; par nom pour goal (label) et budget (category).",
     parameters: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["task", "goal", "budget", "transaction", "workout", "sleep", "steps", "food"] },
+        kind: { type: "string", enum: ["task", "goal", "budget", "transaction", "workout", "sleep", "steps", "food", "recurring"] },
         id: ID,
         date: { type: "string", description: "AAAA-MM-JJ, pour sleep, steps" },
         label: { type: "string", description: "Nom de l'objectif (kind goal), si pas d'id" },
@@ -83,7 +91,7 @@ export const MORE_TOOLS: ToolDef[] = [
 const DELETE_TABLES: Record<string, { table: string; label: string }> = {
   task: { table: "tasks", label: "Tâche" }, goal: { table: "savings_goals", label: "Objectif" }, budget: { table: "budgets", label: "Budget" },
   transaction: { table: "transactions", label: "Opération" }, workout: { table: "workouts", label: "Séance" }, sleep: { table: "sleep_logs", label: "Nuit" },
-  steps: { table: "steps_logs", label: "Pas" }, food: { table: "food_logs", label: "Repas" },
+  recurring: { table: "recurring_tasks", label: "Récurrence" }, steps: { table: "steps_logs", label: "Pas" }, food: { table: "food_logs", label: "Repas" },
 };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -163,6 +171,16 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       if (args.name !== "read_aloud" || typeof args.value !== "boolean") return out({ ok: false, error: "name doit valoir read_aloud et value true ou false" });
       return out({ ok: true, setting: { name: "read_aloud", value: args.value } }); // appliqué par l'écran (réglage propre à cet appareil)
     }
+    case "add_recurring_task": {
+      const title = clampText(args.title, MAX_TITLE);
+      if (!title) return out({ ok: false, error: "title requis (texte non vide)" });
+      const rule = parseRecurrence(args.every);
+      if (!rule.ok) return out(rule);
+      const at = parseAtTime(args.time);
+      if (!at.ok) return out(at);
+      const r = await db.from("recurring_tasks").insert({ title, ...rule.value, at_time: at.value }).select("id").single();
+      return finish(r.error, "Récurrence", { saved: { title, quand: ruleLabel({ ...rule.value, at_time: at.value }) } }, r.data ? undoFor(`Récurrence « ${title} »`, "recurring_tasks", r.data.id as number, null) : undefined);
+    }
     case "delete_entry": {
       const kind = String(args.kind ?? "");
       const t = DELETE_TABLES[kind];
@@ -212,6 +230,8 @@ export async function moreContext(now: Date): Promise<string> {
     db.from("nutrition_goals").select("kcal,protein,carbs,fat").eq("id", 1).maybeSingle(),
   ]);
   const lines: string[] = [];
+  const rules = await listRules(db);
+  if (rules?.length) lines.push(`Tâches récurrentes : ${rules.map((r) => `#${r.id} « ${r.title} » ${ruleLabel(r)}`).join(" ; ")}.`);
   if (!txs.error && txs.data?.length) lines.push(`Dernières opérations (pour corriger ou supprimer) : ${txs.data.map((t) => `#${t.id} ${t.date} ${t.label} ${Number(t.amount)} €`).join(" ; ")}.`);
   if (!workouts.error && workouts.data?.length) lines.push(`Séances des 14 derniers jours : ${workouts.data.map((w) => `#${w.id} ${w.date} ${w.kind}${w.minutes ? ` ${w.minutes} min` : ""}`).join(" ; ")}.`);
   if (!goals.error && goals.data?.length) lines.push(`Objectifs d'épargne : ${goals.data.map((g) => `#${g.id} ${g.label} ${Number(g.saved)}/${Number(g.target)} €${g.due_label ? ` pour ${g.due_label}` : ""}`).join(" ; ")}.`);
