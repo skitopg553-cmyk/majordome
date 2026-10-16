@@ -58,6 +58,18 @@ export function parseBudget(a: Record<string, unknown>): Res<{ category: string;
   return { ok: true, value: { category, monthly_limit: limit } };
 }
 
+/** Objectif d'épargne : nom + montant visé obligatoires ; « déjà épargné » et « pour quand » facultatifs (null = ne pas toucher). */
+export function parseGoal(a: Record<string, unknown>): Res<{ label: string; target: number; saved: number | null; due_label: string | null }> {
+  const label = typeof a.label === "string" ? a.label.trim().replace(/\s+/g, " ").slice(0, 80) : "";
+  if (!label) return fail("label requis : le nom de l'objectif (ex. « Voiture »)");
+  const target = typeof a.target === "number" ? Math.round(a.target * 100) / 100 : NaN;
+  if (!(target > 0 && target <= 10_000_000)) return fail("target invalide : montant visé en euros, supérieur à 0");
+  const saved = a.saved === undefined || a.saved === null ? null : typeof a.saved === "number" ? Math.round(a.saved * 100) / 100 : NaN;
+  if (saved !== null && !(saved >= 0 && saved <= 10_000_000)) return fail("saved invalide : montant déjà épargné, 0 ou plus");
+  const due = typeof a.due_label === "string" ? a.due_label.trim().slice(0, 40) : "";
+  return { ok: true, value: { label, target, saved, due_label: due || null } };
+}
+
 /** Dépense ou revenu saisi à la main. Un montant négatif = dépense ; sans catégorie, les règles de catégorisation décident. */
 export function parseExpense(a: Record<string, unknown>, now: Date): Res<{ date: string; label: string; amount: number; category: string }> {
   const label = typeof a.label === "string" ? a.label.trim().replace(/\s+/g, " ").slice(0, 120) : "";

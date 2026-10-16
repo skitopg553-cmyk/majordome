@@ -2,7 +2,7 @@
 // La validation est en code (life.ts). Tout est ajout ou remplacement ; rien n'est supprimé (la suppression reste à Ruben, dans l'app).
 import { goalProgress, monthTotals, spendingByCategory, type Tx } from "./finance/stats";
 import { hoursLabel, weekStats } from "./forme";
-import { parseBudget, parseExpense, parseSleep, parseSteps, parseWorkout } from "./life";
+import { parseBudget, parseExpense, parseGoal, parseSleep, parseSteps, parseWorkout } from "./life";
 import { isMissingTable, supabaseAdmin } from "./supabase";
 import { parisDay } from "./task-groups";
 import { fold } from "./text";
@@ -32,6 +32,21 @@ export const LIFE_TOOLS: ToolDef[] = [
     parameters: { type: "object", properties: { category: { type: "string", description: "Courses, Restaurants, Transport, Abonnements, Loisirs, Shopping, Logement, Sport & santé, Retraits…" }, monthly_limit: { type: "number", description: "Euros par mois" } }, required: ["category", "monthly_limit"] },
   },
   {
+    name: "set_goal",
+    description:
+      "Créer ou mettre à jour un OBJECTIF D'ÉPARGNE en argent (ex. « objectif 3000 € pour une voiture »), visible sur l'Accueil et dans Finances. Si un objectif du même nom existe, il est mis à jour (seuls les champs donnés changent). À utiliser à la place de `remember` pour un objectif chiffré.",
+    parameters: {
+      type: "object",
+      properties: {
+        label: { type: "string", description: "Nom de l'objectif, ex. « Voiture »" },
+        target: { type: "number", description: "Montant visé en euros" },
+        saved: { type: "number", description: "Montant déjà épargné en euros (si Ruben le dit)" },
+        due_label: { type: "string", description: "Pour quand, texte libre, ex. « Juin »" },
+      },
+      required: ["label", "target"],
+    },
+  },
+  {
     name: "add_transaction",
     description: "Noter une dépense (montant négatif) ou une entrée d'argent (positif) que Ruben cite, dans l'onglet Finances. Sans catégorie, elle est devinée.",
     parameters: { type: "object", properties: { label: { type: "string" }, amount: { type: "number", description: "Euros, négatif = dépense" }, category: { type: "string" }, date: DATE }, required: ["label", "amount"] },
@@ -40,6 +55,25 @@ export const LIFE_TOOLS: ToolDef[] = [
 
 const out = (o: unknown) => JSON.stringify(o);
 const noTable = (what: string) => out({ ok: false, error: `${what} : la base n'est pas prête pour cela (migration manquante). Dis-le simplement à Ruben.` });
+
+/**
+ * Crée l'objectif, ou met à jour celui du même nom (sans accents ni casse) : seuls les champs donnés changent.
+ * Partagé par l'outil IA et le formulaire « Nouvel objectif ».
+ */
+export async function saveGoal(db: ReturnType<typeof supabaseAdmin>, g: { label: string; target: number; saved: number | null; due_label: string | null }) {
+  const all = await db.from("savings_goals").select("id,label");
+  if (all.error) return { error: all.error, id: undefined, created: false };
+  const existing = (all.data ?? []).find((x) => fold(x.label) === fold(g.label));
+  if (existing) {
+    const patch: Record<string, unknown> = { target: g.target };
+    if (g.saved !== null) patch.saved = g.saved;
+    if (g.due_label !== null) patch.due_label = g.due_label;
+    const r = await db.from("savings_goals").update(patch).eq("id", existing.id);
+    return { error: r.error, id: existing.id as number, created: false };
+  }
+  const r = await db.from("savings_goals").insert({ label: g.label, target: g.target, saved: g.saved ?? 0, due_label: g.due_label }).select("id").single();
+  return { error: r.error, id: r.data?.id as number | undefined, created: true };
+}
 
 /** Exécute un outil « vie ». Renvoie null si ce n'est pas l'un d'eux. */
 export async function executeLifeTool(name: string, args: Record<string, unknown>): Promise<string | null> {
@@ -83,6 +117,12 @@ export async function executeLifeTool(name: string, args: Record<string, unknown
       if (!p.ok) return out(p);
       const r = await db.from("budgets").upsert(p.value, { onConflict: "category" });
       return done(r.error, "Budget", { saved: p.value });
+    }
+    case "set_goal": {
+      const p = parseGoal(args);
+      if (!p.ok) return out(p);
+      const r = await saveGoal(db, p.value);
+      return done(r.error, "Objectif", { saved: { ...p.value, id: r.id }, action: r.created ? "créé" : "mis à jour" });
     }
     case "add_transaction": {
       const p = parseExpense(args, now);

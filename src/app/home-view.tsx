@@ -73,6 +73,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   }, [accessCode]);
   const realMonth = fin?.ready ? monthTotals(fin.transactions, parisDay(now).slice(0, 7)) : null;
   const realGoal = fin?.ready ? fin.goals[0] : undefined;
+  const noGoalYet = !!fin?.ready && !realGoal; // finances réelles mais aucun objectif : on invite à en créer un (pas d'exemple fictif)
   const goal = realGoal ?? f.goals[0];
   const realForme = forme?.ready
     ? { lastNight: forme.sleeps.find((x) => x.date === parisDay(now))?.hours ?? null, week: weekStats(forme.workouts, forme.sleeps, now) }
@@ -162,8 +163,15 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
         </Card>
       )}
 
-      {/* Ton objectif, avec photo — réel s'il existe, sinon FICTIF (phase 4) */}
-      <button onClick={() => go("finances")} className="relative block h-48 w-full overflow-hidden rounded-[22px] bg-surface text-left transition-transform active:scale-[0.985]">
+      {/* Ton objectif — réel s'il existe (dégradé par défaut, sans photo), invitation si aucun, sinon FICTIF avec photo (phase 4) */}
+      {noGoalYet ? (
+        <Card onClick={() => go("finances")}>
+          <Label>Ton objectif</Label>
+          <p className="mt-1 text-[17px] font-semibold tracking-tight">Pas encore d&apos;objectif</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-muted">Dis à Majordome ce que tu veux mettre de côté, ou crée-le dans Finances.</p>
+        </Card>
+      ) : (
+      <button onClick={() => go("finances")} className={`relative block h-48 w-full overflow-hidden rounded-[22px] text-left transition-transform active:scale-[0.985] ${goal.image_url ? "bg-surface" : "goal-default"}`}>
         {goal.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={goal.image_url} alt="" className="absolute inset-0 size-full object-cover brightness-[0.75]" />
@@ -185,6 +193,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
           </div>
         </div>
       </button>
+      )}
 
       {/* Ta forme : 3 chiffres — RÉELS si la saisie existe, sinon FICTIFS (phase 5) */}
       <Card onClick={() => go("forme")}>

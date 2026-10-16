@@ -39,7 +39,7 @@ const finances = {
     { id: 7, date: daysAgo(50), label: "UBER EATS", amount: -15, category: "Restaurants" },
   ],
   budgets: [{ category: "Courses", limit: 300 }, { category: "Restaurants", limit: 60 }],
-  goals: [{ id: 1, label: "Voyage en Australie", target: 4000, saved: 1850, due_label: "Avril", image_url: "/objectif.jpg" }],
+  goals: [{ id: 1, label: "Voiture", target: 3000, saved: 450, due_label: "Juin", image_url: null }],
 };
 
 let formeReady = false;
@@ -108,6 +108,12 @@ financesReady = true;
 await tab("Forme");
 await tab("Finances");
 await shot("3b-finances-reelles");
+await page.getByRole("button", { name: "Nouvel objectif" }).click();
+await page.getByLabel("Nom de l'objectif").fill("Voiture");
+await shot("3c-nouvel-objectif");
+await tab("Accueil");
+await page.locator("main > div").first().evaluate((el) => el.scrollTo(0, 500));
+await shot("1d-accueil-reel");
 await tab("Forme");
 await shot("4-forme");
 formeReady = true;

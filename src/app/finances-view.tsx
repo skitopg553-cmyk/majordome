@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
+import { parseFrenchAmount } from "@/lib/finance/csv";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
@@ -42,15 +43,20 @@ function BudgetList({ rows }: { rows: Row[] }) {
   );
 }
 
-function GoalCard({ g }: { g: Goal }) {
+function GoalCard({ g, onEdit }: { g: Goal; onEdit?: () => void }) {
   const pct = goalProgress(g.saved, g.target);
   return (
-    <div className="relative h-40 overflow-hidden rounded-[22px] bg-surface">
+    <div className={`relative h-40 overflow-hidden rounded-[22px] ${g.image_url ? "bg-surface" : "goal-default"}`}>
       {g.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={g.image_url} alt="" className="absolute inset-0 size-full object-cover brightness-[0.7]" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-transparent" />
+      {onEdit && (
+        <button onClick={onEdit} aria-label={`Modifier l'objectif ${g.label}`} className="absolute right-2 top-2 min-h-11 rounded-full px-3 text-[12px] font-medium text-fg/80 active:bg-ink/60">
+          Modifier
+        </button>
+      )}
       <div className="absolute inset-x-4 bottom-4">
         <p className="text-[12px] font-medium text-fg/75">Objectif{g.due_label ? ` · ${g.due_label}` : ""}</p>
         <p className="truncate text-[17px] font-semibold tracking-tight">{g.label}</p>
@@ -62,6 +68,63 @@ function GoalCard({ g }: { g: Goal }) {
         </div>
       </div>
     </div>
+  );
+}
+
+type GoalDraft = { label: string; target: string; saved: string; due: string };
+const EMPTY_GOAL: GoalDraft = { label: "", target: "", saved: "", due: "" };
+
+/** Formulaire « Nouvel objectif » (et « Modifier » : même nom = mise à jour). */
+function GoalForm({ initial, accessCode, onUnauthorized, onDone, onCancel }: { initial: GoalDraft; accessCode: string; onUnauthorized: () => void; onDone: () => void; onCancel: () => void }) {
+  const [d, setD] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const field = "h-12 w-full rounded-2xl bg-raised px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50";
+
+  async function save() {
+    const target = parseFrenchAmount(d.target);
+    const saved = d.saved.trim() === "" ? null : parseFrenchAmount(d.saved);
+    if (!d.label.trim()) return setError("Donne un nom à ton objectif.");
+    if (target === null || target <= 0) return setError("Indique le montant visé, par exemple 3000.");
+    if (d.saved.trim() !== "" && (saved === null || saved < 0)) return setError("« Déjà épargné » doit être un montant, ou reste vide.");
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/finances/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
+        body: JSON.stringify({ label: d.label, target, saved, due_label: d.due }),
+      });
+      if (res.status === 401) return onUnauthorized();
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(r.error ?? `Erreur serveur (${res.status})`);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Enregistrement impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="rise space-y-2.5">
+      <Label>{initial.label ? "Modifier l'objectif" : "Nouvel objectif"}</Label>
+      <input value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} placeholder="Nom (ex. Voiture)" aria-label="Nom de l'objectif" className={field} />
+      <div className="flex gap-2">
+        <input value={d.target} onChange={(e) => setD({ ...d, target: e.target.value })} inputMode="decimal" placeholder="Montant visé €" aria-label="Montant visé en euros" className={field} />
+        <input value={d.saved} onChange={(e) => setD({ ...d, saved: e.target.value })} inputMode="decimal" placeholder="Déjà épargné €" aria-label="Déjà épargné en euros" className={field} />
+      </div>
+      <input value={d.due} onChange={(e) => setD({ ...d, due: e.target.value })} placeholder="Pour quand ? (facultatif, ex. Juin)" aria-label="Pour quand" className={field} />
+      {error && <p className="text-[13px] text-neg">{error}</p>}
+      <div className="flex justify-end gap-2 pt-1">
+        <button onClick={onCancel} className="min-h-11 rounded-full px-4 text-[13px] font-medium text-muted active:bg-raised">
+          Annuler
+        </button>
+        <button onClick={save} disabled={busy} className="min-h-11 rounded-full bg-accent px-5 text-[13px] font-semibold text-ink disabled:opacity-50">
+          {busy ? "…" : "Enregistrer"}
+        </button>
+      </div>
+    </Card>
   );
 }
 
@@ -90,6 +153,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [goalForm, setGoalForm] = useState<GoalDraft | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/finances", { headers: { "x-access-code": accessCode } })
@@ -206,7 +270,33 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
             )}
           </>
         )}
-        {data.goals.length > 0 && data.goals.map((g) => <GoalCard key={g.id} g={g} />)}
+        {data.goals.map((g) => (
+          <GoalCard
+            key={g.id}
+            g={g}
+            onEdit={() => setGoalForm({ label: g.label, target: String(g.target), saved: String(g.saved), due: g.due_label ?? "" })}
+          />
+        ))}
+        {goalForm ? (
+          <GoalForm
+            key={goalForm.label}
+            initial={goalForm}
+            accessCode={accessCode}
+            onUnauthorized={onUnauthorized}
+            onDone={() => {
+              setGoalForm(null);
+              load();
+            }}
+            onCancel={() => setGoalForm(null)}
+          />
+        ) : (
+          <button onClick={() => setGoalForm(EMPTY_GOAL)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-surface text-[14px] font-medium text-fg ring-1 ring-line active:scale-[0.99]">
+            <span className="text-accent" aria-hidden>
+              +
+            </span>
+            Nouvel objectif
+          </button>
+        )}
         {importButton}
         {recent.length > 0 && (
           <Card>

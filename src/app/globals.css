@@ -216,3 +216,11 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Objectif sans photo : dégradé aux couleurs de l'app (graphite + halo cyan discret). */
+.goal-default {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(108, 242, 255, 0.32), transparent 55%),
+    radial-gradient(circle at 10% 90%, rgba(108, 242, 255, 0.1), transparent 50%),
+    linear-gradient(160deg, #15171c, #0a0b0e);
+}

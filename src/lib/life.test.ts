@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalCategory, parseBudget, parseExpense, parseSleep, parseSteps, parseWorkout, resolveDate } from "./life";
+import { canonicalCategory, parseBudget, parseGoal, parseExpense, parseSleep, parseSteps, parseWorkout, resolveDate } from "./life";
 
 const now = new Date("2026-10-16T20:00:00+02:00");
 
@@ -75,5 +75,21 @@ describe("parseExpense", () => {
     expect(parseExpense({ label: "x", amount: 0 }, now)).toMatchObject({ ok: false });
     expect(parseExpense({ label: "x", amount: -5, category: "Licornes" }, now)).toMatchObject({ ok: false });
     expect(parseExpense({ label: " ", amount: -5 }, now)).toMatchObject({ ok: false });
+  });
+});
+
+describe("parseGoal", () => {
+  it("créer : nom + montant visé suffisent, le reste ne bouge pas", () => {
+    expect(parseGoal({ label: "  Voiture ", target: 3000 })).toEqual({ ok: true, value: { label: "Voiture", target: 3000, saved: null, due_label: null } });
+  });
+  it("garde déjà épargné et échéance", () => {
+    expect(parseGoal({ label: "Voyage", target: 4000, saved: 1850.456, due_label: " Avril " })).toEqual({ ok: true, value: { label: "Voyage", target: 4000, saved: 1850.46, due_label: "Avril" } });
+    expect(parseGoal({ label: "Fond", target: 100, saved: 0 })).toMatchObject({ value: { saved: 0 } });
+  });
+  it("refuse nom vide, montant nul / négatif / texte, épargné négatif", () => {
+    expect(parseGoal({ label: " ", target: 100 })).toMatchObject({ ok: false });
+    for (const t of [0, -5, "3000", NaN]) expect(parseGoal({ label: "x", target: t })).toMatchObject({ ok: false });
+    expect(parseGoal({ label: "x", target: 100, saved: -1 })).toMatchObject({ ok: false });
+    expect(parseGoal({ label: "x", target: 100, saved: "beaucoup" })).toMatchObject({ ok: false });
   });
 });
