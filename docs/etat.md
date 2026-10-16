@@ -131,3 +131,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - **Tâche planifiée « Majordome-soir » : NON créée.** Mon enregistrement (`Register-ScheduledTask`, qui lance `claude --dangerously-skip-permissions` toutes les 45 min) a été REFUSÉ par le garde-fou de Claude Code (« Create Unsafe Agents »). Je ne le contourne pas. Pour l'activer toi-même : `powershell -ExecutionPolicy Bypass -File scripts\soir-tache.ps1` (puis `Get-ScheduledTask -TaskName Majordome-soir`). Scripts prêts : `scripts/soir-run.ps1`, `scripts/soir-tache.ps1`.
 - **Veille du PC (powercfg, lecture seule)** : sur secteur, mise en veille après inactivité = jamais (0) et hibernation = jamais (0). Rien modifié.
 - Cette session (non planifiée) exécute `docs/soir.md` à la main, sur la branche `weekend`.
+- T1 Miroir réel — gain : fort (le bilan devient vrai) / coût : moyen. En cours.
+- T1 FAIT : « Ta semaine » = vraies données (tâches, dépenses vs semaine d'avant, sport, sommeil, kcal) calculées en code ; 2-3 phrases de l'IA (haiku, cachées 6 h), jetées si elles citent un chiffre absent des faits. Temps d'écran : pas de donnée réelle, donc absent. Route GET /api/week.

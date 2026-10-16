@@ -57,3 +57,29 @@ describe("weeklyPrompt", () => {
     expect(p).toMatch(/N'invente aucun chiffre/);
   });
 });
+
+import { mirrorFacts, noteIsGrounded, weekMirror } from "./mirror";
+
+describe("weekMirror (miroir réel)", () => {
+  const more = {
+    ...input,
+    transactions: [...input.transactions, { date: "2026-10-06", label: "Resto", amount: -50, category: "Restaurants" }, { date: "2026-10-07", label: "Lidl", amount: -20, category: "Courses" }],
+    sleeps: [{ date: "2026-10-13", hours: 7 }, { date: "2026-10-14", hours: 6 }, { date: "2026-10-05", hours: 3 }],
+    meals: [{ date: "2026-10-13", kcal: 600 }, { date: "2026-10-13", kcal: 1200 }, { date: "2026-10-14", kcal: 1000 }],
+  };
+  it("compare à la semaine d'avant, moyennes sur les jours renseignés seulement", () => {
+    const m = weekMirror(more, now);
+    expect(m).toMatchObject({ spent: 83.5, spentPrev: 1069, spentDeltaPct: -92, sleepAvg: 6.5, nights: 2, kcalAvg: 1400, mealDays: 2 });
+  });
+  it("sans données : null, pas de zéro inventé", () => {
+    const m = weekMirror({ ...input, transactions: [] }, now);
+    expect(m).toMatchObject({ spentDeltaPct: null, sleepAvg: null, kcalAvg: null, nights: 0 });
+    expect(mirrorFacts(m).join(" ")).not.toMatch(/Sommeil|Repas/);
+  });
+  it("garde-fou : refuse une phrase qui cite un chiffre absent des faits", () => {
+    const m = weekMirror(more, now);
+    expect(noteIsGrounded("Tu as dépensé 83,5 € et fait 3 séances, bravo.", m)).toBe(true);
+    expect(noteIsGrounded("Tu as dépensé 120 € cette semaine.", m)).toBe(false);
+    expect(noteIsGrounded("Belle semaine, continue comme ça.", m)).toBe(true);
+  });
+});

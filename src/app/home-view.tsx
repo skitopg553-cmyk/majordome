@@ -226,7 +226,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
       <Card onClick={onWeek} className="flex items-center justify-between gap-3">
         <span>
           <span className="block text-[15px] font-medium">Ta semaine</span>
-          <span className="block text-[13px] text-muted">Le bilan du dimanche soir, en aperçu</span>
+          <span className="block text-[13px] text-muted">Tes chiffres et un mot de Majordome</span>
         </span>
         <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
           <path d="M9 6l6 6-6 6" />

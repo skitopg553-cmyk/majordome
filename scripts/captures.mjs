@@ -65,6 +65,7 @@ await page.route("**/api/**", (route) => {
   if (u.pathname === "/api/memories") return json(m === "GET" ? { memories } : { ok: true });
   if (u.pathname === "/api/messages") return json({ messages: [] });
   if (u.pathname === "/api/forme") return json(formeReady ? forme : { ready: false });
+  if (u.pathname === "/api/week") return json({ mirror: { from: today, to: today, tasksDone: 6, tasksLate: 1, spent: 184, income: 0, topCategory: { category: "Restaurants", spent: 72 }, sessions: 3, activeDays: 3, spentPrev: 230, spentDeltaPct: -20, sleepAvg: 7.25, nights: 5, kcalAvg: 2140, mealDays: 4 }, note: "Belle semaine : tu as bouclé l'essentiel et dépensé moins que la semaine passée. Une piste : cale deux séances dès lundi." });
   if (u.pathname === "/api/costs") return json({ today: { cost: 0.051, calls: 3 }, month: { cost: 1.842, calls: 61 }, byModel: [{ model: "claude-sonnet-5-5", cost: 1.79, calls: 40 }, { model: "claude-haiku-5-5", cost: 0.052, calls: 21 }], unpriced: 0 });
   if (u.pathname === "/api/bank/sync") return json({ imported: 3, duplicates: 12, skipped: 0, balance: 976.6, syncedAt: new Date().toISOString() });
   if (u.pathname === "/api/finances") return json(financesReady ? finances : { ready: false });
