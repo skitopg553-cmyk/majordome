@@ -1,5 +1,6 @@
 // Forme (phase 5) : logique pure, testée dans forme.test.ts.
 import { addDays, parisDay } from "./task-groups";
+import { fold } from "./text";
 
 /** Mots-clés de sport dans un titre d'événement (sans accents, minuscules). « course » seul = les courses, donc exclu. */
 const SPORT = [
@@ -47,19 +48,12 @@ const SPORT = [
 // Faux amis : contiennent un mot-clé mais ne sont pas du sport.
 const NOT_SPORT = ["salle de reunion", "salle d'attente", "salle de classe", "football a la tele", "match a la tele", "hand-off", "handover", "bloc-notes"];
 
-const norm = (s: string) =>
-  ` ${s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9' ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()} `;
+const norm = (s: string) => ` ${fold(s).replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim()} `;
 
 /** Vrai si le titre d'un événement d'agenda ressemble à une séance de sport (mots entiers uniquement). */
 export function isWorkoutTitle(title: string) {
   const t = norm(title);
-  const raw = ` ${title.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()} `;
+  const raw = ` ${fold(title)} `;
   if (NOT_SPORT.some((n) => raw.includes(n))) return false;
   return SPORT.some((k) => t.includes(` ${k} `));
 }

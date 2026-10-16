@@ -77,20 +77,32 @@ export default function ChatView({
   // Fermer le chat coupe la voix et la dictée.
   useEffect(() => {
     if (!open) {
+      clearTimeout(closeTimer.current);
       recRef.current?.abort();
       window.speechSynthesis?.cancel();
     }
   }, [open]);
 
-  function say(text: string) {
+  // Après une demande vocale, le chat se referme 3 s après la fin de la réponse (annulé dès que Ruben touche l'écran).
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cancelClose = () => clearTimeout(closeTimer.current);
+  const closeSoon = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(onClose, 3000);
+  };
+
+  function say(text: string, then?: () => void) {
     const synth = window.speechSynthesis;
-    if (!synth || !text.trim()) return;
+    if (!synth || !text.trim()) return then?.();
     synth.cancel();
     const u = new SpeechSynthesisUtterance(plainText(text));
     u.lang = "fr-FR";
     u.voice = pickFrenchVoice(synth.getVoices());
     u.onstart = () => setSpeaking(true);
-    u.onend = u.onerror = () => setSpeaking(false);
+    u.onend = u.onerror = () => {
+      setSpeaking(false);
+      then?.();
+    };
     synth.speak(u);
   }
 
@@ -98,6 +110,7 @@ export default function ChatView({
     const text = raw.trim();
     if (!text) return;
     if (busy) return setInput(text); // réponse encore en cours : on garde le texte (dicté ou tapé) dans le champ, rien n'est perdu
+    cancelClose();
     const next: Message[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
@@ -128,11 +141,15 @@ export default function ChatView({
       setWaiting(false);
       setBusy(false);
     }
-    if (viaVoice && speak) say(reply);
+    if (viaVoice && reply && !reply.includes("⚠️")) {
+      if (speak) say(reply, closeSoon);
+      else closeSoon();
+    }
   }
 
   // Dictée : appelée directement dans le clic (le navigateur exige un geste de l'utilisateur).
   function listen() {
+    cancelClose();
     const SR = speechRecognition();
     if (!SR) {
       setError("La dictée n'est pas disponible sur ce navigateur : écris ton message.");
@@ -273,7 +290,10 @@ export default function ChatView({
             ref={inputRef}
             value={input}
             rows={1}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              cancelClose(); // il veut continuer à écrire : on ne referme pas
+              setInput(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

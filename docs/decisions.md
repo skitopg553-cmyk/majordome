@@ -29,3 +29,5 @@ Format : date — décision — pourquoi.
 - 2026-10-16 — **« À valider » remplace les « actions réglées en autonomie »** : Majordome *propose* (ex. ajouter un RDV trouvé dans un mail), Ruben valide ou refuse d'un tap. Rien n'est exécuté sans accord (cohérent avec la règle « lecture seule + confirmation »). Pour l'instant, propositions fictives et choix gardés en local.
 - 2026-10-16 — **Objectifs : champ `image_url` prévu** dans le futur modèle de données (image de fond de la carte). Image fixe `/public/objectif.jpg` (copiée depuis la maquette, pour ne pas dépendre d'un lien googleusercontent qui expire). Rien d'autre n'est codé.
 - 2026-10-15 — **Le dépôt est la source de vérité** entre le chat (planification) et Claude Code (construction) : roadmap et décisions vivent ici.
+- 2026-10-16 — **Ton des budgets : neutre.** Un budget dépassé s'affiche en gris avec « Au-dessus du budget de X € », jamais en rouge (l'app ne doit pas culpabiliser). Le rouge/vert ne servent qu'aux montants +/−.
+- 2026-10-16 — **Chat vocal éphémère :** après une demande faite à la voix, le chat se referme 3 s après la fin de la réponse lue ; toucher l'écran annule la fermeture.

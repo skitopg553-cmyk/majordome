@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { fold } from "./text";
 
 // Outils que l'agent peut appeler. Format neutre (JSON Schema) : ai.ts l'adapte à OpenAI ou à Claude.
 export type ToolDef = { name: string; description: string; parameters: Record<string, unknown> };
@@ -54,7 +55,7 @@ export const TOOLS: ToolDef[] = [
 
 // Comparaison sans accents, casse ni ponctuation : "Appeler le médecin !" == "appeler le medecin".
 const norm = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  fold(s).replace(/[^a-z0-9]+/g, " ").trim();
 
 // shortcut: similarité = égalité ou inclusion du titre normalisé, pas de flou (Levenshtein) ; à affiner si des doublons passent encore.
 export function isSimilar(a: string, b: string) {

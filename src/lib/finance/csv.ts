@@ -2,6 +2,8 @@
 // Gère : séparateur « ; » ou « , », champs entre guillemets, virgule décimale (« -1 234,56 »),
 // dates JJ/MM/AAAA, montant sur une colonne ou en deux colonnes Débit / Crédit.
 
+import { fold } from "../text";
+
 export type RawTransaction = { date: string; label: string; amount: number }; // date AAAA-MM-JJ, amount < 0 = dépense
 
 /** Découpe une ligne CSV en respectant les guillemets ("a;b" reste un seul champ, "" = guillemet). */
@@ -48,12 +50,7 @@ export function parseFrenchDate(s: string): string | null {
   return check.getUTCMonth() + 1 === Number(mo) && check.getUTCDate() === Number(d) ? iso : null;
 }
 
-const norm = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+const norm = (s: string) => fold(s).trim();
 
 /** Repère les colonnes utiles d'après l'en-tête (noms usuels des banques françaises). */
 function findColumns(header: string[]) {

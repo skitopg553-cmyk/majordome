@@ -93,6 +93,27 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
         <p className="mt-1 text-[15px] leading-snug text-muted">{summary}</p>
       </div>
 
+      {/* Tâches du jour — RÉELLES */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <Label>Aujourd&apos;hui</Label>
+          <button onClick={() => go("planning")} className="-my-3 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
+            Tout voir
+          </button>
+        </div>
+        {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
+        {!api.loaded && <SkeletonRows />}
+        {api.loaded && focus.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Aucune tâche pour aujourd&apos;hui.</p>}
+        {focus.length > 0 && (
+          <ul className="mt-1 divide-y divide-line">
+            {focus.slice(0, 5).map((t) => (
+              <TaskRow key={t.id} t={t} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} />
+            ))}
+          </ul>
+        )}
+        {focus.length > 5 && <p className="pt-1 text-xs text-faint">+ {focus.length - 5} autres dans le Planning</p>}
+      </Card>
+
       {/* Prochain rendez-vous — FICTIF (phase 2) */}
       {next && (
         <Card onClick={() => go("planning")}>
@@ -119,27 +140,6 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
           </div>
         </Card>
       )}
-
-      {/* Tâches du jour — RÉELLES */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <Label>Aujourd&apos;hui</Label>
-          <button onClick={() => go("planning")} className="-my-3 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
-            Tout voir
-          </button>
-        </div>
-        {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
-        {!api.loaded && <SkeletonRows />}
-        {api.loaded && focus.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Aucune tâche pour aujourd&apos;hui.</p>}
-        {focus.length > 0 && (
-          <ul className="mt-1 divide-y divide-line">
-            {focus.slice(0, 5).map((t) => (
-              <TaskRow key={t.id} t={t} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} />
-            ))}
-          </ul>
-        )}
-        {focus.length > 5 && <p className="pt-1 text-xs text-faint">+ {focus.length - 5} autres dans le Planning</p>}
-      </Card>
 
       {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
       {fin?.ready && fin.transactions.length > 0 ? (

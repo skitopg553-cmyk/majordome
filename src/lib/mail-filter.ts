@@ -2,13 +2,11 @@
 // But : ne garder que les mails qui parlent probablement d'un rendez-vous (ou d'une demande de RDV),
 // pour que Haiku n'en lise qu'une poignée par jour. Testé sur 20 exemples fictifs (mail-filter.test.ts).
 
+import { fold } from "./text";
+
 export type MailMeta = { from: string; subject: string; snippet?: string; hasIcs?: boolean };
 
-const norm = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+const norm = fold;
 
 // Expéditeurs qui n'envoient presque que des RDV / réservations.
 const RDV_SENDERS = ["doctolib", "calendar-notification@google.com", "calendly", "planity", "maiia", "thefork", "lafourchette", "zenchef", "outlook calendar", "ticketmaster"];

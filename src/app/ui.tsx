@@ -67,7 +67,7 @@ export function Label({ children }: { children: React.ReactNode }) {
 export function Bar({ value, max, over = false }: { value: number; max: number; over?: boolean }) {
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-raised">
-      <div className={`h-full rounded-full ${over ? "bg-neg" : "bg-accent"}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
+      <div className={`h-full rounded-full ${over ? "bg-muted" : "bg-accent"}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
     </div>
   );
 }

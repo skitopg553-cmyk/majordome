@@ -29,12 +29,13 @@ function BudgetList({ rows }: { rows: Row[] }) {
         <li key={b.category}>
           <div className="mb-1.5 flex justify-between gap-3 text-[15px]">
             <span className="truncate">{b.category}</span>
-            <span className={`shrink-0 tabular-nums ${b.over ? "text-neg" : "text-muted"}`}>
+            <span className="shrink-0 tabular-nums text-muted">
               {euro(b.spent, false)}
               {b.limit !== null && <span className="text-faint"> / {euro(b.limit, false)}</span>}
             </span>
           </div>
           {b.limit !== null && <Bar value={b.spent} max={b.limit} over={b.over} />}
+          {b.over && <p className="mt-1 text-[12px] text-faint">Au-dessus du budget de {euro(b.spent - b.limit!, false)}</p>}
         </li>
       ))}
     </ul>

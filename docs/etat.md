@@ -45,20 +45,12 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Revues produit 1 à 3 : `docs/revue-produit.md`.
 
 ## Questions pour Ruben
-1. Pour la tâche planifiée de nuit (lance `claude` sans contrôle de permissions) : tu confirmes ? Le script n'a pas abouti la 1re fois.
-2. Le chat CLI est-il reconnecté (`claude` puis `/login`) ? Le test du 16/10 donnait une erreur 401.
-3. Tant que l'agenda est fictif, on met « Aujourd'hui » (vraies tâches) **avant** le prochain RDV sur l'Accueil ?
-4. Après une demande vocale, le chat se referme-t-il tout seul après la lecture ?
-5. Budget dépassé : on garde le rouge, ou ton neutre (gris + « au-dessus du budget ») ?
-6. Ta banque permet-elle l'export CSV depuis son appli mobile, ou seulement depuis le site ?
-7. Bilan « Ta semaine » : dimanche soir (prévu) ou lundi matin ?
+- Tranchées le 16/10 : Q3 « Aujourd'hui » avant le RDV fictif (fait) ; Q4 le chat se referme 3 s après une réponse vocale, annulé dès qu'on touche l'écran (fait, pas testé sur téléphone) ; Q5 budget dépassé en gris + « Au-dessus du budget de X € », plus de rouge (fait).
+- Encore ouvertes : la tâche planifiée de nuit (script n'a pas abouti) ; Q6 ta banque exporte-t-elle le CSV depuis son appli mobile ? ; Q7 bilan « Ta semaine » dimanche soir ou lundi matin ?
 
-## Migrations à valider (écrites, NON appliquées)
-- `0004_finances.sql` — `transactions`, `budgets`, `savings_goals` (avec `image_url`).
-- `0005_forme.sql` — `sleep_logs`, `workouts`.
-- `0006_google.sql` — `google_tokens` (refresh token, lecture seule).
-- `0007_push.sql` — `push_subscriptions`, colonne `tasks.reminded_at`, pg_cron + pg_net (secret lu dans le Vault).
-Toutes : ajouts uniquement, RLS activé sans règle.
+## Migrations
+- **Appliquées le 16/10** : `0004_finances` (transactions, budgets, savings_goals) et `0005_forme` (sleep_logs, workouts). Tables vides, RLS activé. Finances et Forme passent donc en mode réel (écran « Commence par un relevé »).
+- Écrites, **non appliquées** : `0006_google.sql` (Google), `0007_push.sql` (rappels). Rappels reportés : l'app n'est pas encore installée sur l'écran d'accueil.
 
 ## Variables d'environnement à ajouter (Vercel, quand tu actives)
 - Google (phase 2) : `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_ENABLED=true` → `docs/google-setup.md`.

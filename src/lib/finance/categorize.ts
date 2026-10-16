@@ -1,5 +1,6 @@
 // Catégorisation des opérations : d'abord des règles en code (gratuit, instantané),
 // puis Haiku uniquement pour les libellés qu'aucune règle ne reconnaît (architecture : niveau 0 avant niveau 1).
+import { fold } from "../text";
 import config from "./categories.json";
 
 export type Rule = { category: string; keywords: string[] };
@@ -8,13 +9,7 @@ export const RULES: Rule[] = config.rules;
 export const CATEGORIES = [...new Set(RULES.map((r) => r.category)), "Autre"];
 
 /** Libellé bancaire normalisé : minuscules, sans accents, espaces simples (avec un espace final pour les mots-clés « bar »). */
-const norm = (s: string) =>
-  ` ${s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim()} `;
+const norm = (s: string) => ` ${fold(s).replace(/\s+/g, " ").trim()} `;
 
 /** Catégorie par règles, ou null si le libellé est ambigu (aucune règle). */
 export function categorizeByRules(label: string, rules: Rule[] = RULES): string | null {
