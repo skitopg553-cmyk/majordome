@@ -4,7 +4,7 @@ import { estimateCostUsd, MODELS } from "./models";
 import { supabaseAdmin } from "./supabase";
 import type { ToolDef } from "./tools";
 
-type ChatMessage = { role: "user" | "assistant"; content: string; images?: string[] }; // images : data URLs (capture d'écran lue par vision)
+type ChatMessage = { role: "user" | "assistant"; content: string };
 type Tier = "sonnet" | "haiku";
 type Exec = (name: string, args: Record<string, unknown>) => Promise<string>;
 type Log = (model: string, inputTokens: number, outputTokens: number, startedAt: number) => void;
@@ -41,7 +41,7 @@ async function openaiLoop(tier: Tier, system: string, messages: ChatMessage[], t
   const model = tier === "haiku" ? process.env.OPENAI_MODEL_SMALL ?? process.env.OPENAI_MODEL : process.env.OPENAI_MODEL;
   if (!model) throw new Error("OPENAI_MODEL manquant");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const msgs: any[] = [{ role: "system", content: system }, ...messages.map((m) => (m.images?.length ? { role: m.role, content: [{ type: "text", text: m.content }, ...m.images.map((url) => ({ type: "image_url", image_url: { url } }))] } : { role: m.role, content: m.content }))];
+  const msgs: any[] = [{ role: "system", content: system }, ...messages];
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const startedAt = Date.now();
@@ -105,12 +105,7 @@ async function anthropicLoop(tier: Tier, system: string, messages: ChatMessage[]
   const model = MODELS[tier];
   const anthropic = new Anthropic(); // lit ANTHROPIC_API_KEY
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const msgs: any[] = messages.map((m) => ({
-    role: m.role,
-    content: m.images?.length
-      ? [...m.images.map((url) => ({ type: "image", source: { type: "base64", media_type: url.slice(5, url.indexOf(";")), data: url.slice(url.indexOf(",") + 1) } })), { type: "text", text: m.content }]
-      : m.content,
-  }));
+  const msgs: any[] = messages.map((m) => ({ role: m.role, content: m.content }));
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const startedAt = Date.now();

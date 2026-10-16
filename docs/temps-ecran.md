@@ -1,9 +1,6 @@
 # Temps d'écran : envoyer le chiffre depuis Tasker
 
-Une application web ne peut pas lire le temps d'écran du téléphone. Trois façons de le saisir :
-1. **À la voix** : « 4 h d'écran aujourd'hui » (outil `log_screen_time`).
-2. **Écran Forme → carte Temps d'écran → Saisir** : boutons − / +, ou « Lire une capture » (capture d'écran de « Bien-être numérique », lue par l'IA, avec **confirmation avant d'enregistrer**).
-3. **Tasker** (automatique, plus tard) : une requête HTTP vers la route ci-dessous.
+Une application web ne peut pas lire le temps d'écran du téléphone. **État actuel : la carte « Temps d'écran » de Forme est un APERÇU fictif** (bandeau « fictif »). La lecture de capture d'écran par l'IA et l'outil vocal ont été retirés ; seules la table `screen_time_logs` (migration 0011) et la route ci-dessous existent, et rien dans l'app ne les lit ni ne les écrit (prêt pour Tasker).
 
 ## La route
 

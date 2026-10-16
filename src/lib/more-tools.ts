@@ -5,7 +5,6 @@ import { dayTotals, parseFood, parseNutritionGoals } from "./nutrition/food";
 import { out, noTable, restorable, undoFor, upsertWithUndo, type Row } from "./life-tools";
 import { parseExpense, parseWorkout } from "./life";
 import { clampText, MAX_MEMORY } from "./limits";
-import { minutesLabel, parseScreenTime } from "./screen-time";
 import { isMissingTable, supabaseAdmin } from "./supabase";
 import { parisDay } from "./task-groups";
 import { fold } from "./text";
@@ -44,11 +43,6 @@ export const MORE_TOOLS: ToolDef[] = [
     parameters: { type: "object", properties: { kcal: { type: "integer" }, protein: { type: "integer", description: "grammes" }, carbs: { type: "integer", description: "grammes" }, fat: { type: "integer", description: "grammes" } } },
   },
   {
-    name: "log_screen_time",
-    description: "Noter le temps d'écran d'un jour (« 4 h d'écran aujourd'hui »). Remplace la valeur du jour si elle existe. Donne hours et/ou minutes.",
-    parameters: { type: "object", properties: { hours: { type: "number" }, minutes: { type: "number" }, date: DATE }, required: [] },
-  },
-  {
     name: "update_transaction",
     description: "Corriger une opération déjà notée (libellé, montant, catégorie, date). Seuls les champs donnés changent.",
     parameters: { type: "object", properties: { id: ID, label: { type: "string" }, amount: { type: "number" }, category: { type: "string" }, date: DATE }, required: ["id"] },
@@ -71,13 +65,13 @@ export const MORE_TOOLS: ToolDef[] = [
   {
     name: "delete_entry",
     description:
-      "SUPPRIMER une donnée, UNIQUEMENT si Ruben le demande clairement (« supprime la dépense Netflix », « efface ma nuit d'hier »). Jamais de ta propre initiative. Un bouton Annuler s'affiche juste après. kind : task, goal, budget, transaction, workout, sleep, steps, food, screen_time. Par id (#n du contexte) pour task, goal, transaction, workout, food ; par date pour sleep, steps, screen_time ; par nom pour goal (label) et budget (category).",
+      "SUPPRIMER une donnée, UNIQUEMENT si Ruben le demande clairement (« supprime la dépense Netflix », « efface ma nuit d'hier »). Jamais de ta propre initiative. Un bouton Annuler s'affiche juste après. kind : task, goal, budget, transaction, workout, sleep, steps, food. Par id (#n du contexte) pour task, goal, transaction, workout, food ; par date pour sleep, steps ; par nom pour goal (label) et budget (category).",
     parameters: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["task", "goal", "budget", "transaction", "workout", "sleep", "steps", "food", "screen_time"] },
+        kind: { type: "string", enum: ["task", "goal", "budget", "transaction", "workout", "sleep", "steps", "food"] },
         id: ID,
-        date: { type: "string", description: "AAAA-MM-JJ, pour sleep, steps, screen_time" },
+        date: { type: "string", description: "AAAA-MM-JJ, pour sleep, steps" },
         label: { type: "string", description: "Nom de l'objectif (kind goal), si pas d'id" },
         category: { type: "string", description: "Catégorie du budget (kind budget)" },
       },
@@ -89,7 +83,7 @@ export const MORE_TOOLS: ToolDef[] = [
 const DELETE_TABLES: Record<string, { table: string; label: string }> = {
   task: { table: "tasks", label: "Tâche" }, goal: { table: "savings_goals", label: "Objectif" }, budget: { table: "budgets", label: "Budget" },
   transaction: { table: "transactions", label: "Opération" }, workout: { table: "workouts", label: "Séance" }, sleep: { table: "sleep_logs", label: "Nuit" },
-  steps: { table: "steps_logs", label: "Pas" }, food: { table: "food_logs", label: "Repas" }, screen_time: { table: "screen_time_logs", label: "Temps d'écran" },
+  steps: { table: "steps_logs", label: "Pas" }, food: { table: "food_logs", label: "Repas" },
 };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -134,12 +128,6 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       const r = await upsertWithUndo(db, "nutrition_goals", "id", { id: 1, ...p.value }, "Objectif nutrition");
       return finish(r.error, "Objectif nutrition", { saved: p.value }, r.undo);
     }
-    case "log_screen_time": {
-      const p = parseScreenTime(args, now);
-      if (!p.ok) return out(p);
-      const r = await upsertWithUndo(db, "screen_time_logs", "date", p.value, "Temps d'écran");
-      return finish(r.error, "Temps d'écran", { saved: { ...p.value, duree: minutesLabel(p.value.minutes) } }, r.undo);
-    }
     case "update_transaction": {
       const id = Number(args.id);
       const cur = await db.from("transactions").select("*").eq("id", id).maybeSingle();
@@ -180,7 +168,7 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       const t = DELETE_TABLES[kind];
       if (!t) return out({ ok: false, error: `kind inconnu. Possibles : ${Object.keys(DELETE_TABLES).join(", ")}` });
       let q = db.from(t.table).select("*");
-      if (kind === "sleep" || kind === "steps" || kind === "screen_time") {
+      if (kind === "sleep" || kind === "steps") {
         if (typeof args.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) return out({ ok: false, error: "date requise (AAAA-MM-JJ) pour ce type" });
         q = q.eq("date", args.date);
       } else if (kind === "budget") {
@@ -216,13 +204,12 @@ export async function moreContext(now: Date): Promise<string> {
   const db = supabaseAdmin();
   const today = parisDay(now);
   const since = new Date(now.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
-  const [txs, workouts, goals, food, ng, screen] = await Promise.all([
+  const [txs, workouts, goals, food, ng] = await Promise.all([
     db.from("transactions").select("id,date,label,amount").order("date", { ascending: false }).limit(8),
     db.from("workouts").select("id,date,kind,minutes").gte("date", since).order("date", { ascending: false }),
     db.from("savings_goals").select("id,label,target,saved,due_label"),
     db.from("food_logs").select("id,label,grams,kcal,protein,carbs,fat,estimated").eq("date", today),
     db.from("nutrition_goals").select("kcal,protein,carbs,fat").eq("id", 1).maybeSingle(),
-    db.from("screen_time_logs").select("minutes").eq("date", today).maybeSingle(),
   ]);
   const lines: string[] = [];
   if (!txs.error && txs.data?.length) lines.push(`Dernières opérations (pour corriger ou supprimer) : ${txs.data.map((t) => `#${t.id} ${t.date} ${t.label} ${Number(t.amount)} €`).join(" ; ")}.`);
@@ -234,6 +221,5 @@ export async function moreContext(now: Date): Promise<string> {
     const g = ng.data;
     lines.push(`Objectif nutrition : ${g ? `${g.kcal ?? "?"} kcal, ${g.protein ?? "?"} g protéines, ${g.carbs ?? "?"} g glucides, ${g.fat ?? "?"} g lipides` : "pas défini"}.`);
   }
-  if (!screen.error) lines.push(`Temps d'écran aujourd'hui : ${screen.data ? minutesLabel(screen.data.minutes) : "pas noté"}.`);
   return lines.map((l) => `- ${l}`).join("\n");
 }

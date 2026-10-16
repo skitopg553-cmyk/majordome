@@ -46,8 +46,3 @@ export function screenTrend(rows: ScreenRow[], today: string): ScreenTrend | nul
   const label = pct === 0 ? "stable vs semaine dernière" : `${pct < 0 ? "−" : "+"}${Math.abs(pct)} % vs semaine dernière`;
   return { current, previous, pct, direction, label };
 }
-
-/** Image envoyée pour lecture : seulement png/jpeg/webp en data URL, 3 Mo maximum (la limite d'une requête Vercel est de 4,5 Mo). */
-export function validImage(v: unknown): string | null {
-  return typeof v === "string" && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 3_000_000 ? v : null;
-}

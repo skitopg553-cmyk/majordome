@@ -105,20 +105,13 @@ describe("log_food", () => {
   });
 });
 
-describe("set_nutrition_goals / log_screen_time", () => {
+describe("set_nutrition_goals", () => {
   it("objectif : crée puis ne change que les champs donnés", async () => {
     await call("set_nutrition_goals", { kcal: 2200, protein: 140 });
     await call("set_nutrition_goals", { protein: 150 });
     expect(h.tables.nutrition_goals).toHaveLength(1);
     expect(h.tables.nutrition_goals[0]).toMatchObject({ id: 1, kcal: 2200, protein: 150 });
     expect((await call("set_nutrition_goals", { kcal: 10 })).ok).toBe(false);
-  });
-  it("temps d'écran : un jour = une ligne, remplacée", async () => {
-    await call("log_screen_time", { hours: 4 });
-    const r = await call("log_screen_time", { hours: 3, minutes: 30 });
-    expect(r.saved.duree).toBe("3 h 30");
-    expect(h.tables.screen_time_logs).toHaveLength(1);
-    expect(h.tables.screen_time_logs[0].minutes).toBe(210);
   });
 });
 

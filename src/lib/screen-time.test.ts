@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minutesLabel, parseScreenTime, screenTrend, validImage, type ScreenRow } from "./screen-time";
+import { minutesLabel, parseScreenTime, screenTrend, type ScreenRow } from "./screen-time";
 
 const now = new Date("2026-10-16T10:00:00+02:00");
 
@@ -46,15 +46,5 @@ describe("screenTrend : 7 derniers jours vs 7 précédents", () => {
   it("les bornes : le 9 est dans la semaine précédente, le 10 dans la courante", () => {
     const t = screenTrend([row("2026-10-10", 100), row("2026-10-09", 200)], today)!;
     expect(t).toMatchObject({ current: 100, previous: 200 });
-  });
-});
-
-describe("validImage", () => {
-  it("accepte une petite image base64, refuse le reste", () => {
-    expect(validImage("data:image/png;base64,iVBORw0KGgo=")).not.toBeNull();
-    expect(validImage("data:image/svg+xml;base64,AAAA")).toBeNull();
-    expect(validImage("https://exemple.fr/a.png")).toBeNull();
-    expect(validImage("data:image/png;base64," + "A".repeat(3_000_000))).toBeNull();
-    expect(validImage(42)).toBeNull();
   });
 });
