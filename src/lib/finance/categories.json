@@ -10,7 +10,7 @@
     { "category": "Sport & santé", "keywords": ["basic fit", "basic-fit", "fitness park", "decathlon", "pharmacie", "doctolib", "mutuelle", "medecin", "dentiste"] },
     { "category": "Loisirs", "keywords": ["fnac", "cinema", "ugc", "pathe", "steam", "playstation", "ticketmaster", "concert", "bar "] },
     { "category": "Shopping", "keywords": ["amazon", "zara", "h&m", "uniqlo", "vinted", "leboncoin", "ikea", "action "] },
-    { "category": "Épargne", "keywords": ["livret a", "ldds", "virement epargne", "assurance vie", "pea"] },
+    { "category": "Épargne", "keywords": ["livret a", "ldds", "virement epargne", "assurance vie", "pea", "epargne", "savings", "pocket", "vault", "coffre"] },
     { "category": "Retraits", "keywords": ["retrait dab", "retrait"] }
   ]
 }

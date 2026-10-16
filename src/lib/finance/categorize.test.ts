@@ -9,6 +9,12 @@ describe("categorizeByRules", () => {
     expect(categorizeByRules("CB UBER EATS")).toBe("Restaurants"); // « uber eats » passe avant « uber »
     expect(categorizeByRules("Pharmacie Lépine")).toBe("Sport & santé");
   });
+  it("range les virements vers l'épargne (cagnottes et coffres Revolut compris) hors des dépenses", () => {
+    expect(categorizeByRules("To Pocket Vacances")).toBe("Épargne");
+    expect(categorizeByRules("Vers EUR Savings")).toBe("Épargne");
+    expect(categorizeByRules("Virement vers Livret A")).toBe("Épargne");
+    expect(categorizeByRules("Coffre voyage")).toBe("Épargne");
+  });
   it("respecte l'ordre des règles (la première gagne)", () => {
     expect(categorizeByRules("AMAZON PRIME")).toBe("Abonnements");
     expect(categorizeByRules("AMAZON EU SARL")).toBe("Shopping");
