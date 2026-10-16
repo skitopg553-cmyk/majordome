@@ -1,5 +1,6 @@
 "use client";
 
+import { callApi } from "./api-client";
 import { useState } from "react";
 import { EXPIRY_WARNING_DAYS } from "@/lib/bank-config";
 import { daysLeft } from "@/lib/finance/bank";
@@ -35,11 +36,8 @@ export default function BankCard({ bank, accessCode, onUnauthorized, onChanged, 
     setBusy(kind);
     setNotice(null);
     try {
-      const res = await fetch(path, { method: "POST", headers: { "x-access-code": accessCode } });
-      if (res.status === 401) return onUnauthorized();
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `Erreur serveur (${res.status})`); // message brut, voulu
-      if (kind === "connect") return void window.location.assign(d.url);
+      const d = await callApi<{ url?: string; imported?: number }>(accessCode, path, { method: "POST", onUnauthorized }); // message d'erreur brut du serveur : voulu
+      if (kind === "connect") return void window.location.assign(d.url ?? "/");
       setNotice({ ok: true, text: d.imported ? `${d.imported} nouvelle${d.imported > 1 ? "s" : ""} opération${d.imported > 1 ? "s" : ""}` : "Déjà à jour" });
       onChanged();
     } catch (e) {

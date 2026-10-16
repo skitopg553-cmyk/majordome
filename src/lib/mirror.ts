@@ -50,20 +50,6 @@ export function weekSummary(input: { tasks: MirrorTask[]; transactions: Tx[]; wo
   };
 }
 
-/** Prompt du bilan hebdomadaire (dimanche soir). Ton : ami organisé, jamais culpabilisant. */
-export function weeklyPrompt(s: WeekSummary) {
-  return `Tu es Majordome. Écris le bilan de la semaine de Ruben (du ${s.from} au ${s.to}).
-Règles :
-- Tutoie-le, ton simple et chaleureux, comme un ami organisé. Jamais culpabilisant : un chiffre bas est un point de départ, pas un reproche.
-- Utilise UNIQUEMENT les chiffres ci-dessous. N'invente aucun chiffre, aucun pourcentage, aucune comparaison absente.
-- 4 phrases maximum, puis UNE seule suggestion concrète pour la semaine prochaine.
-Chiffres de la semaine :
-- Tâches faites : ${s.tasksDone}
-- Tâches en retard : ${s.tasksLate}
-- Dépenses : ${s.spent} € (entrées : ${s.income} €)${s.topCategory ? `, surtout en ${s.topCategory.category} (${s.topCategory.spent} €)` : ""}
-- Séances de sport : ${s.sessions} sur ${s.activeDays} jour(s)`;
-}
-
 // ---------- Miroir réel : chiffres de la semaine (en code) + 2-3 phrases de l'IA à partir de ces chiffres ----------
 
 export type MirrorInput = {

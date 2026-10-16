@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { drainQueue, enqueue, friendlyError, isNetworkError } from "@/lib/offline";
 import { postponeToTomorrow } from "@/lib/task-groups";
+import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 
 export type Task = { id: number; title: string; due_at: string | null; priority: number; notes: string | null; status: "todo" | "done" };
@@ -15,17 +16,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
   const [leaving, setLeaving] = useState<Set<number>>(new Set()); // cochées, en train de partir (animation)
 
   const api = useCallback(
-    async (method: string, body?: unknown) => {
-      const res = await fetch("/api/tasks", {
-        method,
-        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (res.status === 401) onUnauthorized();
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? `Erreur serveur (${res.status})`);
-      return data;
-    },
+    (method: string, body?: unknown) => callApi<any>(accessCode, "/api/tasks", { method, body, onUnauthorized }), // eslint-disable-line @typescript-eslint/no-explicit-any
     [accessCode, onUnauthorized],
   );
 

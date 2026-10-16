@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DEMO_FORME as S, DEMO_PHASE } from "@/lib/demo-data";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { addDays, parisDay } from "@/lib/task-groups";
+import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry, type DeleteTarget } from "./delete-entry";
 import { NutritionCard, ScreenDemoCard, type NutritionData } from "./forme-cards";
 import { Bar, Card, DemoBanner, Header, Label } from "./ui";
@@ -111,14 +112,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/forme", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: JSON.stringify({ date: parisDay(new Date()), ...body }),
-      });
-      if (res.status === 401) return onUnauthorized();
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `Erreur serveur (${res.status})`);
+      await callApi(accessCode, "/api/forme", { method: "POST", body: { date: parisDay(new Date()), ...body }, onUnauthorized });
       setForm(null);
       load();
     } catch (e) {

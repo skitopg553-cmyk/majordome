@@ -1,5 +1,6 @@
 "use client";
 
+import { callApi } from "./api-client";
 import { useCallback, useEffect, useState } from "react";
 
 type Memory = { id: number; content: string; category: "objectif" | "preference" | "habitude" | "info" };
@@ -17,17 +18,7 @@ export default function MemoryView({ accessCode, onUnauthorized }: { accessCode:
   const [error, setError] = useState<string | null>(null);
 
   const api = useCallback(
-    async (method: string, body?: unknown) => {
-      const res = await fetch("/api/memories", {
-        method,
-        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (res.status === 401) onUnauthorized();
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? `Erreur serveur (${res.status})`);
-      return data;
-    },
+    (method: string, body?: unknown) => callApi<any>(accessCode, "/api/memories", { method, body, onUnauthorized }), // eslint-disable-line @typescript-eslint/no-explicit-any
     [accessCode, onUnauthorized],
   );
 

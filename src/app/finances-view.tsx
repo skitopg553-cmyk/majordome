@@ -5,6 +5,7 @@ import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
 import { parseFrenchAmount } from "@/lib/finance/csv";
 import { xlsxFileToCsv } from "@/lib/finance/xlsx";
+import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
@@ -145,14 +146,7 @@ function GoalForm({ initial, accessCode, onUnauthorized, onDone, onCancel }: { i
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/finances/goals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: JSON.stringify({ label: d.label, target, saved, due_label: d.due }),
-      });
-      if (res.status === 401) return onUnauthorized();
-      const r = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(r.error ?? `Erreur serveur (${res.status})`);
+      await callApi(accessCode, "/api/finances/goals", { method: "POST", body: { label: d.label, target, saved, due_label: d.due }, onUnauthorized });
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Enregistrement impossible");

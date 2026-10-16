@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { weeklyPrompt, weekSummary } from "./mirror";
+import { weekSummary } from "./mirror";
 
 // Données FICTIVES : semaine du lundi 12 au dimanche 18 octobre 2026, on est jeudi 15 à 20 h.
 const now = new Date("2026-10-15T20:00:00+02:00");
@@ -44,17 +44,6 @@ describe("weekSummary", () => {
     const s = weekSummary({ tasks: [], transactions: [], workouts: [] }, now);
     expect(s.tasksDone + s.spent + s.sessions).toBe(0);
     expect(s.topCategory).toBeNull();
-  });
-});
-
-describe("weeklyPrompt", () => {
-  it("donne à l'IA uniquement les vrais chiffres et le ton attendu", () => {
-    const p = weeklyPrompt(weekSummary(input, now));
-    expect(p).toContain("Tâches faites : 2");
-    expect(p).toContain("Dépenses : 83.5 €");
-    expect(p).toContain("surtout en Courses (58 €)");
-    expect(p).toMatch(/Jamais culpabilisant/);
-    expect(p).toMatch(/N'invente aucun chiffre/);
   });
 });
 
