@@ -1,5 +1,13 @@
 # État de Majordome
 
+## RÉSUMÉ DU SOIR (branche `soir`) — à lire d'abord
+- **Fait** : 1 tout pilotable à la voix (tableau plus bas) · 2 épargne : Engagé / Libre / Mis de côté + une phrase par objectif · 3 nutrition (`log_food`, ~250 aliments, objectif kcal/macros) · 4 temps d'écran (voix, capture, Tasker) · 5 Planning refait (jour, frise des heures, semaine en points, fiche d'une tâche) · 6 verrou du code d'accès.
+- **À FAIRE PAR TOI** : appliquer dans Supabase les migrations `0009`, `0010` (si pas déjà fait) et **`0011_nutrition_screen.sql`** (repas, objectif nutrition, temps d'écran). Rien n'a été appliqué par moi.
+- **Tests sur téléphone** : « j'ai mangé 50 g de riz » ; « j'ai mis 200 € sur la voiture » puis Annuler ; « supprime la dépense Netflix » ; Planning : glisser à gauche/droite, toucher une tâche ; carte Temps d'écran → « Lire une capture ». Ne teste PAS le verrou en tapant 5 faux codes : tu serais bloqué 10 min.
+- **Choix faits à ta place** : l'IA peut supprimer sur ta demande claire (bouton Annuler 10 s) ; aliments de la table Ciqual recopiés de mémoire, **à vérifier** (decisions.md) ; riz/pâtes = cuits ; « Libre » = revenus − charges fixes − dépenses variables − 10 %, sur les 3 derniers mois complets ; une tâche à 00:00 ou sans date = « sans heure » ; verrou d'essais en mémoire (protège surtout sur une instance) ; la capture d'écran n'enregistre rien sans ton OK.
+- **Reste** : vérifier la table d'aliments ; lecture de capture et route Tasker jamais testées en vrai ; points d’audit de l’après-midi (voir plus bas) ; banque : adresse de retour à confirmer chez Enable Banking.
+
+
 ## Ce qui marche
 | Section | État | Détail |
 |---|---|---|
@@ -110,3 +118,4 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 ### Tâche 3 — nutrition : faite. `log_food` + table de ~250 aliments (source Ciqual, valeurs à vérifier, voir decisions.md), objectif calorique/macros à la voix, carte « Aujourd'hui » dans Forme, repas « estimé » marqués. 16 tests.
 ### Tâche 4 — temps d'écran : fait. Voix, bouton, capture lue par l'IA avec confirmation, route `POST /api/screen-time` pour Tasker (`docs/temps-ecran.md`), tendance 7 j vs 7 j. 9 tests.
 ### Tâche 6 — sécurité : faite. 5 mauvais codes depuis la même IP → 10 min d'attente (en mémoire, voir decisions.md). Pendant l'attente le bon code est aussi refusé (message « Code d'accès incorrect »). 6 tests.
+### Tâche 5 — Planning : fait. Vue jour par défaut (frise 7–22 h, heures vides regroupées, ligne « maintenant »), tâches sans heure en haut, semaine en mini-points (lun → dim), glisser à gauche/droite ou flèches pour changer de jour, fiche de tâche (modifier, terminer, reporter, supprimer avec confirmation), zones tactiles ≥ 44 px. `PATCH /api/tasks` accepte maintenant titre / échéance / priorité / notes (mêmes validations). Rendu vérifié en 390×844 (captures). 12 tests.

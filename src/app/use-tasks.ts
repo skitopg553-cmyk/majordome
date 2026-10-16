@@ -74,6 +74,15 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     });
   }
 
+  // Modification depuis la fiche (titre, échéance, priorité, notes) : l'écran change tout de suite, et revient en arrière si le serveur refuse.
+  function update(t: Task, fields: Partial<Pick<Task, "title" | "due_at" | "priority" | "notes">>) {
+    setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, ...fields, notes: "notes" in fields ? fields.notes || null : x.notes } : x)));
+    return api("PATCH", { id: t.id, ...fields }).catch((e) => {
+      setTasks((cur) => cur.map((x) => (x.id === t.id ? t : x)));
+      setError(e.message);
+    });
+  }
+
   // « Reporter à demain » en un geste : même heure demain, ou demain 9 h.
   function postpone(t: Task) {
     const due_at = postponeToTomorrow(t.due_at, new Date());
@@ -96,7 +105,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       });
   }
 
-  return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove };
+  return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove, update };
 }
 
 export type TasksApi = ReturnType<typeof useTasks>;

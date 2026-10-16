@@ -42,6 +42,7 @@ const finances = {
   ],
   budgets: [{ category: "Courses", limit: 300 }, { category: "Restaurants", limit: 60 }],
   goals: [{ id: 1, label: "Voiture", target: 3000, saved: 450, due_label: "Juin", image_url: null }],
+  savings: { capacity: { months: 3, fixed: 864, free: 180 }, saved: 450, advice: [{ label: "Voiture", text: "Voiture : 319 €/mois nécessaires, 180 € dispo → décale de 2 mois ou réduis tes sorties de 139 €." }] },
 };
 
 let formeReady = false;
@@ -50,6 +51,8 @@ const forme = {
   sleeps: [daysAgo(3), daysAgo(2), daysAgo(1), today].map((date, i) => ({ date, hours: [6.5, 7.25, 5.75, 7.5][i] })),
   workouts: [{ date: daysAgo(1), kind: "Salle", minutes: 60 }],
   steps: [{ date: today, steps: 2000 }],
+  nutrition: { meals: [{ id: 1, label: "Riz blanc cuit", grams: 150, kcal: 195, protein: 4, carbs: 42, fat: 0.5, estimated: 0 }, { id: 2, label: "Gâteau de Mamie", grams: 100, kcal: 350, protein: 5, carbs: 50, fat: 15, estimated: 1 }, { id: 3, label: "Œuf entier", grams: 110, kcal: 157, protein: 14, carbs: 1, fat: 11, estimated: 0 }], goals: { kcal: 2200, protein: 140, carbs: 250, fat: 70 } },
+  screen: [{ date: today, minutes: 246 }, { date: daysAgo(2), minutes: 270 }, { date: daysAgo(8), minutes: 330 }, { date: daysAgo(9), minutes: 300 }],
 };
 
 const browser = await chromium.launch();
@@ -103,12 +106,13 @@ await page.getByRole("button", { name: /Ta semaine/ }).click();
 await shot("1c-ta-semaine");
 await page.getByLabel("Fermer", { exact: true }).click();
 await tab("Planning");
+await page.locator("main > div").first().evaluate((el) => el.scrollTo(0, 0));
 await shot("2-planning");
-await page.getByRole("tab", { name: "semaine" }).click();
-await shot("2b-planning-semaine");
-await page.getByRole("tab", { name: "jour" }).click();
-await page.getByRole("button", { name: "Modifier" }).click();
-await shot("2c-planning-modifier");
+await page.getByRole("button", { name: /^Appeler le médecin/ }).click();
+await shot("2b-planning-fiche");
+await page.getByLabel("Fermer", { exact: true }).click();
+await page.getByRole("button", { name: "Jour suivant" }).click();
+await shot("2c-planning-demain");
 await tab("Finances");
 await shot("3-finances");
 financesReady = true;
@@ -128,6 +132,8 @@ await tab("Accueil");
 await tab("Forme");
 await page.getByRole("button", { name: "+ Séance" }).click();
 await shot("4b-forme-reelle");
+await page.locator("main > div").first().evaluate((el) => el.scrollTo(0, el.scrollHeight));
+await shot("4c-forme-bas");
 await page.getByLabel("Écrire à Majordome").click();
 await shot("5-chat");
 await page.getByRole("button", { name: "Qu'est-ce que j'ai à faire aujourd'hui ?" }).click();

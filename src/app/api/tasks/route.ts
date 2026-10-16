@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
-import { parseDueAt, taskFields } from "@/lib/limits";
+import { taskFields, taskPatch } from "@/lib/limits";
 import { isSimilar } from "@/lib/tools";
 
 const COLS = "id,title,due_at,priority,notes,status";
@@ -43,21 +43,14 @@ export async function POST(req: Request) {
   return NextResponse.json({ task: data });
 }
 
-// Coche / décoche une tâche ({ id, done }) ou la reporte ({ id, due_at }).
+// Coche / décoche une tâche ({ id, done }) ou la modifie ({ id, title?, due_at?, priority?, notes? } : voir taskPatch).
 export async function PATCH(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  const { id, done, due_at } = (await req.json().catch(() => ({}))) as { id?: number; done?: boolean; due_at?: string };
-  if (typeof id !== "number" || (typeof done !== "boolean" && typeof due_at !== "string")) {
-    return NextResponse.json({ error: "id et done (ou due_at) requis" }, { status: 400 });
-  }
-  if (typeof due_at === "string" && !parseDueAt(due_at)) return NextResponse.json({ error: "Date invalide : date ISO 8601 avec fuseau attendue" }, { status: 400 });
-  const patch =
-    typeof due_at === "string"
-      ? { due_at }
-      : done
-        ? { status: "done", done_at: new Date().toISOString() }
-        : { status: "todo", done_at: null };
-  const { error } = await supabaseAdmin().from("tasks").update(patch).eq("id", id);
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (typeof body.id !== "number") return NextResponse.json({ error: "id requis" }, { status: 400 });
+  const p = taskPatch(body);
+  if (!p.ok) return NextResponse.json({ error: p.error }, { status: 400 });
+  const { error } = await supabaseAdmin().from("tasks").update(p.patch).eq("id", body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

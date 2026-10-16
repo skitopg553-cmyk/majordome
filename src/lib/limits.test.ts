@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampText, MAX_NOTES, MAX_TITLE, parseDueAt, taskFields } from "./limits";
+import { clampText, MAX_NOTES, MAX_TITLE, parseDueAt, taskFields, taskPatch } from "./limits";
 
 describe("clampText", () => {
   it("nettoie, coupe, et refuse ce qui n'est pas du texte ou est vide", () => {
@@ -53,5 +53,21 @@ describe("taskFields", () => {
   });
   it("une valeur nulle (champ à ignorer) n'est pas une erreur", () => {
     expect(taskFields({ title: "ok", due_at: null, priority: null, notes: null }, { requireTitle: true })).toEqual({ ok: true, fields: { title: "ok" } });
+  });
+});
+
+describe("taskPatch (modification depuis l'écran)", () => {
+  it("coche / décoche", () => {
+    expect(taskPatch({ done: true })).toMatchObject({ ok: true, patch: { status: "done" } });
+    expect(taskPatch({ done: false })).toEqual({ ok: true, patch: { status: "todo", done_at: null } });
+  });
+  it("champs validés, échéance et notes effaçables", () => {
+    expect(taskPatch({ title: "  Nouveau titre ", priority: 1 })).toEqual({ ok: true, patch: { title: "Nouveau titre", priority: 1 } });
+    expect(taskPatch({ due_at: "2026-10-17T09:00:00+02:00" })).toEqual({ ok: true, patch: { due_at: "2026-10-17T09:00:00+02:00" } });
+    expect(taskPatch({ due_at: null })).toEqual({ ok: true, patch: { due_at: null } });
+    expect(taskPatch({ notes: "" })).toEqual({ ok: true, patch: { notes: null } });
+  });
+  it("refuse l'invalide et le vide", () => {
+    for (const bad of [{ due_at: "demain" }, { title: "  " }, { priority: 9 }, {}, { id: 3 }]) expect(taskPatch(bad)).toMatchObject({ ok: false });
   });
 });

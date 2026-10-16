@@ -63,8 +63,8 @@ export function NutritionCard({ data, onDelete }: { data: NutritionData; onDelet
               <span className="min-w-0 flex-1 truncate text-[14px]">
                 {m.label}
                 <span className="text-faint"> · {m.grams} g · {Math.round(m.kcal)} kcal</span>
-                {m.estimated ? <span className="ml-1.5 rounded-full bg-raised px-1.5 py-0.5 text-[11px] text-muted">estimé</span> : null}
               </span>
+              {m.estimated ? <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted">estimé</span> : null}
               <button onClick={() => onDelete(m)} aria-label={`Supprimer ${m.label}`} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised active:text-neg">
                 {TRASH}
               </button>

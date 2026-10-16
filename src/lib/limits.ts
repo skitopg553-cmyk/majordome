@@ -52,3 +52,19 @@ export function taskFields(a: Record<string, unknown>, opts: { requireTitle: boo
   }
   return { ok: true, fields };
 }
+
+export type TaskPatch = Record<string, string | number | null>;
+
+/**
+ * Modification d'une tâche depuis l'écran : { done } coche / décoche ; sinon des champs (title, due_at, priority, notes).
+ * due_at: null retire l'échéance, notes: "" ou null efface les notes. Même validation que la création.
+ */
+export function taskPatch(b: Record<string, unknown>): { ok: true; patch: TaskPatch } | { ok: false; error: string } {
+  if (typeof b.done === "boolean") return { ok: true, patch: b.done ? { status: "done", done_at: new Date().toISOString() } : { status: "todo", done_at: null } };
+  const f = taskFields(b, { requireTitle: false });
+  if (!f.ok) return f;
+  const patch: TaskPatch = { ...f.fields };
+  if (b.due_at === null) patch.due_at = null;
+  if (b.notes === null || b.notes === "") patch.notes = null;
+  return Object.keys(patch).length ? { ok: true, patch } : { ok: false, error: "rien à modifier" };
+}
