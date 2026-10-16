@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { importKeys, parseBankCsv } from "@/lib/finance/csv";
 import { ingestTransactions } from "@/lib/finance/ingest";
+import { saveSnapshot } from "@/lib/finance/snapshot";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const MAX_CSV = 2_000_000; // 2 Mo : un relevé de plusieurs années tient largement
 
@@ -20,5 +22,16 @@ export async function POST(req: Request) {
   const keys = importKeys(parsed.transactions);
   const r = await ingestTransactions(parsed.transactions.map((t, i) => ({ ...t, key: keys[i] })));
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
-  return NextResponse.json({ imported: r.imported, duplicates: r.duplicates, skipped: parsed.skipped, viaAi: r.viaAi, format: parsed.format });
+  // Solde lu dans le fichier (Revolut : colonne Balance / Solde). Conservé si la table existe (migration 0010), sinon seulement affiché dans le message.
+  const snap = parsed.balance ? await saveSnapshot(supabaseAdmin(), { balance: parsed.balance.amount, asOf: parsed.balance.date }) : null;
+  return NextResponse.json({
+    imported: r.imported,
+    duplicates: r.duplicates,
+    skipped: parsed.skipped,
+    viaAi: r.viaAi,
+    format: parsed.format,
+    balance: parsed.balance ?? null,
+    balanceSaved: snap?.saved ?? false,
+    balanceTableMissing: snap?.missingTable ?? false,
+  });
 }

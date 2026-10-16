@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { latestConnection, publicBank } from "@/lib/bank-store";
 import { totalBalance } from "@/lib/finance/bank";
+import { latestSnapshot } from "@/lib/finance/snapshot";
 import { isMissingTable, supabaseAdmin } from "@/lib/supabase";
 
 // Données Finances réelles : opérations des 120 derniers jours (90 j d'historique + le mois en cours), budgets, objectifs.
@@ -22,6 +23,8 @@ export async function GET(req: Request) {
     ready: true,
     // Connexion bancaire : { ready:false } tant que la migration 0009 n'est pas appliquée (l'écran masque alors le bouton).
     bank: publicBank(await latestConnection(db), totalBalance),
+    // Dernier solde lu dans un relevé importé (null tant que la migration 0010 n'est pas appliquée).
+    snapshot: await latestSnapshot(db),
     // numeric arrive en texte depuis Postgres : on convertit une fois ici.
     transactions: (tx.data ?? []).map((t) => ({ ...t, amount: Number(t.amount) })),
     budgets: (budgets.data ?? []).map((b) => ({ category: b.category, limit: Number(b.monthly_limit) })),

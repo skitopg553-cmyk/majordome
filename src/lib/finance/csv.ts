@@ -2,7 +2,7 @@
 // Gère : séparateur « ; » ou « , », champs entre guillemets, virgule décimale (« -1 234,56 »),
 // dates JJ/MM/AAAA, montant sur une colonne ou en deux colonnes Débit / Crédit.
 
-import { fold } from "../text";
+import { fixMojibake, fold } from "../text";
 
 export type RawTransaction = { date: string; label: string; amount: number }; // date AAAA-MM-JJ, amount < 0 = dépense
 
@@ -31,6 +31,7 @@ export function splitCsvLine(line: string, sep: string): string[] {
 
 /** « -1 234,56 € » → -1234.56 ; « 12.50 » → 12.5. Renvoie null si illisible. */
 export function parseFrenchAmount(s: string): number | null {
+  s = s.replace(/[−–]/g, "-"); // signe moins typographique (−, –) → « - » (les exports Excel en français l'utilisent parfois)
   let t = s.replace(/[\s  €]/g, "").replace(/^\+/, "");
   if (!t) return null;
   // Virgule décimale française ; un point éventuel est alors un séparateur de milliers.
@@ -89,38 +90,73 @@ export function importKeys(txs: RawTransaction[]): string[] {
   });
 }
 
-export type CsvResult = { transactions: RawTransaction[]; skipped: number; error?: string; format?: "standard" | "revolut" };
+export type CsvResult = {
+  transactions: RawTransaction[];
+  skipped: number;
+  error?: string;
+  format?: "standard" | "revolut";
+  /** Solde lu dans le fichier (colonne Balance / Solde) : celui de l'opération terminée la plus récente. */
+  balance?: { amount: number; date: string };
+};
+
+type RevolutCols = Record<"completed" | "description" | "amount" | "fee" | "currency" | "state" | "balance", number>;
+
+// Noms de colonnes de Revolut, en anglais et en français (comparés sans accents ni casse).
+const REVOLUT_NAMES = {
+  completed: ["completed date", "date de fin"],
+  description: ["description"],
+  amount: ["amount", "montant"],
+  fee: ["fee", "frais"],
+  currency: ["currency", "devise"],
+  state: ["state", "etat", "statut"],
+  balance: ["balance", "solde"],
+};
+const COMPLETED = /^(completed|termin\w*)$/; // « COMPLETED » ou « TERMINÉ »
+
+/** Jour + heure d'une date Revolut : « 2026-10-05 12:30:00 » ou « 05/10/2026 12:30 ». stamp trie dans l'ordre du temps. */
+function revolutDate(s: string): { day: string; stamp: string } | null {
+  const day = parseIsoDate(s) ?? parseFrenchDate(s.trim().split(/\s+/)[0] ?? "");
+  if (!day) return null;
+  const time = s.match(/(\d{2}:\d{2})(?::(\d{2}))?/);
+  return { day, stamp: `${day} ${time ? `${time[1]}:${time[2] ?? "00"}` : "00:00:00"}` };
+}
 
 /**
- * Relevé Revolut (CSV ou Excel converti) : Type, Product, Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance.
- * Date = Completed Date ; montant = Amount − Fee ; on ignore ce qui n'est pas COMPLETED (en attente, annulé, refusé)
- * et ce qui n'est pas en euros (on ne convertit rien : aucun taux inventé).
+ * Relevé Revolut (CSV ou Excel converti, en anglais ou en français) :
+ * Type, Product, Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance
+ * (Type, Produit, Date de début, Date de fin, Description, Montant, Frais, Devise, État, Solde).
+ * Date = Completed Date / Date de fin ; montant = Amount − Fee ; on ignore ce qui n'est pas COMPLETED / TERMINÉ (en attente, annulé, refusé)
+ * et ce qui n'est pas en euros (on ne convertit rien : aucun taux inventé). Le solde = celui de l'opération terminée la plus récente.
  */
-function parseRevolut(rows: string[][], col: Record<"completed" | "description" | "amount" | "fee" | "currency" | "state", number>): CsvResult {
+function parseRevolut(rows: string[][], col: RevolutCols): CsvResult {
   const transactions: RawTransaction[] = [];
   let skipped = 0;
+  let latest: { stamp: string; amount: number; day: string } | null = null;
   for (const f of rows) {
-    const done = (f[col.state] ?? "").trim().toUpperCase() === "COMPLETED";
+    const done = COMPLETED.test(fold(f[col.state] ?? "").trim());
     const currency = (f[col.currency] ?? "").trim().toUpperCase();
-    const date = parseIsoDate(f[col.completed] ?? "");
+    const when = revolutDate(f[col.completed] ?? "");
     const label = (f[col.description] ?? "").replace(/\s+/g, " ").trim();
     const amount = parseFrenchAmount(f[col.amount] ?? "");
     const fee = col.fee === -1 ? 0 : (parseFrenchAmount(f[col.fee] ?? "") ?? 0);
-    if (!done || (currency && currency !== "EUR") || !date || !label || amount === null) {
+    if (!done || (currency && currency !== "EUR") || !when || !label || amount === null) {
       skipped++;
       continue;
     }
+    const balance = col.balance === -1 ? null : parseFrenchAmount(f[col.balance] ?? "");
+    if (balance !== null && (!latest || when.stamp >= latest.stamp)) latest = { stamp: when.stamp, amount: balance, day: when.day };
     const net = Math.round((amount - fee) * 100) / 100;
     if (net === 0) {
       skipped++;
       continue;
     }
-    transactions.push({ date, label, amount: net });
+    transactions.push({ date: when.day, label, amount: net });
   }
-  return { transactions, skipped, format: "revolut" };
+  return { transactions, skipped, format: "revolut", ...(latest ? { balance: { amount: latest.amount, date: latest.day } } : {}) };
 }
 
 export function parseBankCsv(text: string): CsvResult {
+  text = fixMojibake(text); // un fichier UTF-8 lu comme Windows-1252 donne « TerminÃ© » : on le répare avant tout
   const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
   // Certaines banques mettent quelques lignes d'infos avant l'en-tête : on cherche la 1re ligne qui contient « date ».
   const headerAt = lines.findIndex((l) => /date/i.test(l));
@@ -128,7 +164,8 @@ export function parseBankCsv(text: string): CsvResult {
   const headerLine = lines[headerAt];
   const sep = (headerLine.match(/;/g)?.length ?? 0) >= (headerLine.match(/,/g)?.length ?? 0) ? ";" : ",";
   const names = splitCsvLine(headerLine, sep).map(norm);
-  const rv = { completed: names.indexOf("completed date"), description: names.indexOf("description"), amount: names.indexOf("amount"), fee: names.indexOf("fee"), currency: names.indexOf("currency"), state: names.indexOf("state") };
+  const at = (aliases: string[]) => names.findIndex((n) => aliases.includes(n));
+  const rv = Object.fromEntries(Object.entries(REVOLUT_NAMES).map(([k, aliases]) => [k, at(aliases)])) as RevolutCols;
   if (rv.completed !== -1 && rv.description !== -1 && rv.amount !== -1 && rv.state !== -1) {
     return parseRevolut(lines.slice(headerAt + 1).map((l) => splitCsvLine(l, sep)), rv);
   }

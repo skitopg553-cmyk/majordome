@@ -29,7 +29,8 @@ const today = parisDate(new Date());
 const daysAgo = (n) => parisDate(new Date(Date.now() - n * 86400e3));
 const finances = {
   ready: true,
-  bank: { ready: true, connection: { bankName: "Revolut", balance: 976.6, syncedAt: new Date(Date.now() - 5 * 60e3).toISOString(), validUntil: new Date(Date.now() + 10 * 86400e3).toISOString() } },
+  snapshot: process.env.NO_BANK ? { balance: 2392.61, asOf: today } : null,
+  bank: process.env.NO_BANK ? { ready: true, connection: null } : { ready: true, connection: { bankName: "Revolut", balance: 976.6, syncedAt: new Date(Date.now() - 5 * 60e3).toISOString(), validUntil: new Date(Date.now() + 10 * 86400e3).toISOString() } },
   transactions: [
     { id: 1, date: today, label: "CB CARREFOUR CITY", amount: -23.4, category: "Courses" },
     { id: 2, date: daysAgo(1), label: "PRLV NAVIGO", amount: -86.4, category: "Transport" },

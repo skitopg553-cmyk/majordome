@@ -10,7 +10,7 @@ import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
-type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo };
+type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo; snapshot?: { balance: number; asOf: string } | null };
 type Row = { category: string; spent: number; limit: number | null; over: boolean };
 
 const ym = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
@@ -232,6 +232,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
       const parts = [...(d.format === "revolut" ? ["Relevé Revolut reconnu"] : []), `${d.imported} opération${d.imported > 1 ? "s" : ""} ajoutée${d.imported > 1 ? "s" : ""}`];
       if (d.duplicates) parts.push(`${d.duplicates} déjà présente${d.duplicates > 1 ? "s" : ""}`);
       if (d.skipped) parts.push(`${d.skipped} ligne${d.skipped > 1 ? "s" : ""} ignorée${d.skipped > 1 ? "s" : ""}`);
+      if (d.balance) parts.push(`solde du fichier : ${euro(d.balance.amount)} au ${shortDate(d.balance.date)}${d.balanceTableMissing ? " (non conservé : migration 0010 à appliquer)" : ""}`);
       setNotice({ ok: true, text: parts.join(" · ") });
       load();
     } catch (e) {
@@ -282,6 +283,14 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
       <div className="space-y-3 px-4 pb-6">
         <Header title="Finances" onAvatar={onAvatar} />
         <BankCard bank={data.bank} accessCode={accessCode} onUnauthorized={onUnauthorized} onChanged={load} incoming={bankNotice ?? null} />
+        {/* Solde lu dans le dernier relevé importé : seulement si la banque n'est pas connectée (son solde, plus frais, passe avant). */}
+        {data.snapshot && !(data.bank?.ready && data.bank.connection?.balance != null) && (
+          <Card>
+            <Label>Solde au {shortDate(data.snapshot.asOf)}</Label>
+            <p className="mt-1 text-[34px] font-semibold leading-none tracking-tight tabular-nums">{euro(data.snapshot.balance)}</p>
+            <p className="mt-1.5 text-[13px] text-muted">D&apos;après ton dernier relevé importé.</p>
+          </Card>
+        )}
         {data.transactions.length === 0 ? (
           <Card>
             <p className="text-[17px] font-semibold tracking-tight">Commence par un relevé</p>

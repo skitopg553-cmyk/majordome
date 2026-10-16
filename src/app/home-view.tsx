@@ -48,7 +48,7 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
   task: "M5 12l4 4 10-10",
 };
 
-type Fin = { ready: false } | { ready: true; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
+type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
 type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
 
 export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
@@ -74,6 +74,13 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   const realMonth = fin?.ready ? monthTotals(fin.transactions, parisDay(now).slice(0, 7)) : null;
   const realGoal = fin?.ready ? fin.goals[0] : undefined;
   const bankBalance = fin?.ready && fin.bank?.ready ? (fin.bank.connection?.balance ?? null) : null; // vrai solde de la banque connectée, sinon null
+  // Solde affiché : celui de la banque connectée (le plus frais), sinon celui du dernier relevé importé (avec sa date), sinon rien de réel.
+  const shownBalance =
+    bankBalance !== null
+      ? { label: `Solde ${fin?.ready ? fin.bank?.connection?.bankName : ""}`.trim(), amount: bankBalance }
+      : fin?.ready && fin.snapshot
+        ? { label: `Solde au ${new Date(fin.snapshot.asOf + "T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" })}`, amount: fin.snapshot.balance }
+        : null;
   const noGoalYet = !!fin?.ready && !realGoal; // finances réelles mais aucun objectif : on invite à en créer un (pas d'exemple fictif)
   const goal = realGoal ?? f.goals[0];
   const realForme = forme?.ready
@@ -144,10 +151,10 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
       )}
 
       {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
-      {fin?.ready && bankBalance !== null ? (
+      {fin?.ready && shownBalance ? (
         <Card onClick={() => go("finances")}>
-          <Label>Solde {fin.bank?.connection?.bankName}</Label>
-          <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(bankBalance)}</p>
+          <Label>{shownBalance.label}</Label>
+          <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(shownBalance.amount)}</p>
           <p className="mt-1.5 text-[13px] text-muted">{euro(realMonth!.spent, false)} dépensés ce mois-ci</p>
         </Card>
       ) : fin?.ready && fin.transactions.length > 0 ? (
