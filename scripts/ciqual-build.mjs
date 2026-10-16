@@ -9,8 +9,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 const DIR = ".ciq";
 const dec = (f) => new TextDecoder("windows-1252").decode(readFileSync(`${DIR}/${f}`));
 
-// Compositions : 328 = énergie (kcal, règlement UE 1169/2011), 25000 = protéines, 31000 = glucides, 40000 = lipides.
-const WANT = { 328: "kcal", 25000: "protein", 31000: "carbs", 40000: "fat" };
+// Compositions : 328 = énergie (kcal, règlement UE 1169/2011), 25000 (ou 25003) = protéines, 31000 = glucides, 40000 = lipides.
+const WANT = { 328: "kcal", 333: "kcal333", 25000: "protein", 25003: "protein625", 31000: "carbs", 40000: "fat" }; // protéines : facteur de Jones (25000), à défaut N × 6,25 (25003)
 const num = (s) => {
   const t = s.trim().replace(",", ".");
   if (/^traces?$/i.test(t)) return 0;
@@ -26,6 +26,18 @@ for (const m of dec("compo_2020_07_07.xml").matchAll(re)) {
   o[key] = num(m[3]);
   compo.set(m[1], o);
 }
+for (const c of compo.values()) if (!Number.isFinite(c.kcal) && Number.isFinite(c.kcal333)) c.kcal = c.kcal333; // énergie : règlement UE (328), à défaut Jones avec fibres (333)
+for (const c of compo.values()) if (!Number.isFinite(c.protein) && Number.isFinite(c.protein625)) c.protein = c.protein625;
+// Ciqual ne renseigne pas toujours un macro quasi nul (ex. lipides de la banane) : un seul macro absent est mis à 0 si l'énergie colle (±20 %) sans lui.
+for (const c of compo.values()) {
+  const missing = ["protein", "carbs", "fat"].filter((k) => !Number.isFinite(c[k]));
+  if (missing.length === 1 && Number.isFinite(c.kcal)) {
+    const calc = 4 * (c.protein || 0) + 4 * (c.carbs || 0) + 9 * (c.fat || 0);
+    if (Math.abs(calc - c.kcal) <= 0.2 * Math.max(c.kcal, 20)) c[missing[0]] = 0;
+  }
+}
+// Énergie absente de Ciqual (fruits…) mais macros connus : calculée avec les facteurs d'Atwater (4 kcal/g protéines et glucides, 9 kcal/g lipides).
+for (const c of compo.values()) if (!Number.isFinite(c.kcal) && [c.protein, c.carbs, c.fat].every(Number.isFinite)) c.kcal = Math.round((4 * c.protein + 4 * c.carbs + 9 * c.fat) * 10) / 10;
 const complete = (c) => c && ["kcal", "protein", "carbs", "fat"].every((k) => Number.isFinite(c[k]));
 
 const codes = new Map(

@@ -138,3 +138,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - T3 Tâches récurrentes — gain : fort (zéro oubli) / coût : gros. En cours. Migration 0012 écrite, non appliquée.
 - T3 FAIT : tâches récurrentes à la voix (« tous les lundis », « chaque jour », « tous les mois le 5 », heure facultative = agenda). Compris et calculé en code (src/lib/recurrence.ts) ; créées au chargement des tâches ; supprimables à la voix. **Migration 0012_recurring_tasks.sql à appliquer** (sans elle : aucune récurrence, aucune erreur).
 - T4 FAIT : raccourcis Android (Parler / Ajouter une tâche / Ajouter une dépense : ouvrent le chat prêt à écrire) + partage d'un relevé CSV/XLSX vers l'app (le service worker garde le fichier, l'app lance l'import). **Non testé sur Android** : il faut réinstaller / rouvrir la PWA pour que le téléphone relise le manifest.
+- T5 Nutrition (compléter Ciqual : 123 aliments gardent encore des valeurs approchées) — gain : moyen / coût : moyen. En cours.
+- T5 FAIT : 166 aliments sur 261 maintenant lus dans le fichier officiel Ciqual (95 gardent des valeurs approchées) ; test sur 3 valeurs déjà en place.
