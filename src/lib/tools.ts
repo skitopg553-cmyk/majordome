@@ -38,7 +38,8 @@ const TASK_TOOLS: ToolDef[] = [
   },
   {
     name: "remember",
-    description: "Mémoriser un fait durable sur Ruben : objectif, préférence, habitude ou info utile. Jamais une tâche.",
+    description:
+      "Mémoriser un fait durable sur Ruben. À APPELER dès qu'il dit « retiens que… », « n'oublie pas… », « souviens-toi… », « mon objectif est… » (sans montant en euros), ou un souhait durable (« je veux perdre 5 kg »). Catégories : objectif, preference, habitude, info. Jamais une tâche, jamais un objectif d'épargne chiffré (→ set_goal). Ne dis jamais que c'est retenu sans avoir appelé cet outil.",
     parameters: {
       type: "object",
       properties: {
@@ -110,10 +111,15 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       if (!res.error && before.data) undo = { label: "Tâche terminée", steps: [{ op: "restore", table: "tasks", id: Number(args.id), values: before.data as Record<string, string | null> }] };
       break;
     }
-    case "remember":
+    case "remember": {
+      // Pas deux fois le même souvenir (par le modèle ou par un ordre explicite) : même règle que pour les tâches.
+      const known = await db.from("memories").select("id,content").limit(300);
+      const dup = (known.data ?? []).find((m) => isSimilar(m.content, String(args.content ?? "")));
+      if (dup) return JSON.stringify({ ok: false, error: `souvenir similaire déjà noté : #${dup.id} « ${dup.content} ». Ne le note pas deux fois.` });
       res = await db.from("memories").insert(pick(["content", "category"])).select("id").single();
       if (!res.error) undo = { label: "Souvenir", steps: [{ op: "delete", table: "memories", id: idOf(res.data) }] };
       break;
+    }
     case "forget": {
       const before = await db.from("memories").select("content,category").eq("id", Number(args.id)).maybeSingle();
       res = await db.from("memories").delete().eq("id", Number(args.id)).select("id");

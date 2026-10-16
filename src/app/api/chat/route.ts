@@ -1,31 +1,11 @@
 import { NextResponse, after } from "next/server";
 import { denied } from "@/lib/access";
 import { runAgent } from "@/lib/ai";
+import { INSTRUCTIONS } from "@/lib/instructions";
+import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ACTIONS_MARK, extractUndo, type Undo } from "@/lib/undo";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
-
-const INSTRUCTIONS = `Tu es Majordome, l'assistant personnel de Ruben : secrétaire, coach et conseiller.
-Tu réponds en français, de façon directe et concise. Tu tutoies Ruben, avec un ton simple, comme un ami organisé.
-
-Tu gères ses tâches et sa mémoire avec tes outils :
-- Dès que Ruben mentionne quelque chose à faire, crée une tâche (add_task). Convertis les dates relatives ("demain 10h", "vendredi") en ISO 8601 avec le fuseau indiqué ci-dessous. Sans heure précise, mets 09:00.
-- S'il dit qu'une chose est faite, utilise complete_task. S'il la décale ou la modifie, update_task.
-- S'il t'apprend un fait durable sur lui (objectif, préférence, habitude, contrainte), utilise remember. Ne mémorise ni les tâches, ni les détails passagers.
-- Après une action, confirme-la en une phrase.
-- Pour "qu'est-ce que j'ai à faire ?", appuie-toi sur la liste des tâches ci-dessous, triée par urgence.
-
-Tu es AUSSI le point d'entrée de toute l'app : choisis le bon endroit, ne mets pas tout dans les tâches.
-- Ce qui est DÉJÀ FAIT n'est jamais une tâche. Une séance de sport → log_workout. Une nuit de sommeil → log_sleep. Des pas → log_steps (« j'ai fait 2000 pas sans mon téléphone » = log_steps en mode « add » ; « j'en suis à 8000 » = mode « set »). Une dépense ou une entrée d'argent → add_transaction. Un budget → set_budget. Un objectif d'épargne chiffré (« 3000 € pour une voiture ») → set_goal (jamais seulement remember) ; s'il dit combien il a déjà de côté, mets-le dans « saved ».
-- Ce qui est À FAIRE plus tard (rendez-vous, courses, appel) → add_task.
-- Regarde la section « Vie de Ruben » ci-dessous avant d'agir : elle montre ce qui est déjà noté. Ne note JAMAIS deux fois la même chose ; si l'outil répond « déjà noté », dis-le simplement.
-- Sois proactif mais sobre : après avoir noté quelque chose, pose AU PLUS UNE question courte et utile (ex. la durée d'une séance si tu ne la connais pas, ou si ça vaut un objectif). Jamais deux questions d'un coup, jamais de sermon.
-- Si Ruben mentionne une activité passée, vérifie dans « Vie de Ruben » et dans les tâches qu'elle n'y est pas déjà ; sinon, enregistre-la au bon endroit sans demander la permission (c'est réversible, il peut tout supprimer dans l'app), puis dis où tu l'as rangée.
-- Les dates : « hier » = la veille de la date ci-dessous, au format AAAA-MM-JJ. Pas de date dans le futur pour ce qui est déjà fait.
-- Si un outil renvoie une erreur, corrige l'appel si c'est une faute de ta part ; sinon explique-le simplement à Ruben. N'invente jamais un résultat.
-- Tu ne supprimes jamais de données de ta propre initiative ; pour supprimer ou corriger une donnée déjà notée, dis à Ruben où le faire dans l'app.
-
-Limites actuelles, dis-les simplement si on te le demande : tu n'as pas encore accès à ses mails ni à son agenda (il arrive plus tard : tu ne peux donc pas « caler » quelque chose dans un calendrier, mais tu peux créer une tâche avec une heure). Tu ne vois pas son solde bancaire, seulement les opérations importées ou notées.`;
 
 export async function POST(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
@@ -53,7 +33,10 @@ export async function POST(req: Request) {
   // Actions annulables : chaque outil qui écrit renvoie « undo » ; on le retire avant de répondre au modèle (inutile pour lui)
   // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
   const actions: Undo[] = [];
+  let toolCalls = 0; // outils appelés dans ce message (par le système ou par le modèle) : sert à repérer un faux « c'est noté »
+  const last = messages[messages.length - 1];
   const executeAndCollect = async (name: string, args: Record<string, unknown>) => {
+    toolCalls++;
     const { result, undo } = extractUndo(await executeTool(name, args));
     if (undo) actions.push(undo);
     return result;
@@ -62,9 +45,12 @@ export async function POST(req: Request) {
   const run = (async () => {
     const context = await buildContext();
     time("contexte", Date.now() - t0);
+    // Ordres explicites (« retiens que… », « objectif 3000 € pour… ») : exécutés par le code, avant le modèle (voir src/lib/intents.ts).
+    const done = last?.role === "user" && typeof last.content === "string" ? await applyIntents(last.content, executeAndCollect) : [];
+    const doneNote = done.length ? `\n\n## Déjà fait pour Ruben dans ce message (par le système)\n${done.map((n) => `- ${n}`).join("\n")}` : "";
     return runAgent({
       tier: "sonnet",
-      system: `${INSTRUCTIONS}\n\n${context}`,
+      system: `${INSTRUCTIONS}\n\n${context}${doneNote}`,
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
       purpose: "chat",
       tools: TOOLS,
@@ -78,10 +64,18 @@ export async function POST(req: Request) {
       },
     });
   })();
+  let persisted: string | null = null; // ce qui sera gardé dans l'historique (la réponse, avec l'alerte éventuelle)
   run.then(
-    () => {
+    (reply) => {
       time("total", Date.now() - t0);
       report();
+      // Faux « c'est noté » : on le dit tout de suite, et on le garde dans l'historique pour que le modèle ne le croie pas la fois suivante.
+      persisted = reply;
+      if (claimsActionWithoutTool(reply, toolCalls)) {
+        console.warn("[faux-enregistrement] la réponse affirme avoir noté quelque chose sans appeler d'outil");
+        ctrl.enqueue(enc.encode(FALSE_CLAIM_WARNING));
+        persisted = reply + FALSE_CLAIM_WARNING;
+      }
       if (actions.length) ctrl.enqueue(enc.encode(ACTIONS_MARK + JSON.stringify(actions)));
       ctrl.close();
     },
@@ -95,9 +89,9 @@ export async function POST(req: Request) {
   );
 
   // Historique : le message de Ruben puis la réponse sont enregistrés après l'envoi (dans l'ordre).
-  const last = messages[messages.length - 1];
   after(async () => {
-    const reply = await run.catch(() => "");
+    const ran = await run.catch(() => "");
+    const reply = ran && (persisted ?? ran);
     const rows = [
       ...(last?.role === "user" && typeof last.content === "string" ? [{ role: "user", content: last.content }] : []),
       ...(reply ? [{ role: "assistant", content: reply }] : []),
