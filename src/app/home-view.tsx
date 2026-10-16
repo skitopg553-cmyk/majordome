@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, type DemoProposal } from "@/lib/demo-data";
-import { goalProgress, monthTotals, type Tx } from "@/lib/finance/stats";
+import { goalProgress, monthTotals, spendingByCategory, type Budget, type Tx } from "@/lib/finance/stats";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
-import { daySummary } from "@/lib/summary";
+import { briefing } from "@/lib/briefing";
 import { homeTasks } from "@/lib/planning";
 import { parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
@@ -42,7 +42,7 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
   task: "M5 12l4 4 10-10",
 };
 
-type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
+type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; budgets?: Budget[]; savings?: { capacity: { months: number; free: number } }; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
 type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
 
 export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
@@ -50,8 +50,6 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   const now = new Date();
   // Tâches = éléments SANS heure (les éléments avec une heure sont de l'agenda, dans le Planning). Celles qu'on vient de cocher restent le temps de l'animation.
   const list = homeTasks(api.tasks.map((t) => (api.leaving.has(t.id) ? { ...t, status: "todo" as const } : t)), now);
-  const late = list.filter((t) => t.due_at && parisDay(new Date(t.due_at)) < parisDay(now));
-  const today = list.filter((t) => t.due_at && parisDay(new Date(t.due_at)) === parisDay(now));
   const [expanded, setExpanded] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -86,8 +84,16 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
     ? { lastNight: forme.sleeps.find((x) => x.date === parisDay(now))?.hours ?? null, week: weekStats(forme.workouts, forme.sleeps, now) }
     : null;
 
-  // Résumé du jour calculé en code (pas par l'IA), uniquement à partir des vraies tâches.
-  const summary = api.loaded ? daySummary(today.length, late.length) : " ";
+  // Briefing du jour : 3 lignes calculées en code (pas par l'IA), à partir des vraies données.
+  const over = fin?.ready ? spendingByCategory(fin.transactions, parisDay(now).slice(0, 7), fin.budgets ?? []).find((r) => r.over && r.limit !== null) : undefined;
+  const lines = api.loaded
+    ? briefing({
+        tasks: api.tasks,
+        now,
+        free: fin?.ready && fin.savings && fin.savings.capacity.months > 0 ? fin.savings.capacity.free : null,
+        overBudget: over ? { category: over.category, over: over.spent - over.limit! } : null,
+      })
+    : [];
 
   return (
     <div className="space-y-3 px-4 pb-8">
@@ -98,7 +104,11 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
 
       <div className="px-1 pb-2 pt-1">
         <h1 className="text-[28px] font-semibold leading-tight tracking-tight">{greeting(now)} Ruben</h1>
-        <p className="mt-1 text-[15px] leading-snug text-muted">{summary}</p>
+        <ul className="mt-1 min-h-[4.5rem] space-y-0.5 text-[15px] leading-snug text-muted">
+          {lines.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
       </div>
 
       {/* Tâches (éléments sans heure) — RÉELLES. En retard, puis aujourd'hui, puis sans date ; 5 visibles, le reste se déplie. */}

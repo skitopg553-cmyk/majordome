@@ -133,3 +133,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Cette session (non planifiée) exécute `docs/soir.md` à la main, sur la branche `weekend`.
 - T1 Miroir réel — gain : fort (le bilan devient vrai) / coût : moyen. En cours.
 - T1 FAIT : « Ta semaine » = vraies données (tâches, dépenses vs semaine d'avant, sport, sommeil, kcal) calculées en code ; 2-3 phrases de l'IA (haiku, cachées 6 h), jetées si elles citent un chiffre absent des faits. Temps d'écran : pas de donnée réelle, donc absent. Route GET /api/week.
+- T2 Briefing du jour — gain : fort (comprendre sa journée en 5 s) / coût : petit. En cours.
+- T2 FAIT : briefing de l'Accueil (3 lignes en code : prochain agenda, tâches, Libre ou budget dépassé) à la place de l'ancienne phrase.
