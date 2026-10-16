@@ -47,6 +47,7 @@ const forme = {
   ready: true,
   sleeps: [daysAgo(3), daysAgo(2), daysAgo(1), today].map((date, i) => ({ date, hours: [6.5, 7.25, 5.75, 7.5][i] })),
   workouts: [{ date: daysAgo(1), kind: "Salle", minutes: 60 }],
+  steps: [{ date: today, steps: 2000 }],
 };
 
 const browser = await chromium.launch();

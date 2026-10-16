@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
+import { isRealDay as isDay } from "@/lib/life";
 import { isMissingTable, supabaseAdmin } from "@/lib/supabase";
-
-const isDay = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
 // Sommeil et séances des 28 derniers jours. Sans la migration 0005 : { ready: false } → aperçu fictif.
 export async function GET(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   const db = supabaseAdmin();
   const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
-  const [sleeps, workouts] = await Promise.all([
+  const [sleeps, workouts, steps] = await Promise.all([
     db.from("sleep_logs").select("date,hours").gte("date", since).order("date"),
     db.from("workouts").select("id,date,kind,minutes").gte("date", since).order("date"),
+    db.from("steps_logs").select("date,steps").gte("date", since).order("date"),
   ]);
   const error = sleeps.error ?? workouts.error;
   if (isMissingTable(error)) return NextResponse.json({ ready: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ready: true, sleeps: (sleeps.data ?? []).map((s) => ({ ...s, hours: Number(s.hours) })), workouts: workouts.data ?? [] });
+  // Les pas sont facultatifs : sans leur table (migration 0008), le reste de l'écran marche quand même.
+  return NextResponse.json({ ready: true, sleeps: (sleeps.data ?? []).map((s) => ({ ...s, hours: Number(s.hours) })), workouts: workouts.data ?? [], steps: steps.error ? [] : steps.data ?? [] });
 }
 
 // Saisie manuelle : { type: "sleep", date, hours } (remplace la nuit si déjà notée) ou { type: "workout", date, kind, minutes? }.

@@ -99,6 +99,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
+  const [version, setVersion] = useState(0); // +1 à chaque fermeture du chat : Majordome a pu écrire (Forme, Finances…), les écrans se rechargent
   const [orb, setOrb] = useState<OrbState>("idle");
   const [speak, setSpeak] = useState(true);
   const chat = useRef<ChatHandle>(null);
@@ -157,7 +158,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
 
   return (
     <main className="mx-auto flex h-dvh max-w-2xl flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
+      <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
         {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
         {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
@@ -190,7 +191,10 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
         accessCode={accessCode}
         open={chatOpen}
         speak={speak}
-        onClose={() => setChatOpen(false)}
+        onClose={() => {
+          setChatOpen(false);
+          setVersion((v) => v + 1);
+        }}
         onUnauthorized={unauthorized}
         onState={setOrb}
       />

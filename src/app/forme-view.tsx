@@ -8,7 +8,7 @@ import { Bar, Card, DemoBanner, Header, Label } from "./ui";
 
 const DAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const KINDS = ["Salle", "Course à pied", "Vélo", "Natation", "Foot", "Yoga"];
-type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
+type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[]; steps?: { date: string; steps: number }[] };
 
 /** Anneau de progression (pas, score). */
 function Ring({ value, max, children }: { value: number; max: number; children: React.ReactNode }) {
@@ -132,6 +132,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
     const today = parisDay(now);
     const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
     const lastNight = data.sleeps.find((s) => s.date === today);
+    const todaySteps = data.steps?.find((s) => s.date === today)?.steps;
     const chip = (active: boolean) => `min-h-10 rounded-full px-3.5 text-[13px] font-medium transition-colors ${active ? "bg-accent text-ink" : "bg-raised text-muted"}`;
 
     return (
@@ -220,7 +221,21 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
         </Card>
         {error && <p className="px-1 text-[13px] text-neg">{error}</p>}
 
-        <DemoExtras />
+        {/* Pas : réels (notés par toi ou par Majordome). Rien d'inventé en mode réel. */}
+        <Card>
+          <Label>Pas aujourd&apos;hui</Label>
+          {todaySteps !== undefined ? (
+            <>
+              <p className="mt-1 text-[28px] font-semibold tabular-nums tracking-tight">{todaySteps.toLocaleString("fr-FR")}</p>
+              <div className="mt-2">
+                <Bar value={todaySteps} max={10000} />
+              </div>
+              <p className="mt-1.5 text-[12px] text-faint">Objectif indicatif : 10 000</p>
+            </>
+          ) : (
+            <p className="mt-1 text-[15px] text-muted">Pas encore notés. Dis à Majordome combien tu en as faits.</p>
+          )}
+        </Card>
       </div>
     );
   }

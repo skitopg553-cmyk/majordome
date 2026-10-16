@@ -55,3 +55,8 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 ## Variables d'environnement à ajouter (Vercel, quand tu actives)
 - Google (phase 2) : `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_ENABLED=true` → `docs/google-setup.md`.
 - Rappels : `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET` (+ le même dans le Vault Supabase) → `docs/rappels-setup.md`.
+
+## L'IA peut écrire dans toute l'app (16/10)
+- Elle peut noter séances, nuits, pas, budgets, dépenses (migration `0008_steps` appliquée). Elle voit ce qui est déjà noté et pose une question utile après chaque ajout. 115 tests (validation des entrées en code).
+- **Non testé de bout en bout** : ni la vraie IA ni la vraie base n'ont tourné en local (pas de clés). À tester sur téléphone : « aujourd'hui j'ai fait 2000 pas sans mon téléphone », « j'ai fait une séance de muscu ».
+- Pas encore possible : écrire dans l'agenda (non connecté), supprimer une donnée (volontaire).

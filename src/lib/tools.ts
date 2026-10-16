@@ -1,3 +1,4 @@
+import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
 import { supabaseAdmin } from "./supabase";
 import { fold } from "./text";
 
@@ -10,7 +11,7 @@ const DUE_AT = {
 };
 const PRIORITY = { type: "integer", enum: [1, 2, 3], description: "1 = haute, 2 = normale, 3 = basse" };
 
-export const TOOLS: ToolDef[] = [
+const TASK_TOOLS: ToolDef[] = [
   {
     name: "add_task",
     description: "Créer une tâche pour Ruben.",
@@ -52,6 +53,9 @@ export const TOOLS: ToolDef[] = [
     parameters: { type: "object", properties: { id: { type: "integer" } }, required: ["id"] },
   },
 ];
+
+// Tâches + mémoire + vie (Forme, budgets, dépenses) : tout ce que l'agent peut écrire.
+export const TOOLS: ToolDef[] = [...TASK_TOOLS, ...LIFE_TOOLS];
 
 // Comparaison sans accents, casse ni ponctuation : "Appeler le médecin !" == "appeler le medecin".
 const norm = (s: string) =>
@@ -97,7 +101,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       res = await db.from("memories").delete().eq("id", Number(args.id)).select("id");
       break;
     default:
-      return JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
+      return (await executeLifeTool(name, args)) ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
   }
   if (res.error) return JSON.stringify({ ok: false, error: res.error.message });
   if (Array.isArray(res.data) && res.data.length === 0) return JSON.stringify({ ok: false, error: "id introuvable" });
@@ -134,5 +138,8 @@ export async function buildContext(): Promise<string> {
 ${memLines.join("\n") || "(rien pour l'instant)"}
 
 ## Tâches en cours
-${taskLines.join("\n") || "(aucune)"}`;
+${taskLines.join("\n") || "(aucune)"}
+
+## Vie de Ruben (déjà noté dans l'app)
+${await lifeContext(now)}`;
 }
