@@ -30,10 +30,10 @@ export function parisIso(day: string, hh: number, mm: number) {
   return new Date(`${day}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00${offset || "+00:00"}`).toISOString();
 }
 
-/** « Reporter à demain » : même heure demain (heure de Paris) ; sans heure → demain 9 h. */
+/** « Reporter à demain » : même heure demain (heure de Paris) ; sans échéance → demain à 00:00 (une tâche reste une tâche, pas un rendez-vous). */
 export function postponeToTomorrow(dueAt: string | null, now: Date) {
   const tomorrow = addDays(parisDay(now), 1);
-  if (!dueAt) return parisIso(tomorrow, 9, 0);
+  if (!dueAt) return parisIso(tomorrow, 0, 0);
   const [hh, mm] = new Date(dueAt)
     .toLocaleTimeString("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     .split(":")

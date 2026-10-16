@@ -1,4 +1,5 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
+import { hasTime } from "./planning";
 import { clampText, MAX_MEMORY, taskFields } from "./limits";
 import { executeMoreTool, MORE_TOOLS, moreContext } from "./more-tools";
 import { supabaseAdmin } from "./supabase";
@@ -10,14 +11,15 @@ export type ToolDef = { name: string; description: string; parameters: Record<st
 
 const DUE_AT = {
   type: "string",
-  description: "Échéance au format ISO 8601 avec fuseau, ex. 2026-10-16T10:00:00+02:00.",
+  description:
+    "Échéance ISO 8601 avec fuseau. AVEC heure précise (« demain 10h ») : ex. 2026-10-16T10:00:00+02:00 = élément d'AGENDA (Planning). SANS heure (« demain », « vendredi ») : minuit, ex. 2026-10-16T00:00:00+02:00 = TÂCHE (Accueil). Pas de date du tout : n'envoie pas ce champ.",
 };
 const PRIORITY = { type: "integer", enum: [1, 2, 3], description: "1 = haute, 2 = normale, 3 = basse" };
 
 const TASK_TOOLS: ToolDef[] = [
   {
     name: "add_task",
-    description: "Créer une tâche pour Ruben.",
+    description: "Créer un élément pour Ruben. Avec une heure précise dans la phrase → élément d'agenda (due_at avec cette heure). Sans heure → simple tâche (due_at à minuit, ou aucune date). N'invente jamais une heure.",
     parameters: {
       type: "object",
       properties: { title: { type: "string" }, due_at: DUE_AT, priority: PRIORITY, notes: { type: "string" } },
@@ -160,12 +162,12 @@ export async function buildContext(): Promise<string> {
   const offset = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "longOffset" })
     .formatToParts(now).find((p) => p.type === "timeZoneName")?.value.replace("GMT", "") || "+02:00";
 
-  const fmt = (iso: string) => new Date(iso).toLocaleString("fr-FR", { timeZone: TZ, dateStyle: "medium", timeStyle: "short" });
+  const fmt = (iso: string) => new Date(iso).toLocaleString("fr-FR", hasTime(iso) ? { timeZone: TZ, dateStyle: "medium", timeStyle: "short" } : { timeZone: TZ, dateStyle: "medium" });
   const prio = ["", "haute", "normale", "basse"];
 
   const memLines = (memories.data ?? []).map((m) => `- [#${m.id}] (${m.category}) ${m.content}`);
   const taskLines = (tasks.data ?? []).map(
-    (t) => `- [#${t.id}] ${t.title}${t.due_at ? ` — pour le ${fmt(t.due_at)}` : ""} — priorité ${prio[t.priority] ?? t.priority}${t.notes ? ` — ${t.notes}` : ""}`,
+    (t) => `- [#${t.id}] ${t.title}${t.due_at ? ` — ${hasTime(t.due_at) ? "agenda" : "tâche"} pour le ${fmt(t.due_at)}` : ""} — priorité ${prio[t.priority] ?? t.priority}${t.notes ? ` — ${t.notes}` : ""}`,
   );
 
   return `Maintenant : ${nowText} (fuseau Europe/Paris, UTC${offset}).

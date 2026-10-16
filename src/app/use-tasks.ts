@@ -54,7 +54,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       timer = setTimeout(() => {
         apply("done");
         stopLeaving();
-      }, 350);
+      }, 450);
     } else apply("todo");
     api("PATCH", { id: t.id, done }).catch((e) => {
       clearTimeout(timer); // sinon le minuteur remettrait « faite » après l'annulation

@@ -1,3 +1,5 @@
+import { isAgenda } from "./planning";
+
 // Rappels (fin de phase 1) : quelles tâches notifier maintenant, et avec quel texte. Logique pure, testée.
 
 export type ReminderTask = { id: number; title: string; due_at: string | null; status: string; reminded_at: string | null };
@@ -10,8 +12,8 @@ export function dueReminders(tasks: ReminderTask[], now: Date) {
   const from = now.getTime() - LATE_MIN * 60_000;
   const to = now.getTime() + LEAD_MIN * 60_000;
   return tasks.filter((t) => {
-    if (t.status !== "todo" || !t.due_at || t.reminded_at) return false;
-    const due = new Date(t.due_at).getTime();
+    if (t.status !== "todo" || !isAgenda(t) || t.reminded_at) return false; // une tâche sans heure ne déclenche pas de rappel
+    const due = new Date(t.due_at!).getTime();
     return due >= from && due <= to;
   });
 }

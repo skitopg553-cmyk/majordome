@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dotsFor, hasTime, hourRange, parisHM, planDay, swipeDirection, weekOf } from "./planning";
+import { dotsFor, hasTime, homeTasks, hourRange, isAgenda, parisHM, planDay, swipeDirection, weekOf } from "./planning";
 
 type Task = { id: number; due_at: string | null; status: "todo" | "done" };
 const t = (id: number, due_at: string | null, status: "todo" | "done" = "todo"): Task => ({ id, due_at, status });
@@ -15,44 +15,41 @@ describe("heure de Paris", () => {
   });
 });
 
-describe("planDay", () => {
-  const tasks = [
-    t(1, "2026-10-16T14:00:00+02:00"),
-    t(2, "2026-10-16T09:30:00+02:00"),
-    t(3, "2026-10-16T09:00:00+02:00"),
-    t(4, "2026-10-16T00:00:00+02:00"), // toute la journée
-    t(5, null), // sans date
-    t(6, "2026-10-14T10:00:00+02:00"), // en retard
-    t(7, "2026-10-17T11:00:00+02:00"), // demain
-    t(8, "2026-10-14T10:00:00+02:00", "done"), // faite : jamais en retard
-    t(9, null, "done"),
-    t(10, "2026-10-16T08:00:00+02:00", "done"), // faite aujourd'hui : reste à sa place
-  ];
-  it("aujourd'hui : en retard, sans date, sans heure, et par heure triées", () => {
-    const p = planDay(tasks, "2026-10-16", now);
-    expect(p.late.map((x) => x.id)).toEqual([6]);
-    expect(p.undated.map((x) => x.id)).toEqual([5]);
-    expect(p.allDay.map((x) => x.id)).toEqual([4]);
-    expect([...p.byHour.keys()].sort((a, b) => a - b)).toEqual([8, 9, 14]);
-    expect(p.byHour.get(9)!.map((x) => x.id)).toEqual([3, 2]);
+const tasks = [
+  t(1, "2026-10-16T14:00:00+02:00"),
+  t(2, "2026-10-16T09:30:00+02:00"),
+  t(3, "2026-10-16T09:00:00+02:00"),
+  t(4, "2026-10-16T00:00:00+02:00"), // sans heure = tâche
+  t(5, null), // sans date = tâche
+  t(6, "2026-10-14T10:00:00+02:00"), // agenda passé
+  t(7, "2026-10-17T11:00:00+02:00"), // demain
+  t(8, "2026-10-14T00:00:00+02:00"), // tâche en retard
+  t(9, null, "done"),
+  t(10, "2026-10-16T08:00:00+02:00", "done"), // agenda fait : reste à sa place
+  t(11, "2026-10-18T00:00:00+02:00"), // tâche à venir
+];
+
+describe("agenda / tâche : la règle", () => {
+  it("heure précise = agenda ; 00:00 ou sans date = tâche", () => {
+    expect(isAgenda(t(1, "2026-10-16T14:00:00+02:00"))).toBe(true);
+    expect(isAgenda(t(2, "2026-10-16T00:00:00+02:00"))).toBe(false);
+    expect(isAgenda(t(3, null))).toBe(false);
   });
-  it("un autre jour : ni retard ni sans date", () => {
-    const p = planDay(tasks, "2026-10-17", now);
-    expect(p.late).toEqual([]);
-    expect(p.undated).toEqual([]);
-    expect(p.byHour.get(11)!.map((x) => x.id)).toEqual([7]);
+  it("la frise ne contient QUE de l'agenda, jamais une tâche", () => {
+    const byHour = planDay(tasks, "2026-10-16");
+    expect([...byHour.keys()].sort((a, b) => a - b)).toEqual([8, 9, 14]);
+    expect(byHour.get(9)!.map((x) => x.id)).toEqual([3, 2]);
+    expect([...byHour.values()].flat().map((x) => x.id)).not.toContain(4);
+    expect([...byHour.values()].flat().map((x) => x.id)).not.toContain(5);
   });
-  it("un jour sans rien", () => {
-    const p = planDay(tasks, "2026-10-20", now);
-    expect(p.allDay).toEqual([]);
-    expect(p.byHour.size).toBe(0);
+  it("un autre jour, un jour vide, et le jour de Paris (pas de l'UTC)", () => {
+    expect(planDay(tasks, "2026-10-17").get(11)!.map((x) => x.id)).toEqual([7]);
+    expect(planDay(tasks, "2026-10-20").size).toBe(0);
+    expect(planDay([t(1, "2026-10-16T23:30:00+02:00")], "2026-10-16").get(23)).toHaveLength(1);
+    expect(planDay([t(2, "2026-10-17T00:30:00+02:00")], "2026-10-16").size).toBe(0);
   });
-  it("le jour est celui de Paris, pas de l'UTC", () => {
-    const late = t(1, "2026-10-16T23:30:00+02:00"); // 21:30 UTC : encore le 16 à Paris
-    expect(planDay([late], "2026-10-16", now).byHour.get(23)).toHaveLength(1);
-    const early = t(2, "2026-10-17T00:30:00+02:00"); // 22:30 UTC le 16 : c'est le 17 à Paris
-    expect(planDay([early], "2026-10-16", now).byHour.size).toBe(0);
-    expect(planDay([early], "2026-10-17", now).byHour.get(0)).toHaveLength(1);
+  it("l'Accueil : seulement les tâches à faire, en retard → aujourd'hui → sans date → à venir", () => {
+    expect(homeTasks(tasks, now).map((x) => x.id)).toEqual([8, 4, 5, 11]);
   });
 });
 
@@ -69,9 +66,9 @@ describe("hourRange, weekOf, dotsFor, swipeDirection", () => {
     expect(weekOf("2026-10-28")).toContain("2026-10-26"); // traverse le changement d'heure du 25 octobre sans décalage
   });
   it("points : tâches à faire du jour, 3 au maximum", () => {
-    const list = [t(1, "2026-10-16T09:00:00+02:00"), t(2, "2026-10-16T10:00:00+02:00"), t(3, "2026-10-16T11:00:00+02:00"), t(4, "2026-10-16T12:00:00+02:00"), t(5, "2026-10-16T13:00:00+02:00", "done"), t(6, null)];
+    const list = [t(7, "2026-10-16T00:00:00+02:00"), t(1, "2026-10-16T09:00:00+02:00"), t(2, "2026-10-16T10:00:00+02:00"), t(3, "2026-10-16T11:00:00+02:00"), t(4, "2026-10-16T12:00:00+02:00"), t(5, "2026-10-16T13:00:00+02:00", "done"), t(6, null)];
     expect(dotsFor(list, "2026-10-16")).toBe(3);
-    expect(dotsFor(list.slice(0, 2), "2026-10-16")).toBe(2);
+    expect(dotsFor(list.slice(1, 3), "2026-10-16")).toBe(2);
     expect(dotsFor(list, "2026-10-17")).toBe(0);
   });
   it("glissement : franc et horizontal seulement", () => {

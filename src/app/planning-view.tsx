@@ -59,30 +59,29 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState(2);
-  const [showOptions, setShowOptions] = useState(false);
+  const [showOptions, setShowOptions] = useState(true); // un événement a toujours une date et une heure
   const [day, setDay] = useState(today);
   const [openId, setOpenId] = useState<number | null>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   function add() {
     const clean = title.trim();
-    if (!clean) return;
-    api.add(clean, due ? new Date(due).toISOString() : null, priority);
+    if (!clean || !due) return; // sans heure, ce serait une tâche : elle se crée sur l'Accueil
+    api.add(clean, new Date(due).toISOString(), priority);
     setTitle("");
     setDue("");
     setPriority(2);
-    setShowOptions(false);
   }
 
   const isDone = (t: Task) => t.status === "done" || api.leaving.has(t.id);
-  const plan = planDay(api.tasks, day, now);
+  const byHour = planDay(api.tasks, day);
   const events = demoEvents().filter((e) => parisDay(new Date(e.start)) === day && new Date(e.end) > now);
   const eventsByHour = new Map<number, DemoEvent[]>();
   for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
   const nowHM = day === today ? parisHM(now.toISOString()) : null;
-  const { start, end } = hourRange([...plan.byHour.keys(), ...eventsByHour.keys()], nowHM);
+  const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
   // Heures vides qui se suivent : regroupées en une seule ligne fine (« 07–12 h »), pour ne pas allonger l'écran.
-  const isBusy = (h: number) => plan.byHour.has(h) || eventsByHour.has(h) || nowHM?.h === h;
+  const isBusy = (h: number) => byHour.has(h) || eventsByHour.has(h) || nowHM?.h === h;
   const rows: ({ h: number } | { from: number; to: number })[] = [];
   for (let h = start; h <= end; h++) {
     let to = h;
@@ -92,8 +91,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
       h = to;
     } else rows.push({ h });
   }
-  const top = [...plan.late, ...plan.allDay, ...plan.undated];
-  const empty = api.loaded && !top.length && !plan.byHour.size && !events.length;
+  const empty = api.loaded && !byHour.size && !events.length;
   const opened = openId !== null ? api.tasks.find((t) => t.id === openId) : undefined;
 
   const row = (t: Task, time?: string) => <PlanRow key={t.id} t={t} done={isDone(t)} time={time} onToggle={() => api.toggle(t)} onOpen={() => setOpenId(t.id)} />;
@@ -108,8 +106,8 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="Nouvelle tâche…"
-            aria-label="Nouvelle tâche"
+            placeholder="Nouvel événement…"
+            aria-label="Nouvel événement"
             className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50"
           />
           <button
@@ -123,7 +121,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
               <path d="M4 10h16M9 3v4M15 3v4" />
             </svg>
           </button>
-          <button onClick={add} disabled={!title.trim()} aria-label="Ajouter" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink disabled:opacity-25">
+          <button onClick={add} disabled={!title.trim() || !due} aria-label="Ajouter à l'agenda" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink disabled:opacity-25">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -203,19 +201,6 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
           </div>
         )}
 
-        {plan.late.length > 0 && (
-          <section className="pt-4" aria-label="En retard">
-            <h3 className="text-[11px] uppercase tracking-[0.14em] text-accent">En retard</h3>
-            <ul className="divide-y divide-line/60">{plan.late.map((t) => row(t))}</ul>
-          </section>
-        )}
-        {(plan.allDay.length > 0 || plan.undated.length > 0) && (
-          <section className="pt-4" aria-label="Sans heure">
-            <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted">Sans heure</h3>
-            <ul className="divide-y divide-line/60">{[...plan.allDay, ...plan.undated].map((t) => row(t))}</ul>
-          </section>
-        )}
-
         {/* Frise des heures : une ligne par heure, les tâches posées dessus */}
         {api.loaded && !empty && (
           <ol className="relative mt-4" aria-label="Heures">
@@ -231,7 +216,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
                 );
               }
               const h = r.h;
-              const items = plan.byHour.get(h) ?? [];
+              const items = byHour.get(h) ?? [];
               const evs = eventsByHour.get(h) ?? [];
               const busy = items.length > 0 || evs.length > 0;
               return (

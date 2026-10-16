@@ -1,26 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, demoEvents, type DemoProposal } from "@/lib/demo-data";
+import { DEMO_FINANCES, DEMO_FORME, DEMO_PHASE, DEMO_PROPOSALS, type DemoProposal } from "@/lib/demo-data";
 import { goalProgress, monthTotals, type Tx } from "@/lib/finance/stats";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { daySummary } from "@/lib/summary";
-import { dayLabel, groupOf, parisDay } from "@/lib/task-groups";
+import { homeTasks } from "@/lib/planning";
+import { parisDay } from "@/lib/task-groups";
 import TaskRow from "./task-row";
-import { Avatar, Bar, Card, DemoBanner, euro, greeting, hhmm, Label, SkeletonRows, Wordmark } from "./ui";
+import TaskSheet from "./task-sheet";
+import { Avatar, Bar, Card, DemoBanner, euro, greeting, Label, SkeletonRows, Wordmark } from "./ui";
 import type { TasksApi } from "./use-tasks";
 
 type Go = (tab: "planning" | "finances" | "forme") => void;
 
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
-
-/** « Dans 25 min », « Aujourd'hui à 17:30 », « Demain à 10:00 »… */
-function when(startIso: string, now: Date) {
-  const min = Math.round((new Date(startIso).getTime() - now.getTime()) / 60_000);
-  if (min <= 0) return "En cours";
-  if (min < 60) return `Dans ${min} min`;
-  return `${dayLabel(parisDay(new Date(startIso)), now)} à ${hhmm(startIso)}`;
-}
 
 /** Mini-courbe du solde (SVG, pas de librairie). */
 function Sparkline({ values }: { values: number[] }) {
@@ -54,14 +48,19 @@ type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workou
 export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
   const [decided, setDecided] = useState<Record<string, "ok" | "no">>({}); // « À valider » : choix locaux, rien n'est exécuté
   const now = new Date();
-  const todo = api.tasks.filter((t) => t.status === "todo" || api.leaving.has(t.id));
-  const late = todo.filter((t) => groupOf(t.due_at, now) === "En retard");
-  const today = todo.filter((t) => groupOf(t.due_at, now) === "Aujourd'hui");
-  const focus = [...late, ...today].sort((a, b) => a.priority - b.priority || (a.due_at ?? "").localeCompare(b.due_at ?? ""));
-  const next = demoEvents().find((e) => new Date(e.end) > now);
+  // Tâches = éléments SANS heure (les éléments avec une heure sont de l'agenda, dans le Planning). Celles qu'on vient de cocher restent le temps de l'animation.
+  const list = homeTasks(api.tasks.map((t) => (api.leaving.has(t.id) ? { ...t, status: "todo" as const } : t)), now);
+  const late = list.filter((t) => t.due_at && parisDay(new Date(t.due_at)) < parisDay(now));
+  const today = list.filter((t) => t.due_at && parisDay(new Date(t.due_at)) === parisDay(now));
+  const [expanded, setExpanded] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const shown = expanded ? list : list.slice(0, 5);
+  const opened = openId !== null ? api.tasks.find((t) => t.id === openId) : undefined;
   const f = DEMO_FINANCES;
   const s = DEMO_FORME;
-  const pending = DEMO_PROPOSALS.filter((p) => !decided[p.id]).length;
+  const proposals = DEMO_PROPOSALS.filter((p) => p.kind !== "agenda"); // pas d'agenda sur l'Accueil
+  const pending = proposals.filter((p) => !decided[p.id]).length;
 
   // Vraies données Finances / Forme si les tables existent ; sinon (ou en cas d'erreur) l'aperçu fictif reste.
   const [fin, setFin] = useState<Fin | null>(null);
@@ -102,53 +101,38 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
         <p className="mt-1 text-[15px] leading-snug text-muted">{summary}</p>
       </div>
 
-      {/* Tâches du jour — RÉELLES */}
+      {/* Tâches (éléments sans heure) — RÉELLES. En retard, puis aujourd'hui, puis sans date ; 5 visibles, le reste se déplie. */}
       <Card>
-        <div className="flex items-center justify-between">
-          <Label>Aujourd&apos;hui</Label>
-          <button onClick={() => go("planning")} className="-my-3 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
-            Tout voir
-          </button>
-        </div>
+        <Label>Tâches</Label>
         {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
         {!api.loaded && <SkeletonRows />}
-        {api.loaded && focus.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Aucune tâche pour aujourd&apos;hui.</p>}
-        {focus.length > 0 && (
-          <ul className="mt-1 divide-y divide-line">
-            {focus.slice(0, 5).map((t) => (
-              <TaskRow key={t.id} t={t} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} />
+        {api.loaded && list.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Rien à faire. Profites-en.</p>}
+        {shown.length > 0 && (
+          <ul className="mt-1">
+            {shown.map((t) => (
+              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => setOpenId(t.id)} />
             ))}
           </ul>
         )}
-        {focus.length > 5 && <p className="pt-1 text-xs text-faint">+ {focus.length - 5} autres dans le Planning</p>}
+        {list.length > 5 && (
+          <button onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="-mb-2 min-h-11 text-[13px] font-medium text-accent">
+            {expanded ? "Réduire" : `+${list.length - 5}`}
+          </button>
+        )}
+        <form
+          className="mt-1 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const title = newTitle.trim();
+            if (!title) return;
+            api.add(title, null, 2); // sans date ni heure : une tâche
+            setNewTitle("");
+          }}
+        >
+          <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nouvelle tâche…" aria-label="Nouvelle tâche" className="h-11 min-w-0 flex-1 rounded-full bg-raised px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50" />
+        </form>
       </Card>
-
-      {/* Prochain rendez-vous — FICTIF (phase 2) */}
-      {next && (
-        <Card onClick={() => go("planning")}>
-          <div className="flex items-center justify-between gap-2">
-            <Label>Prochain rendez-vous</Label>
-            <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-medium text-accent">{when(next.start, now)}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-[18px] font-semibold tracking-tight">{next.title}</p>
-              <p className="truncate text-[13px] text-muted">
-                {hhmm(next.start)} – {hhmm(next.end)}
-                {next.place ? ` · ${next.place}` : ""}
-              </p>
-            </div>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-raised text-fg" aria-hidden>
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </span>
-          </div>
-          <div className="mt-3">
-            <DemoBanner phase={DEMO_PHASE.agenda} />
-          </div>
-        </Card>
-      )}
+      {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
 
       {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
       {fin?.ready && shownBalance ? (
@@ -256,7 +240,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
           {pending > 0 && <span className="text-[12px] text-faint">{plural(pending, "proposition")}</span>}
         </div>
         <ul className="mt-2 space-y-2">
-          {DEMO_PROPOSALS.map((p) => {
+          {proposals.map((p) => {
             const d = decided[p.id];
             return (
               <li key={p.id} className={`rounded-2xl bg-raised p-3 transition-opacity ${d ? "opacity-50" : ""}`}>

@@ -26,3 +26,10 @@ describe("reminderPayload", () => {
     expect(reminderPayload(t(3, "2026-10-16T09:30:00+02:00"), now).body).toBe("C'était prévu à 09:30");
   });
 });
+
+describe("tâche sans heure", () => {
+  it("ne déclenche jamais de rappel (seul l'agenda, avec une heure précise, notifie)", () => {
+    expect(dueReminders([t(1, "2026-10-16T00:00:00+02:00"), t(2, null)], new Date("2026-10-16T00:01:00+02:00"))).toEqual([]);
+    expect(dueReminders([t(3, "2026-10-16T10:00:00+02:00")], now)).toHaveLength(1);
+  });
+});

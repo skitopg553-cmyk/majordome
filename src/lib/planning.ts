@@ -18,29 +18,29 @@ export const hasTime = (iso: string) => {
   return h !== 0 || m !== 0;
 };
 
-export type DayPlan<X extends T> = {
-  late: X[]; // à faire, d'un jour passé (affichées seulement sur aujourd'hui)
-  undated: X[]; // à faire, sans échéance (affichées seulement sur aujourd'hui)
-  allDay: X[]; // ce jour-là, sans heure
-  byHour: Map<number, X[]>; // ce jour-là, avec heure, triées
-};
+/**
+ * RÈGLE AGENDA / TÂCHE (en code, sans migration) : un élément avec une heure précise est de l'AGENDA (Planning, frise) ;
+ * un élément sans heure (à 00:00 Paris, ou sans date) est une TÂCHE (Accueil). Une seule table, deux affichages.
+ */
+export const isAgenda = (t: { due_at: string | null }) => !!t.due_at && hasTime(t.due_at);
 
-/** Ce qu'on affiche pour le jour choisi. Les tâches terminées restent visibles à leur place. */
-export function planDay<X extends T>(tasks: X[], day: string, now: Date): DayPlan<X> {
+/** Les tâches de l'Accueil, dans l'ordre : en retard, aujourd'hui, sans date, puis les jours à venir. Seulement ce qui reste à faire. */
+export function homeTasks<X extends T>(tasks: X[], now: Date): X[] {
   const today = parisDay(now);
-  const onDay = tasks.filter((t) => t.due_at && parisDay(new Date(t.due_at)) === day);
+  const rank = (t: X) => (!t.due_at ? 2 : parisDay(new Date(t.due_at)) < today ? 0 : parisDay(new Date(t.due_at)) === today ? 1 : 3);
+  return tasks
+    .filter((t) => t.status === "todo" && !isAgenda(t))
+    .sort((a, b) => rank(a) - rank(b) || (a.due_at ?? "").localeCompare(b.due_at ?? ""));
+}
+
+/** Ce que la frise affiche pour un jour : seulement l'agenda (éléments avec heure), par heure. Les éléments terminés restent à leur place. */
+export function planDay<X extends T>(tasks: X[], day: string): Map<number, X[]> {
   const byHour = new Map<number, X[]>();
-  for (const t of onDay.filter((t) => hasTime(t.due_at!)).sort((a, b) => a.due_at!.localeCompare(b.due_at!))) {
+  for (const t of tasks.filter((t) => isAgenda(t) && parisDay(new Date(t.due_at!)) === day).sort((a, b) => a.due_at!.localeCompare(b.due_at!))) {
     const { h } = parisHM(t.due_at!);
     byHour.set(h, [...(byHour.get(h) ?? []), t]);
   }
-  const isToday = day === today;
-  return {
-    late: isToday ? tasks.filter((t) => t.status === "todo" && t.due_at && parisDay(new Date(t.due_at)) < today) : [],
-    undated: isToday ? tasks.filter((t) => t.status === "todo" && !t.due_at) : [],
-    allDay: onDay.filter((t) => !hasTime(t.due_at!)),
-    byHour,
-  };
+  return byHour;
 }
 
 /** Plage d'heures affichée : 7 h–22 h au minimum, élargie si une tâche tombe en dehors. */
@@ -60,9 +60,9 @@ export function weekOf(day: string) {
   return Array.from({ length: 7 }, (_, i) => addDays(day, i - dow));
 }
 
-/** Points de la frise de semaine : nombre de tâches à faire ce jour-là, plafonné à 3. */
+/** Points de la frise de semaine : nombre d'éléments d'agenda à faire ce jour-là, plafonné à 3. */
 export function dotsFor<X extends T>(tasks: X[], day: string) {
-  const n = tasks.filter((t) => t.status === "todo" && t.due_at && parisDay(new Date(t.due_at)) === day).length;
+  const n = tasks.filter((t) => t.status === "todo" && isAgenda(t) && parisDay(new Date(t.due_at!)) === day).length;
   return Math.min(3, n);
 }
 
