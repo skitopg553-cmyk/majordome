@@ -3,15 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ChatView, { type ChatHandle } from "./chat-view";
 import { isStatement, shortcutFromSearch } from "@/lib/shortcuts";
-import FinancesView from "./finances-view";
-import FormeView from "./forme-view";
 import HomeView from "./home-view";
 import Orb, { type OrbState } from "./orb";
 import { Wordmark } from "./ui";
-import PlanningView from "./planning-view";
-import ProfileSheet from "./profile-sheet";
 import { useTasks } from "./use-tasks";
-import WeekSheet from "./week-sheet";
+import dynamic from "next/dynamic";
 
 const STORAGE_KEY = "majordome-access-code";
 const SPEAK_KEY = "majordome-speak";
@@ -94,6 +90,13 @@ export default function Home() {
 
   return <App accessCode={accessCode} onForget={forgetCode} />;
 }
+
+// Écrans ouverts à la demande : hors du premier chargement (l'Accueil et le chat, eux, sont tout de suite là).
+const WeekSheet = dynamic(() => import("./week-sheet"), { ssr: false });
+const FinancesView = dynamic(() => import("./finances-view"), { ssr: false });
+const FormeView = dynamic(() => import("./forme-view"), { ssr: false });
+const PlanningView = dynamic(() => import("./planning-view"), { ssr: false });
+const ProfileSheet = dynamic(() => import("./profile-sheet"), { ssr: false });
 
 function App({ accessCode, onForget }: { accessCode: string; onForget: (message: string | null) => void }) {
   const [tab, setTab] = useState<Tab>("home");

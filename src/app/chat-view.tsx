@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import dynamic from "next/dynamic";
 import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
 import Orb, { orbLabel } from "./orb";
 import { splitReply, splitSettings, undoLabel, type Undo } from "@/lib/undo";
 import { friendlyError, isNetworkError } from "@/lib/offline";
 import { greeting, Wordmark } from "./ui";
+
+const Markdown = dynamic(() => import("react-markdown"), { ssr: false }); // chargé à la première réponse affichée, pas au démarrage de l'app
 
 const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
 
