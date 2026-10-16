@@ -43,7 +43,7 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
 };
 
 type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; budgets?: Budget[]; savings?: { capacity: { months: number; free: number } }; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
-type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
+type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[]; nutrition?: { meals: { kcal: number }[] } | null };
 
 export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
   const [decided, setDecided] = useState<Record<string, "ok" | "no">>({}); // « À valider » : choix locaux, rien n'est exécuté
@@ -81,7 +81,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   const noGoalYet = !!fin?.ready && !realGoal; // finances réelles mais aucun objectif : on invite à en créer un (pas d'exemple fictif)
   const goal = realGoal ?? f.goals[0];
   const realForme = forme?.ready
-    ? { lastNight: forme.sleeps.find((x) => x.date === parisDay(now))?.hours ?? null, week: weekStats(forme.workouts, forme.sleeps, now) }
+    ? { lastNight: forme.sleeps.find((x) => x.date === parisDay(now))?.hours ?? null, week: weekStats(forme.workouts, forme.sleeps, now), kcal: forme.nutrition?.meals.length ? Math.round(forme.nutrition.meals.reduce((a, m) => a + m.kcal, 0)) : null }
     : null;
 
   // Briefing du jour : 3 lignes calculées en code (pas par l'IA), à partir des vraies données.
@@ -211,7 +211,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
             ? [
                 ["Nuit", realForme.lastNight !== null ? hoursLabel(realForme.lastNight) : "—"],
                 ["Séances", String(realForme.week.sessions)],
-                ["Jours actifs", `${realForme.week.activeDays} / 7`],
+                realForme.kcal !== null ? ["Repas", `${realForme.kcal.toLocaleString("fr-FR")} kcal`] : ["Jours actifs", `${realForme.week.activeDays} / 7`], // les kcal du jour dès qu'un repas est noté
               ]
             : [
                 ["Sommeil", hoursLabel(s.sleep.hours)],

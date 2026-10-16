@@ -1,13 +1,21 @@
 # État de Majordome
 
-## RÉSUMÉ DES RETOUCHES (branche `retouches`) — à lire d'abord
+## RÉSUMÉ DU SOIR (branche `weekend`, fusionnée dans `main`) — à lire d'abord
+- **Fait** : 12 tâches de `docs/soir.md`, toutes terminées : bilan « Ta semaine » réel · briefing de l'Accueil en 3 lignes (annonce demain le soir) · tâches récurrentes à la voix · raccourcis Android + partage d'un relevé · Ciqual officiel pour 166 aliments sur 261 · hors ligne (message jamais perdu, tâches en file) · coût IA −28 % de tokens · dette technique · JS de démarrage −22 % · tests de bout en bout (`npm run e2e`) · guide des rappels en 5 étapes · carte « Ta forme » réelle.
+- **À FAIRE PAR TOI** : (1) appliquer dans Supabase les migrations `0011_nutrition_screen.sql` et **`0012_recurring_tasks.sql`** (et `0009`, `0010` si pas faites) ; (2) **créer la tâche planifiée** : elle a été refusée par le garde-fou de Claude Code, lance toi-même `powershell -ExecutionPolicy Bypass -File scripts\soir-tache.ps1` si tu veux d'autres runs ; (3) suivre `docs/rappels-setup.md` quand tu veux les notifications.
+- **Tests sur téléphone** : réinstaller / rouvrir la PWA (raccourcis par appui long sur l'icône ; partager un relevé Revolut vers majordome.) ; dire « rappelle-moi tous les lundis de sortir les poubelles » ; couper le réseau, envoyer un message, rétablir ; ouvrir « Ta semaine ».
+- **Choix faits à ta place** : une récurrence crée sa tâche au premier chargement du jour (pas de rattrapage des jours manqués) ; le partage d'un relevé lance l'import tout de suite ; l'historique envoyé à l'IA passe à 12 messages ; les 95 aliments sans code Ciqual sûr gardent des valeurs approchées.
+- **Reste / à décider** : voir « À décider par Ruben » en bas. Les mesures (tokens, Ko de JS) sont dans le « Journal du soir ».
+
+
+## Ancien résumé (branche `retouches`)
 - **Fait** : agenda ≠ tâches (heure précise → Planning seulement ; sans heure → Accueil seulement, widget « Tâches » : retard → aujourd'hui → sans date, 5 visibles puis « +N », coche animée + vibration) · l'IA suit la règle · Planning : le jour suit le doigt avec ressort (fondu si animations réduites), date réelle « Sam. 17 oct. », point accent sur aujourd'hui · lecture de capture d'écran retirée (carte Temps d'écran = aperçu fictif ; table et route gardées) · table nutritionnelle : 138 aliments sur 261 maintenant lus dans le fichier officiel Ciqual (test sur 3 valeurs).
 - **À tester sur ton téléphone** : cocher une tâche sur l'Accueil (animation + vibration) ; dire « rappelle-moi d'appeler Paul demain » (→ tâche, Accueil) puis « RDV dentiste demain à 14h » (→ agenda, Planning) ; glisser les jours du Planning avec le doigt ; toucher la date d'un autre jour (retour à aujourd'hui).
 - **Choix faits à ta place** : « sans heure » = échéance à 00:00 Paris ou aucune ; tâches à venir (jours suivants) listées après « sans date » ; événement ajouté dans Planning = date + heure obligatoires ; seuls les éléments d'agenda déclenchent un rappel ; l'agenda fictif et les propositions d'agenda sont retirés de l'Accueil ; 123 aliments gardent encore des valeurs approximatives (Ciqual sans appariement sûr).
 - **Migration** : aucune nouvelle (0011 déjà écrite, toujours à appliquer par toi).
 
 
-## RÉSUMÉ DU SOIR (branche `soir`) — à lire d'abord
+## Ancien résumé (branche `soir`)
 - **Fait** : 1 tout pilotable à la voix (tableau plus bas) · 2 épargne : Engagé / Libre / Mis de côté + une phrase par objectif · 3 nutrition (`log_food`, ~250 aliments, objectif kcal/macros) · 4 temps d'écran (voix, capture, Tasker) · 5 Planning refait (jour, frise des heures, semaine en points, fiche d'une tâche) · 6 verrou du code d'accès.
 - **À FAIRE PAR TOI** : appliquer dans Supabase les migrations `0009`, `0010` (si pas déjà fait) et **`0011_nutrition_screen.sql`** (repas, objectif nutrition, temps d'écran). Rien n'a été appliqué par moi.
 - **Tests sur téléphone** : « j'ai mangé 50 g de riz » ; « j'ai mis 200 € sur la voiture » puis Annuler ; « supprime la dépense Netflix » ; Planning : glisser à gauche/droite, toucher une tâche ; carte Temps d'écran → « Lire une capture ». Ne teste PAS le verrou en tapant 5 faux codes : tu serais bloqué 10 min.
@@ -151,3 +159,11 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - T10 FAIT : tests de bout en bout Playwright des 5 parcours (parler → tâche → annuler ; cocher ; repas ; dépense ; changer de jour) : `npm run dev` puis `npm run e2e` (scripts/e2e.mjs, API simulée, 5/5 passent).
 - T11 Guide rappels — gain : moyen / coût : petit. En cours.
 - T11 FAIT : docs/rappels-setup.md réécrit en 5 étapes (≈10 min) : clés → Vercel → Vault → migration 0007 → téléphone. À faire par toi quand tu veux (je ne touche pas aux variables Vercel).
+- T12 Idées (notées avant de coder) : (1) **briefing du soir** : après 18 h, la 1re ligne de l'Accueil devient « Demain : N éléments d'agenda, le premier à HH:MM » (réponse à la friction « 23 h : qu'est-ce qui m'attend demain ? ») — gain moyen / coût petit ; (2) **carte « Ta forme » réelle** : nuit, séances de la semaine et kcal du jour à la place des chiffres fictifs dès que les données existent — gain moyen / coût petit. Pas de 3e idée : gain faible.
+
+## À décider par Ruben
+- Mode hors ligne complet (cache des écrans Finances / Forme) : utile en métro, mais plus lourd (service worker avec cache) — à faire seulement si tu perds souvent le réseau.
+- Rattrapage des récurrences manquées (si tu n'ouvres pas l'app un lundi) : aujourd'hui rien n'est rattrapé.
+- Gain faible, laissé de côté : réduire le contexte (mémoire, tâches) envoyé à l'IA ; temps d'écran réel (attend une source de données, Tasker).
+- La tâche planifiée « Majordome-soir » n'a pas pu être créée par moi (garde-fou) : à lancer toi-même si tu veux des runs automatiques.
+- T12 FAIT : briefing du soir (annonce demain après 18 h) + carte « Ta forme » avec les kcal du jour. Liste terminée : arrêt intelligent (rien à désactiver, la tâche planifiée n'existe pas).
