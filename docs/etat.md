@@ -149,3 +149,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - T9 Accessibilité / performance — gain : moyen / coût : petit à moyen. En cours.
 - T9 FAIT : JS du premier chargement 784 → 608 Ko (−22 %, non compressé) : onglets, profil, bilan de semaine et rendu markdown chargés à la demande ; anneau de focus accent visible au clavier ; sorties du mouvement déjà respectées (prefers-reduced-motion). Aucun nouveau saut de mise en page constaté sur les captures.
 - T10 FAIT : tests de bout en bout Playwright des 5 parcours (parler → tâche → annuler ; cocher ; repas ; dépense ; changer de jour) : `npm run dev` puis `npm run e2e` (scripts/e2e.mjs, API simulée, 5/5 passent).
+- T11 Guide rappels — gain : moyen / coût : petit. En cours.
+- T11 FAIT : docs/rappels-setup.md réécrit en 5 étapes (≈10 min) : clés → Vercel → Vault → migration 0007 → téléphone. À faire par toi quand tu veux (je ne touche pas aux variables Vercel).
