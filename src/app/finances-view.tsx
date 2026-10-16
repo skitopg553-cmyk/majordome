@@ -226,7 +226,7 @@ function TxList({ items }: { items: { key: string; label: string; sub: string; a
   );
 }
 
-export default function FinancesView({ accessCode, onUnauthorized, onAvatar, bankNotice }: { accessCode: string; onUnauthorized: () => void; onAvatar: () => void; bankNotice?: { ok: boolean; text: string } | null }) {
+export default function FinancesView({ accessCode, onUnauthorized, onAvatar, bankNotice, sharedFile, onSharedDone }: { accessCode: string; onUnauthorized: () => void; onAvatar: () => void; bankNotice?: { ok: boolean; text: string } | null; sharedFile?: File | null; onSharedDone?: () => void }) {
   const [data, setData] = useState<Data | null>(null);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -255,6 +255,14 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
   }, [accessCode, onUnauthorized]);
 
   useEffect(load, [load]);
+
+  // Relevé partagé depuis une autre appli : l'import démarre tout seul, une seule fois.
+  const sharedHandled = useRef<File | null>(null);
+  useEffect(() => {
+    if (!sharedFile || sharedHandled.current === sharedFile) return;
+    sharedHandled.current = sharedFile;
+    void onFile(sharedFile).then(() => onSharedDone?.());
+  });
 
   async function onFile(file: File | undefined) {
     if (!file) return;

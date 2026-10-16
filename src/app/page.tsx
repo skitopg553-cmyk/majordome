@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ChatView, { type ChatHandle } from "./chat-view";
+import { isStatement, shortcutFromSearch } from "@/lib/shortcuts";
 import FinancesView from "./finances-view";
 import FormeView from "./forme-view";
 import HomeView from "./home-view";
@@ -99,7 +100,36 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
+  const [sharedFile, setSharedFile] = useState<File | null>(null); // relevé partagé depuis une autre appli (voir public/sw.js)
   const [bankNotice, setBankNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Raccourcis Android (/?action=…) et fichier partagé (/?partage=1) : on les traite puis on nettoie l'adresse.
+  useEffect(() => {
+    const sc = shortcutFromSearch(window.location.search);
+    if (sc) {
+      setChatOpen(true);
+      if (sc.prefill) setTimeout(() => chat.current?.prefill(sc.prefill), 150);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    if (new URLSearchParams(window.location.search).get("partage")) {
+      window.history.replaceState(null, "", window.location.pathname);
+      caches
+        .open("partage")
+        .then(async (cache) => {
+          const res = await cache.match("/partage-fichier");
+          if (!res) return;
+          const name = decodeURIComponent(res.headers.get("x-nom") ?? "releve.csv");
+          const blob = await res.blob();
+          await cache.delete("/partage-fichier");
+          if (isStatement(name, blob.type)) {
+            setSharedFile(new File([blob], name, { type: blob.type }));
+            setTab("finances");
+          }
+        })
+        .catch(() => {});
+    }
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {}); // nécessaire à la cible de partage
+  }, []);
 
   // Retour de la banque : /?bank=ok (ou erreur / refuse + msg brut) → on ouvre Finances avec le résultat, puis on nettoie l'adresse.
   useEffect(() => {
@@ -172,7 +202,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
         {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
-        {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} />}
+        {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} sharedFile={sharedFile} onSharedDone={() => setSharedFile(null)} />}
         {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
       </div>
 

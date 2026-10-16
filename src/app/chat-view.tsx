@@ -10,7 +10,7 @@ import { greeting, Wordmark } from "./ui";
 const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
 
 type Message = { role: "user" | "assistant"; content: string };
-export type ChatHandle = { listen: () => void; focusInput: () => void; newConversation: () => void };
+export type ChatHandle = { listen: () => void; focusInput: () => void; newConversation: () => void; prefill: (text: string) => void };
 
 const CLEARED_KEY = "majordome-cleared-at";
 
@@ -246,7 +246,7 @@ export default function ChatView({
     }
   }
 
-  useImperativeHandle(ref, () => ({ listen, focusInput: () => setTimeout(() => inputRef.current?.focus(), 50), newConversation }));
+  useImperativeHandle(ref, () => ({ listen, focusInput: () => setTimeout(() => inputRef.current?.focus(), 50), newConversation, prefill: (text) => { setInput(text); setTimeout(() => inputRef.current?.focus(), 50); } }));
 
   // Une suggestion qui finit par un espace (« Ajoute une tâche : ») est à compléter : on la met dans le champ.
   function suggest(s: string) {
