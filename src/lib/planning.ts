@@ -65,9 +65,3 @@ export function dotsFor<X extends T>(tasks: X[], day: string) {
   const n = tasks.filter((t) => t.status === "todo" && isAgenda(t) && parisDay(new Date(t.due_at!)) === day).length;
   return Math.min(3, n);
 }
-
-/** Geste horizontal → -1 (jour précédent), 1 (jour suivant) ou 0. Il faut un geste franc (≥ 60 px) et plus horizontal que vertical, sinon c'est un défilement. */
-export function swipeDirection(dx: number, dy: number): -1 | 0 | 1 {
-  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return 0;
-  return dx < 0 ? 1 : -1; // glisser vers la gauche = jour suivant
-}

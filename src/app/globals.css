@@ -243,3 +243,13 @@ body {
     animation: none !important;
   }
 }
+
+/* Fondu simple (changement de jour avec « réduire les animations ») : pas de mouvement */
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.fade {
+  animation: fade 200ms ease-out;
+}

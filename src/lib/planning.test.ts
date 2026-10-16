@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dotsFor, hasTime, homeTasks, hourRange, isAgenda, parisHM, planDay, swipeDirection, weekOf } from "./planning";
+import { dotsFor, hasTime, homeTasks, hourRange, isAgenda, parisHM, planDay, weekOf } from "./planning";
 
 type Task = { id: number; due_at: string | null; status: "todo" | "done" };
 const t = (id: number, due_at: string | null, status: "todo" | "done" = "todo"): Task => ({ id, due_at, status });
@@ -53,7 +53,7 @@ describe("agenda / tâche : la règle", () => {
   });
 });
 
-describe("hourRange, weekOf, dotsFor, swipeDirection", () => {
+describe("hourRange, weekOf, dotsFor", () => {
   it("plage 7–22 élargie par les tâches et par l'heure actuelle", () => {
     expect(hourRange([])).toEqual({ start: 7, end: 22 });
     expect(hourRange([5, 23])).toEqual({ start: 5, end: 23 });
@@ -70,11 +70,5 @@ describe("hourRange, weekOf, dotsFor, swipeDirection", () => {
     expect(dotsFor(list, "2026-10-16")).toBe(3);
     expect(dotsFor(list.slice(1, 3), "2026-10-16")).toBe(2);
     expect(dotsFor(list, "2026-10-17")).toBe(0);
-  });
-  it("glissement : franc et horizontal seulement", () => {
-    expect(swipeDirection(-120, 10)).toBe(1);
-    expect(swipeDirection(120, -10)).toBe(-1);
-    expect(swipeDirection(-40, 0)).toBe(0); // trop court
-    expect(swipeDirection(-100, 90)).toBe(0); // surtout vertical : c'est un défilement
   });
 });

@@ -2,13 +2,19 @@
 
 import { useRef, useState } from "react";
 import { DEMO_PHASE, demoEvents, type DemoEvent } from "@/lib/demo-data";
-import { dotsFor, hourRange, parisHM, planDay, swipeDirection, weekOf } from "@/lib/planning";
-import { addDays, dayLabel, parisDay } from "@/lib/task-groups";
+import { dotsFor, hourRange, parisHM, planDay, weekOf } from "@/lib/planning";
+import { addDays, parisDay } from "@/lib/task-groups";
+import DayPager, { type PagerHandle } from "./day-pager";
 import TaskSheet from "./task-sheet";
 import { DemoBanner, Header, hhmm, SkeletonRows } from "./ui";
 import type { Task, TasksApi } from "./use-tasks";
 
 const LETTERS = ["L", "M", "M", "J", "V", "S", "D"];
+/** « Sam. 17 oct. » : la vraie date, jamais « Demain » ni « Aujourd'hui ». */
+const headerDate = (day: string) => {
+  const t = new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
 const longDate = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
 const num = (day: string) => Number(day.slice(8));
 const chevron = (d: string) => (
@@ -62,7 +68,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const [showOptions, setShowOptions] = useState(true); // un événement a toujours une date et une heure
   const [day, setDay] = useState(today);
   const [openId, setOpenId] = useState<number | null>(null);
-  const touch = useRef<{ x: number; y: number } | null>(null);
+  const pager = useRef<PagerHandle>(null);
 
   function add() {
     const clean = title.trim();
@@ -74,33 +80,87 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   }
 
   const isDone = (t: Task) => t.status === "done" || api.leaving.has(t.id);
-  const byHour = planDay(api.tasks, day);
-  const events = demoEvents().filter((e) => parisDay(new Date(e.start)) === day && new Date(e.end) > now);
-  const eventsByHour = new Map<number, DemoEvent[]>();
-  for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
-  const nowHM = day === today ? parisHM(now.toISOString()) : null;
-  const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
-  // Heures vides qui se suivent : regroupées en une seule ligne fine (« 07–12 h »), pour ne pas allonger l'écran.
-  const isBusy = (h: number) => byHour.has(h) || eventsByHour.has(h) || nowHM?.h === h;
-  const rows: ({ h: number } | { from: number; to: number })[] = [];
-  for (let h = start; h <= end; h++) {
-    let to = h;
-    while (!isBusy(h) && to + 1 <= end && !isBusy(to + 1)) to++;
-    if (to > h) {
-      rows.push({ from: h, to });
-      h = to;
-    } else rows.push({ h });
-  }
-  const empty = api.loaded && !byHour.size && !events.length;
   const opened = openId !== null ? api.tasks.find((t) => t.id === openId) : undefined;
-
   const row = (t: Task, time?: string) => <PlanRow key={t.id} t={t} done={isDone(t)} time={time} onToggle={() => api.toggle(t)} onOpen={() => setOpenId(t.id)} />;
+
+  // Une colonne pour le jour d : la frise des heures (agenda seulement). Le pager en affiche trois : précédent, courant, suivant.
+  const dayPanel = (d: string) => {
+    const byHour = planDay(api.tasks, d);
+    const events = demoEvents().filter((e) => parisDay(new Date(e.start)) === d && new Date(e.end) > now);
+    const eventsByHour = new Map<number, DemoEvent[]>();
+    for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
+    const nowHM = d === today ? parisHM(now.toISOString()) : null;
+    const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
+    // Heures vides qui se suivent : regroupées en une seule ligne fine (« 07–12 h »), pour ne pas allonger l'écran.
+    const isBusy = (h: number) => byHour.has(h) || eventsByHour.has(h) || nowHM?.h === h;
+    const rows: ({ h: number } | { from: number; to: number })[] = [];
+    for (let h = start; h <= end; h++) {
+      let to = h;
+      while (!isBusy(h) && to + 1 <= end && !isBusy(to + 1)) to++;
+      if (to > h) {
+        rows.push({ from: h, to });
+        h = to;
+      } else rows.push({ h });
+    }
+    const empty = api.loaded && !byHour.size && !events.length;
+    return (
+      <div className="pt-2">
+        <div className="pb-1">
+          <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs" />
+        </div>
+        {api.error && <p className="pt-2 text-sm text-neg">{api.error}</p>}
+        {!api.loaded && (
+          <div className="pt-4">
+            <SkeletonRows rows={4} />
+          </div>
+        )}
+        {/* Frise des heures : une ligne par heure, l'agenda posé dessus */}
+        {api.loaded && !empty && (
+          <ol className="relative mt-4" aria-label="Heures">
+            {rows.map((r) => {
+              if ("from" in r) {
+                return (
+                  <li key={`gap${r.from}`} className="flex min-h-9">
+                    <span className="w-14 shrink-0 whitespace-nowrap pt-3 text-xs tabular-nums text-faint">
+                      {String(r.from).padStart(2, "0")}–{String(r.to).padStart(2, "0")} h
+                    </span>
+                    <div className="min-w-0 flex-1 border-l border-line" />
+                  </li>
+                );
+              }
+              const h = r.h;
+              const items = byHour.get(h) ?? [];
+              const evs = eventsByHour.get(h) ?? [];
+              const busy = items.length > 0 || evs.length > 0;
+              return (
+                <li key={h} className={`relative flex ${busy ? "" : "min-h-9"}`}>
+                  <span className={`w-14 shrink-0 whitespace-nowrap pt-3 text-xs tabular-nums ${nowHM?.h === h ? "font-semibold text-accent" : busy ? "text-muted" : "text-faint"}`}>{String(h).padStart(2, "0")}:00</span>
+                  <div className="min-w-0 flex-1 border-l border-line pl-3">
+                    {busy && (
+                      <ul className="divide-y divide-line/60 py-0.5">
+                        {items.map((t) => row(t, parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
+                        {evs.map((e) => (
+                          <EventRow key={e.id} e={e} />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {nowHM?.h === h && <span className="glow pointer-events-none absolute h-px bg-accent" style={{ top: `${(nowHM.m / 60) * 100}%`, left: "3.5rem", right: 0 }} aria-hidden />}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {empty && <p className="pt-10 text-center text-[15px] text-muted">Rien de prévu ce jour.</p>}
+      </div>
+    );
+  };
 
   return (
     <div className="pb-6">
       <div className="px-4">
         <Header title="Planning" onAvatar={onAvatar} />
-        {/* Ajout rapide : sans IA, gratuit et instantané */}
+        {/* Ajout rapide d'un événement : sans IA, gratuit et instantané */}
         <div className="flex gap-2">
           <input
             value={title}
@@ -129,7 +189,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         </div>
         {showOptions && (
           <div className="rise mt-2 flex gap-2">
-            <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Échéance" className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-3 text-sm text-muted outline-none [color-scheme:dark] focus:ring-1 focus:ring-accent/50" />
+            <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Date et heure" className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-3 text-sm text-muted outline-none [color-scheme:dark] focus:ring-1 focus:ring-accent/50" />
             <select value={priority} onChange={(e) => setPriority(Number(e.target.value))} aria-label="Priorité" className="h-12 rounded-2xl bg-surface px-3 text-sm text-muted outline-none focus:ring-1 focus:ring-accent/50">
               <option value={1}>Haute</option>
               <option value={2}>Normale</option>
@@ -139,18 +199,26 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         )}
       </div>
 
-      {/* Semaine en mini-points : un point par tâche à faire (3 au plus) */}
+      {/* Semaine en mini-points : un point par élément d'agenda (3 au plus) ; un point accent au-dessus de la lettre marque aujourd'hui */}
       <nav className="mt-4 grid grid-cols-7 px-2" aria-label="Semaine">
         {weekOf(day).map((d, i) => {
           const n = dotsFor(api.tasks, d);
           const selected = d === day;
           return (
-            <button key={d} onClick={() => setDay(d)} aria-current={selected ? "date" : undefined} aria-label={`${longDate(d)}${n ? `, ${n >= 3 ? "3 tâches ou plus" : `${n} tâche${n > 1 ? "s" : ""}`}` : ""}`} className="flex min-h-14 flex-col items-center justify-center gap-0.5">
+            <button
+              key={d}
+              onClick={() => pager.current?.goTo(d)}
+              aria-current={d === today ? "date" : undefined}
+              aria-pressed={selected}
+              aria-label={`${longDate(d)}${d === today ? " (aujourd'hui)" : ""}${n ? `, ${n >= 3 ? "3 événements ou plus" : `${n} événement${n > 1 ? "s" : ""}`}` : ""}`}
+              className="flex min-h-14 flex-col items-center justify-center gap-0.5"
+            >
+              <span className={`size-1 rounded-full ${d === today ? "bg-accent" : ""}`} aria-hidden />
               <span className="text-[11px] text-muted">{LETTERS[i]}</span>
-              <span className={`flex size-8 items-center justify-center rounded-full text-[14px] tabular-nums ${selected ? "bg-accent font-semibold text-ink" : d === today ? "text-accent ring-1 ring-accent/60" : "text-fg"}`}>{num(d)}</span>
+              <span className={`flex size-8 items-center justify-center rounded-full text-[14px] tabular-nums ${selected ? "bg-accent font-semibold text-ink" : "text-fg"}`}>{num(d)}</span>
               <span className="flex h-1.5 gap-0.5" aria-hidden>
                 {Array.from({ length: n }, (_, k) => (
-                  <span key={k} className="size-1 rounded-full bg-accent" />
+                  <span key={k} className="size-1 rounded-full bg-muted" />
                 ))}
               </span>
             </button>
@@ -158,88 +226,24 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         })}
       </nav>
 
-      {/* Jour affiché + navigation (glisser à gauche / à droite fait pareil) */}
+      {/* Date réelle + flèches ; hors d'aujourd'hui, toucher la date ramène à aujourd'hui */}
       <div className="flex items-center gap-1 px-3 pt-3">
-        <button onClick={() => setDay(addDays(day, -1))} aria-label="Jour précédent" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
+        <button onClick={() => pager.current?.goTo(addDays(day, -1))} aria-label="Jour précédent" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
           {chevron("M15 6l-6 6 6 6")}
         </button>
-        <div className="min-w-0 flex-1 text-center">
-          <h2 className="text-[17px] font-semibold tracking-tight first-letter:uppercase">{dayLabel(day, now) === "Aujourd'hui" || dayLabel(day, now) === "Demain" ? dayLabel(day, now) : new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "long" })}</h2>
-          <p className="text-[12px] text-muted">{new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "long" })}</p>
-        </div>
-        {day !== today ? (
-          <button onClick={() => setDay(today)} className="min-h-11 rounded-full px-3 text-[13px] font-medium text-accent active:bg-raised">
-            Aujourd&apos;hui
-          </button>
+        {day === today ? (
+          <h2 className="min-w-0 flex-1 text-center text-[17px] font-semibold tracking-tight">{headerDate(day)}</h2>
         ) : (
-          <span className="w-11" aria-hidden />
+          <button onClick={() => pager.current?.goTo(today)} aria-label={`${longDate(day)} : revenir à aujourd'hui`} className="min-h-11 min-w-0 flex-1 text-center text-[17px] font-semibold tracking-tight">
+            {headerDate(day)}
+          </button>
         )}
-        <button onClick={() => setDay(addDays(day, 1))} aria-label="Jour suivant" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
+        <button onClick={() => pager.current?.goTo(addDays(day, 1))} aria-label="Jour suivant" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
           {chevron("M9 6l6 6-6 6")}
         </button>
       </div>
 
-      <div
-        key={day}
-        className="rise px-5 pt-2"
-        onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
-        onTouchEnd={(e) => {
-          const s = touch.current;
-          touch.current = null;
-          if (!s) return;
-          const dir = swipeDirection(e.changedTouches[0].clientX - s.x, e.changedTouches[0].clientY - s.y);
-          if (dir) setDay(addDays(day, dir));
-        }}
-      >
-        <div className="pb-1">
-          <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs" />
-        </div>
-        {api.error && <p className="pt-2 text-sm text-neg">{api.error}</p>}
-        {!api.loaded && (
-          <div className="pt-4">
-            <SkeletonRows rows={4} />
-          </div>
-        )}
-
-        {/* Frise des heures : une ligne par heure, les tâches posées dessus */}
-        {api.loaded && !empty && (
-          <ol className="relative mt-4" aria-label="Heures">
-            {rows.map((r) => {
-              if ("from" in r) {
-                return (
-                  <li key={`gap${r.from}`} className="flex min-h-9">
-                    <span className="w-12 shrink-0 pt-3 text-xs tabular-nums text-faint">
-                      {String(r.from).padStart(2, "0")}–{String(r.to).padStart(2, "0")} h
-                    </span>
-                    <div className="min-w-0 flex-1 border-l border-line" />
-                  </li>
-                );
-              }
-              const h = r.h;
-              const items = byHour.get(h) ?? [];
-              const evs = eventsByHour.get(h) ?? [];
-              const busy = items.length > 0 || evs.length > 0;
-              return (
-                <li key={h} className={`relative flex ${busy ? "" : "min-h-9"}`}>
-                  <span className={`w-12 shrink-0 pt-3 text-xs tabular-nums ${nowHM?.h === h ? "font-semibold text-accent" : busy ? "text-muted" : "text-faint"}`}>{String(h).padStart(2, "0")}:00</span>
-                  <div className="min-w-0 flex-1 border-l border-line pl-3">
-                    {busy && (
-                      <ul className="divide-y divide-line/60 py-0.5">
-                        {items.map((t) => row(t, parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
-                        {evs.map((e) => (
-                          <EventRow key={e.id} e={e} />
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {nowHM?.h === h && <span className="glow pointer-events-none absolute -left-0.5 h-px bg-accent" style={{ top: `${(nowHM.m / 60) * 100}%`, left: "3rem", right: 0 }} aria-hidden />}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {empty && <p className="pt-10 text-center text-[15px] text-muted">Rien de prévu ce jour.</p>}
-      </div>
+      <DayPager ref={pager} day={day} onDay={setDay} render={dayPanel} />
 
       {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
     </div>

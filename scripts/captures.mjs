@@ -111,8 +111,13 @@ await shot("2-planning");
 await page.getByRole("button", { name: /^Appeler le médecin/ }).click();
 await shot("2b-planning-fiche");
 await page.getByLabel("Fermer", { exact: true }).click();
-await page.getByRole("button", { name: "Jour suivant" }).click();
-await shot("2c-planning-demain");
+await page.mouse.move(320, 560);
+await page.mouse.down();
+await page.mouse.move(220, 560, { steps: 6 });
+await page.mouse.move(150, 560, { steps: 6 });
+await shot("2c-planning-glisse"); // en plein geste : deux jours visibles
+await page.mouse.up();
+await shot("2d-planning-demain");
 await tab("Finances");
 await shot("3-finances");
 financesReady = true;
