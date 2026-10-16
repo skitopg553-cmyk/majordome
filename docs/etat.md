@@ -126,3 +126,8 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 ### Tâche 4 — temps d'écran : fait. Voix, bouton, capture lue par l'IA avec confirmation, route `POST /api/screen-time` pour Tasker (`docs/temps-ecran.md`), tendance 7 j vs 7 j. 9 tests.
 ### Tâche 6 — sécurité : faite. 5 mauvais codes depuis la même IP → 10 min d'attente (en mémoire, voir decisions.md). Pendant l'attente le bon code est aussi refusé (message « Code d'accès incorrect »). 6 tests.
 ### Tâche 5 — Planning : fait. Vue jour par défaut (frise 7–22 h, heures vides regroupées, ligne « maintenant »), tâches sans heure en haut, semaine en mini-points (lun → dim), glisser à gauche/droite ou flèches pour changer de jour, fiche de tâche (modifier, terminer, reporter, supprimer avec confirmation), zones tactiles ≥ 44 px. `PATCH /api/tasks` accepte maintenant titre / échéance / priorité / notes (mêmes validations). Rendu vérifié en 390×844 (captures). 12 tests.
+
+## Journal du soir
+- **Tâche planifiée « Majordome-soir » : NON créée.** Mon enregistrement (`Register-ScheduledTask`, qui lance `claude --dangerously-skip-permissions` toutes les 45 min) a été REFUSÉ par le garde-fou de Claude Code (« Create Unsafe Agents »). Je ne le contourne pas. Pour l'activer toi-même : `powershell -ExecutionPolicy Bypass -File scripts\soir-tache.ps1` (puis `Get-ScheduledTask -TaskName Majordome-soir`). Scripts prêts : `scripts/soir-run.ps1`, `scripts/soir-tache.ps1`.
+- **Veille du PC (powercfg, lecture seule)** : sur secteur, mise en veille après inactivité = jamais (0) et hibernation = jamais (0). Rien modifié.
+- Cette session (non planifiée) exécute `docs/soir.md` à la main, sur la branche `weekend`.
