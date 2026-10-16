@@ -49,6 +49,16 @@ Appris :
 - [ ] Budgets, alertes dépenses inhabituelles, objectifs d'épargne
 - Connexion bancaire automatique (agrégateur DSP2) : plus tard seulement si le CSV devient pénible
 
+## Phase 4b — Connexion bancaire (Enable Banking, lecture seule)
+Remplace l'import CSV quand il devient pénible (voir « Banque via import CSV » ci-dessus : le CSV reste en secours).
+- [ ] Client serveur Enable Banking (JWT RS256 signé avec la clé de l'app) — fait, testé avec de faux appels
+- [ ] Conversion des opérations vers le même format que l'import CSV, mêmes catégories — fait, testé
+- [ ] Table `bank_connections` (migration à valider avant d'être appliquée)
+- [ ] Routes : connecter (Revolut), callback, synchro (soldes + opérations, sans doublons)
+- [ ] Écran Finances : « Connecter ma banque », « Actualiser », vrai solde, avertissement avant l'expiration du consentement
+- Contraintes : **lecture seule stricte** (jamais de paiement), **mode restreint** Enable Banking (seulement les comptes de Ruben), aucun secret dans le code ni les logs, les erreurs de l'API sont affichées telles quelles.
+**Terminé quand** : le solde et les opérations Revolut s'affichent dans l'app après un tap sur « Actualiser ».
+
 ## Phase 5 — Sport & sommeil (≈2 semaines)
 - [ ] Séances détectées dans l'agenda et classées en sport
 - [ ] Données montre via l'API de la marque ou export
