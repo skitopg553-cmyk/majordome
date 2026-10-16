@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { denied } from "@/lib/access";
 import { runAgent } from "@/lib/ai";
 import { supabaseAdmin } from "@/lib/supabase";
+import { ACTIONS_MARK, extractUndo, type Undo } from "@/lib/undo";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
 const INSTRUCTIONS = `Tu es Majordome, l'assistant personnel de Ruben : secrétaire, coach et conseiller.
@@ -49,6 +50,15 @@ export async function POST(req: Request) {
   const first = new Promise<void>((r) => (firstText = r));
   const report = () => console.log("[timing]", timings.map(([l, ms]) => `${l}=${ms}ms`).join(" "));
 
+  // Actions annulables : chaque outil qui écrit renvoie « undo » ; on le retire avant de répondre au modèle (inutile pour lui)
+  // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
+  const actions: Undo[] = [];
+  const executeAndCollect = async (name: string, args: Record<string, unknown>) => {
+    const { result, undo } = extractUndo(await executeTool(name, args));
+    if (undo) actions.push(undo);
+    return result;
+  };
+
   const run = (async () => {
     const context = await buildContext();
     time("contexte", Date.now() - t0);
@@ -58,7 +68,7 @@ export async function POST(req: Request) {
       messages: messages.slice(-20), // on limite l'historique envoyé pour maîtriser les coûts
       purpose: "chat",
       tools: TOOLS,
-      executeTool,
+      executeTool: executeAndCollect,
       onTiming: time,
       onText: (d) => {
         if (!sent) time("premier_mot", Date.now() - t0);
@@ -72,6 +82,7 @@ export async function POST(req: Request) {
     () => {
       time("total", Date.now() - t0);
       report();
+      if (actions.length) ctrl.enqueue(enc.encode(ACTIONS_MARK + JSON.stringify(actions)));
       ctrl.close();
     },
     (err) => {

@@ -35,6 +35,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const [priority, setPriority] = useState(2);
   const [showOptions, setShowOptions] = useState(false);
   const [view, setView] = useState<"jour" | "semaine">("jour");
+  const [editing, setEditing] = useState(false); // mode « supprimer » : une corbeille apparaît sur chaque tâche
 
   // Vue semaine → toucher un jour ouvre la vue jour, positionnée sur ce jour.
   function openDay(day: string) {
@@ -72,7 +73,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   const row = (t: Task, time = false) => (
-    <TaskRow key={t.id} t={t} time={time} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onPostpone={() => api.postpone(t)} />
+    <TaskRow key={t.id} t={t} time={time} done={t.status === "done" || api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onPostpone={() => api.postpone(t)} onDelete={editing ? () => api.remove(t) : undefined} />
   );
   const section = (label: string, children: React.ReactNode, accent = false, id?: string) => (
     <div key={label} id={id} className="scroll-mt-4 pt-6">
@@ -153,8 +154,13 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
       </div>
 
       <div className="px-5">
-        <div className="pt-5">
+        <div className="flex items-center justify-between gap-3 pt-5">
           <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs, tâches réelles" />
+          {api.tasks.length > 0 && view === "jour" && (
+            <button onClick={() => setEditing((e) => !e)} className="-my-3 -mr-2 min-h-11 shrink-0 px-2 text-[13px] font-medium text-accent">
+              {editing ? "Terminé" : "Modifier"}
+            </button>
+          )}
         </div>
         {api.error && <p className="pt-3 text-sm text-neg">{api.error}</p>}
         {!api.loaded && (

@@ -7,6 +7,7 @@ import { isMissingTable, supabaseAdmin } from "./supabase";
 import { parisDay } from "./task-groups";
 import { fold } from "./text";
 import type { ToolDef } from "./tools";
+import { RESTORABLE, type Undo } from "./undo";
 
 const DATE = { type: "string", description: "Jour concerné, AAAA-MM-JJ (heure de Paris). Absent = aujourd'hui. Jamais dans le futur." };
 
@@ -56,31 +57,53 @@ export const LIFE_TOOLS: ToolDef[] = [
 const out = (o: unknown) => JSON.stringify(o);
 const noTable = (what: string) => out({ ok: false, error: `${what} : la base n'est pas prête pour cela (migration manquante). Dis-le simplement à Ruben.` });
 
+type Db = ReturnType<typeof supabaseAdmin>;
+type Row = Record<string, string | number | null>;
+
+/** Seulement les colonnes qu'on a le droit de remettre (voir undo.ts). */
+const restorable = (table: string, row: Row): Row => Object.fromEntries((RESTORABLE[table] ?? []).filter((k) => k in row).map((k) => [k, row[k]]));
+
+/** Annulation d'un ajout-ou-remplacement : si la ligne n'existait pas on la supprime, sinon on remet son ancien contenu. */
+const undoFor = (label: string, table: string, id: number, previous: Row | null): Undo => ({
+  label,
+  steps: [previous ? { op: "restore", table, id, values: restorable(table, previous) } : { op: "delete", table, id }],
+});
+
+/** upsert sur une colonne unique, en gardant l'ancienne ligne pour pouvoir annuler. */
+async function upsertWithUndo(db: Db, table: string, key: string, values: Row, label: string) {
+  const before = await db.from(table).select("*").eq(key, values[key]).maybeSingle();
+  if (isMissingTable(before.error)) return { error: before.error, undo: undefined };
+  const r = await db.from(table).upsert(values as never, { onConflict: key }).select("id").single(); // « as never » : le nom de table est dynamique, le client ne peut pas le typer
+  const undo = !r.error && r.data ? undoFor(label, table, r.data.id as number, (before.data as Row | null) ?? null) : undefined;
+  return { error: r.error, undo };
+}
+
 /**
  * Crée l'objectif, ou met à jour celui du même nom (sans accents ni casse) : seuls les champs donnés changent.
- * Partagé par l'outil IA et le formulaire « Nouvel objectif ».
+ * Partagé par l'outil IA et le formulaire « Nouvel objectif ». Renvoie aussi de quoi annuler.
  */
-export async function saveGoal(db: ReturnType<typeof supabaseAdmin>, g: { label: string; target: number; saved: number | null; due_label: string | null }) {
-  const all = await db.from("savings_goals").select("id,label");
-  if (all.error) return { error: all.error, id: undefined, created: false };
+export async function saveGoal(db: Db, g: { label: string; target: number; saved: number | null; due_label: string | null }) {
+  const all = await db.from("savings_goals").select("id,label,target,saved,due_label");
+  if (all.error) return { error: all.error, id: undefined, created: false, undo: undefined as Undo | undefined };
   const existing = (all.data ?? []).find((x) => fold(x.label) === fold(g.label));
   if (existing) {
     const patch: Record<string, unknown> = { target: g.target };
     if (g.saved !== null) patch.saved = g.saved;
     if (g.due_label !== null) patch.due_label = g.due_label;
     const r = await db.from("savings_goals").update(patch).eq("id", existing.id);
-    return { error: r.error, id: existing.id as number, created: false };
+    return { error: r.error, id: existing.id as number, created: false, undo: r.error ? undefined : undoFor(`Objectif « ${g.label} »`, "savings_goals", existing.id as number, existing as Row) };
   }
   const r = await db.from("savings_goals").insert({ label: g.label, target: g.target, saved: g.saved ?? 0, due_label: g.due_label }).select("id").single();
-  return { error: r.error, id: r.data?.id as number | undefined, created: true };
+  const id = r.data?.id as number | undefined;
+  return { error: r.error, id, created: true, undo: !r.error && id ? undoFor(`Objectif « ${g.label} »`, "savings_goals", id, null) : undefined };
 }
 
-/** Exécute un outil « vie ». Renvoie null si ce n'est pas l'un d'eux. */
+/** Exécute un outil « vie ». Renvoie null si ce n'est pas l'un d'eux. Chaque écriture renvoie « undo » (voir tools.ts). */
 export async function executeLifeTool(name: string, args: Record<string, unknown>): Promise<string | null> {
   const now = new Date();
   const db = supabaseAdmin();
-  const done = (error: { code?: string; message: string } | null, what: string, result: Record<string, unknown> = {}) =>
-    isMissingTable(error) ? noTable(what) : error ? out({ ok: false, error: error.message }) : out({ ok: true, ...result });
+  const done = (error: { code?: string; message: string } | null, what: string, result: Record<string, unknown> = {}, undo?: Undo) =>
+    isMissingTable(error) ? noTable(what) : error ? out({ ok: false, error: error.message }) : out({ ok: true, ...result, ...(undo ? { undo } : {}) });
 
   switch (name) {
     case "log_workout": {
@@ -91,13 +114,13 @@ export async function executeLifeTool(name: string, args: Record<string, unknown
       const dup = (same.data ?? []).find((w) => fold(w.kind) === fold(p.value.kind));
       if (dup) return out({ ok: false, error: `déjà noté ce jour-là : séance #${dup.id} « ${dup.kind} »${dup.minutes ? ` (${dup.minutes} min)` : ""}. Ne la note pas deux fois.` });
       const r = await db.from("workouts").insert({ ...p.value, source: "manuel" }).select("id").single();
-      return done(r.error, "Séance", { saved: { ...p.value, id: r.data?.id } });
+      return done(r.error, "Séance", { saved: { ...p.value, id: r.data?.id } }, r.data ? undoFor(`Séance « ${p.value.kind} »`, "workouts", r.data.id as number, null) : undefined);
     }
     case "log_sleep": {
       const p = parseSleep(args, now);
       if (!p.ok) return out(p);
-      const r = await db.from("sleep_logs").upsert(p.value, { onConflict: "date" });
-      return done(r.error, "Sommeil", { saved: p.value });
+      const r = await upsertWithUndo(db, "sleep_logs", "date", p.value, "Nuit de sommeil");
+      return done(r.error, "Sommeil", { saved: p.value }, r.undo);
     }
     case "log_steps": {
       const p = parseSteps(args, now);
@@ -109,27 +132,27 @@ export async function executeLifeTool(name: string, args: Record<string, unknown
         total += cur.data?.steps ?? 0;
       }
       if (total > 100000) return out({ ok: false, error: "total de pas du jour supérieur à 100000 : vérifie avec Ruben" });
-      const r = await db.from("steps_logs").upsert({ date: p.value.date, steps: total }, { onConflict: "date" });
-      return done(r.error, "Pas", { saved: { date: p.value.date, total_du_jour: total } });
+      const r = await upsertWithUndo(db, "steps_logs", "date", { date: p.value.date, steps: total }, "Pas");
+      return done(r.error, "Pas", { saved: { date: p.value.date, total_du_jour: total } }, r.undo);
     }
     case "set_budget": {
       const p = parseBudget(args);
       if (!p.ok) return out(p);
-      const r = await db.from("budgets").upsert(p.value, { onConflict: "category" });
-      return done(r.error, "Budget", { saved: p.value });
+      const r = await upsertWithUndo(db, "budgets", "category", p.value, `Budget ${p.value.category}`);
+      return done(r.error, "Budget", { saved: p.value }, r.undo);
     }
     case "set_goal": {
       const p = parseGoal(args);
       if (!p.ok) return out(p);
       const r = await saveGoal(db, p.value);
-      return done(r.error, "Objectif", { saved: { ...p.value, id: r.id }, action: r.created ? "créé" : "mis à jour" });
+      return done(r.error, "Objectif", { saved: { ...p.value, id: r.id }, action: r.created ? "créé" : "mis à jour" }, r.undo);
     }
     case "add_transaction": {
       const p = parseExpense(args, now);
       if (!p.ok) return out(p);
       // Clé unique propre à la saisie manuelle (ne peut pas entrer en collision avec un import CSV).
       const r = await db.from("transactions").insert({ ...p.value, import_key: `manuel|${now.getTime()}|${p.value.label.toLowerCase()}` }).select("id").single();
-      return done(r.error, "Dépense", { saved: { ...p.value, id: r.data?.id } });
+      return done(r.error, "Dépense", { saved: { ...p.value, id: r.data?.id } }, r.data ? undoFor(`Opération « ${p.value.label} »`, "transactions", r.data.id as number, null) : undefined);
     }
     default:
       return null;

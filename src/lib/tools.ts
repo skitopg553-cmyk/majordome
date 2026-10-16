@@ -1,6 +1,7 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
 import { supabaseAdmin } from "./supabase";
 import { fold } from "./text";
+import type { Undo } from "./undo";
 
 // Outils que l'agent peut appeler. Format neutre (JSON Schema) : ai.ts l'adapte à OpenAI ou à Claude.
 export type ToolDef = { name: string; description: string; parameters: Record<string, unknown> };
@@ -67,13 +68,19 @@ export function isSimilar(a: string, b: string) {
   return x !== "" && y !== "" && (x === y || x.includes(y) || y.includes(x));
 }
 
-/** Exécute un outil et renvoie un résultat texte court pour le modèle. */
+/**
+ * Exécute un outil et renvoie un résultat texte court pour le modèle.
+ * Pour chaque écriture, le résultat contient aussi « undo » : de quoi la défaire (la route de chat le retire avant de répondre au modèle
+ * et le transmet à l'écran, qui affiche un bouton « Annuler »).
+ */
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
   const db = supabaseAdmin();
   const pick = (keys: string[]) =>
     Object.fromEntries(keys.filter((k) => args[k] !== undefined && args[k] !== null).map((k) => [k, args[k]]));
 
   let res: { data: unknown; error: { message: string } | null };
+  let undo: Undo | undefined;
+  const idOf = (d: unknown) => (d && typeof d === "object" && "id" in d ? Number((d as { id: unknown }).id) : NaN);
   switch (name) {
     case "add_task": {
       const open = await db.from("tasks").select("id,title").eq("status", "todo");
@@ -86,26 +93,41 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         });
       }
       res = await db.from("tasks").insert(pick(["title", "due_at", "priority", "notes"])).select("id").single();
+      if (!res.error) undo = { label: `Tâche « ${String(args.title)} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
       break;
     }
-    case "update_task":
-      res = await db.from("tasks").update(pick(["title", "due_at", "priority", "notes"])).eq("id", Number(args.id)).select("id");
+    case "update_task": {
+      const patch = pick(["title", "due_at", "priority", "notes"]);
+      const keys = Object.keys(patch);
+      const before = keys.length ? await db.from("tasks").select(keys.join(",")).eq("id", Number(args.id)).maybeSingle() : null;
+      res = await db.from("tasks").update(patch).eq("id", Number(args.id)).select("id");
+      if (!res.error && before?.data) undo = { label: "Modification de tâche", steps: [{ op: "restore", table: "tasks", id: Number(args.id), values: before.data as unknown as Record<string, string | number | null> }] };
       break;
-    case "complete_task":
+    }
+    case "complete_task": {
+      const before = await db.from("tasks").select("status,done_at").eq("id", Number(args.id)).maybeSingle();
       res = await db.from("tasks").update({ status: "done", done_at: new Date().toISOString() }).eq("id", Number(args.id)).select("id");
+      if (!res.error && before.data) undo = { label: "Tâche terminée", steps: [{ op: "restore", table: "tasks", id: Number(args.id), values: before.data as Record<string, string | null> }] };
       break;
+    }
     case "remember":
       res = await db.from("memories").insert(pick(["content", "category"])).select("id").single();
+      if (!res.error) undo = { label: "Souvenir", steps: [{ op: "delete", table: "memories", id: idOf(res.data) }] };
       break;
-    case "forget":
+    case "forget": {
+      const before = await db.from("memories").select("content,category").eq("id", Number(args.id)).maybeSingle();
       res = await db.from("memories").delete().eq("id", Number(args.id)).select("id");
+      if (!res.error && before.data) undo = { label: "Souvenir oublié", steps: [{ op: "insert", table: "memories", values: before.data }] };
       break;
-    default:
-      return (await executeLifeTool(name, args)) ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
+    }
+    default: {
+      const life = await executeLifeTool(name, args);
+      return life ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
+    }
   }
   if (res.error) return JSON.stringify({ ok: false, error: res.error.message });
   if (Array.isArray(res.data) && res.data.length === 0) return JSON.stringify({ ok: false, error: "id introuvable" });
-  return JSON.stringify({ ok: true, result: res.data });
+  return JSON.stringify({ ok: true, result: res.data, ...(undo ? { undo } : {}) });
 }
 
 const TZ = "Europe/Paris";

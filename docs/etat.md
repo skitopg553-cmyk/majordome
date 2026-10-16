@@ -73,3 +73,4 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Première synchro = 90 jours en arrière ; ensuite on repart 7 jours avant la dernière. Si tu avais importé un CSV de la même période, des doublons sont possibles (les libellés banque et CSV diffèrent).
 - Retour de la banque : protégé par un « state » signé de 10 min (la banque ne peut pas envoyer le code d'accès). Messages d'erreur de l'API affichés bruts.
 ### Tâche 1 — banque : faite (routes connecter / retour / synchro, carte Banque, vrai solde sur Accueil et Finances, alerte à 14 jours). Testée avec de faux appels, jamais avec la vraie banque.
+### Tâche 2 — annuler / supprimer : faite. Bouton « Annuler » 10 s sous la réponse de l'IA (tâche, souvenir, objectif, opération, budget, séance, nuit, pas) ; suppression (avec confirmation) depuis Planning, Finances (opérations, objectifs) et Forme (séances, nuit, pas). Seules les tables autorisées (src/lib/undo.ts) sont touchables.

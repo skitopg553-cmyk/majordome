@@ -5,7 +5,7 @@ import { hhmm } from "./ui";
  * Une tâche réelle avec sa case ronde. `time` affiche l'heure à gauche (timeline du Planning).
  * `onPostpone` ajoute le bouton « Demain » (reporter en un geste).
  */
-export default function TaskRow({ t, done, onToggle, onPostpone, time = false }: { t: Task; done: boolean; onToggle: () => void; onPostpone?: () => void; time?: boolean }) {
+export default function TaskRow({ t, done, onToggle, onPostpone, onDelete, time = false }: { t: Task; done: boolean; onToggle: () => void; onPostpone?: () => void; onDelete?: () => void; time?: boolean }) {
   return (
     <li className="rise flex items-center">
       <button onClick={onToggle} disabled={t.id < 0} aria-pressed={done} className="flex min-h-12 min-w-0 flex-1 items-start gap-3 py-2.5 text-left">
@@ -29,7 +29,14 @@ export default function TaskRow({ t, done, onToggle, onPostpone, time = false }:
           {!time && t.due_at && <span className="mt-0.5 block text-xs text-faint">{hhmm(t.due_at)}</span>}
         </span>
       </button>
-      {onPostpone && !done && t.id > 0 && (
+      {onDelete && t.id > 0 && (
+        <button onClick={onDelete} aria-label={`Supprimer la tâche : ${t.title}`} className="-mr-2 ml-1 flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised active:text-neg">
+          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" />
+          </svg>
+        </button>
+      )}
+      {!onDelete && onPostpone && !done && t.id > 0 && (
         <button
           onClick={onPostpone}
           aria-label={`Reporter à demain : ${t.title}`}

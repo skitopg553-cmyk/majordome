@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { ACTIONS_MARK, extractUndo, parseDeleteRequest, parseUndoSteps, splitReply, undoLabel, type Undo } from "./undo";
+
+describe("parseUndoSteps (ce que le navigateur peut demander)", () => {
+  it("accepte supprimer / remettre / recréer un souvenir", () => {
+    expect(parseUndoSteps([{ op: "delete", table: "workouts", id: 4 }])).toEqual([{ op: "delete", table: "workouts", id: 4 }]);
+    expect(parseUndoSteps([{ op: "restore", table: "savings_goals", id: 2, values: { saved: 450, target: 3000 } }])).toHaveLength(1);
+    expect(parseUndoSteps([{ op: "insert", table: "memories", values: { content: "x", category: "info" } }])).toHaveLength(1);
+  });
+  it("refuse une table inconnue, un id absurde, une colonne non autorisée", () => {
+    for (const bad of [
+      [{ op: "delete", table: "ai_calls", id: 1 }],
+      [{ op: "delete", table: "tasks", id: "1; drop table tasks" }],
+      [{ op: "delete", table: "tasks", id: -3 }],
+      [{ op: "delete", table: "tasks", id: 1.5 }],
+      [{ op: "restore", table: "tasks", id: 1, values: { id: 99 } }],
+      [{ op: "restore", table: "tasks", id: 1, values: { title: { a: 1 } } }],
+      [{ op: "restore", table: "tasks", id: 1, values: {} }],
+      [{ op: "insert", table: "tasks", values: { title: "x" } }], // recréer seulement les souvenirs
+      [{ op: "nettoyer", table: "tasks", id: 1 }],
+      [],
+      "tasks",
+      null,
+    ]) expect(parseUndoSteps(bad as never)).toBeNull();
+  });
+  it("un seul mauvais pas refuse tout le lot (rien n'est fait à moitié)", () => {
+    expect(parseUndoSteps([{ op: "delete", table: "tasks", id: 1 }, { op: "delete", table: "secrets", id: 2 }])).toBeNull();
+  });
+  it("plafonne le nombre de pas", () => {
+    expect(parseUndoSteps(Array.from({ length: 21 }, () => ({ op: "delete", table: "tasks", id: 1 })))).toBeNull();
+  });
+});
+
+describe("parseDeleteRequest (suppression depuis un écran)", () => {
+  it("par id, ou par date pour le sommeil et les pas", () => {
+    expect(parseDeleteRequest({ table: "transactions", id: 12 })).toEqual({ table: "transactions", id: 12 });
+    expect(parseDeleteRequest({ table: "sleep_logs", date: "2026-10-16" })).toEqual({ table: "sleep_logs", date: "2026-10-16" });
+  });
+  it("refuse une table interdite, une date sur une autre table, un id manquant", () => {
+    expect(parseDeleteRequest({ table: "ai_calls", id: 1 })).toBeNull();
+    expect(parseDeleteRequest({ table: "bank_connections", id: 1 })).toBeNull();
+    expect(parseDeleteRequest({ table: "tasks", date: "2026-10-16" })).toBeNull();
+    expect(parseDeleteRequest({ table: "tasks" })).toBeNull();
+    expect(parseDeleteRequest({ table: "sleep_logs", date: "16/10/2026" })).toBeNull();
+  });
+});
+
+describe("réponse + actions annulables dans le même flux", () => {
+  const undo: Undo = { label: "Séance « Muscu »", steps: [{ op: "delete", table: "workouts", id: 7 }] };
+  it("sépare le texte et les actions", () => {
+    expect(splitReply(`C'est noté.${ACTIONS_MARK}${JSON.stringify([undo])}`)).toEqual({ text: "C'est noté.", actions: [undo] });
+    expect(splitReply("Bonjour")).toEqual({ text: "Bonjour", actions: [] });
+  });
+  it("un trailer coupé ou piégé ne casse pas le texte et n'annule rien", () => {
+    expect(splitReply(`Ok${ACTIONS_MARK}[{"label":"x","steps":[{"op":`)).toEqual({ text: "Ok", actions: [] });
+    expect(splitReply(`Ok${ACTIONS_MARK}${JSON.stringify([{ label: "piège", steps: [{ op: "delete", table: "ai_calls", id: 1 }] }])}`).actions).toEqual([]);
+  });
+  it("libellé du bouton", () => {
+    expect(undoLabel([undo])).toBe("Séance « Muscu »");
+    expect(undoLabel([undo, undo, undo])).toBe("3 ajouts");
+  });
+});
+
+describe("extractUndo (ce que voit le modèle, ce que voit l'écran)", () => {
+  const undo = { label: "Tâche « Appeler »", steps: [{ op: "delete", table: "tasks", id: 3 }] };
+  it("retire l'undo du résultat envoyé au modèle et le renvoie à part", () => {
+    const r = extractUndo(JSON.stringify({ ok: true, result: { id: 3 }, undo }));
+    expect(JSON.parse(r.result)).toEqual({ ok: true, result: { id: 3 } });
+    expect(r.undo).toEqual(undo);
+  });
+  it("résultat sans undo, en erreur, ou pas en JSON : renvoyé tel quel", () => {
+    for (const raw of [JSON.stringify({ ok: false, error: "x" }), JSON.stringify({ ok: true }), "pas du json"]) expect(extractUndo(raw)).toEqual({ result: raw });
+  });
+  it("un undo invalide n'est jamais transmis à l'écran", () => {
+    const raw = JSON.stringify({ ok: true, undo: { label: "piège", steps: [{ op: "delete", table: "ai_calls", id: 1 }] } });
+    expect(extractUndo(raw)).toEqual({ result: raw });
+  });
+});

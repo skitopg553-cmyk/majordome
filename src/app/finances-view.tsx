@@ -5,6 +5,7 @@ import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
 import { parseFrenchAmount } from "@/lib/finance/csv";
 import { xlsxFileToCsv } from "@/lib/finance/xlsx";
+import { confirmDelete, deleteEntry } from "./delete-entry";
 import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
@@ -85,7 +86,7 @@ function GoalCard({ g, onEdit }: { g: Goal; onEdit?: () => void }) {
   );
 }
 
-type GoalDraft = { label: string; target: string; saved: string; due: string };
+type GoalDraft = { id?: number; label: string; target: string; saved: string; due: string };
 const EMPTY_GOAL: GoalDraft = { label: "", target: "", saved: "", due: "" };
 
 /** Formulaire « Nouvel objectif » (et « Modifier » : même nom = mise à jour). */
@@ -130,7 +131,23 @@ function GoalForm({ initial, accessCode, onUnauthorized, onDone, onCancel }: { i
       </div>
       <input value={d.due} onChange={(e) => setD({ ...d, due: e.target.value })} placeholder="Pour quand ? (facultatif, ex. Juin)" aria-label="Pour quand" className={field} />
       {error && <p className="text-[13px] text-neg">{error}</p>}
-      <div className="flex justify-end gap-2 pt-1">
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {initial.id && (
+          <button
+            onClick={async () => {
+              if (!confirmDelete(`l'objectif « ${initial.label} »`)) return;
+              try {
+                await deleteEntry(accessCode, { table: "savings_goals", id: initial.id! }, onUnauthorized);
+                onDone();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Suppression impossible");
+              }
+            }}
+            className="mr-auto min-h-11 rounded-full px-3 text-[13px] font-medium text-muted active:bg-raised active:text-neg"
+          >
+            Supprimer
+          </button>
+        )}
         <button onClick={onCancel} className="min-h-11 rounded-full px-4 text-[13px] font-medium text-muted active:bg-raised">
           Annuler
         </button>
@@ -142,7 +159,7 @@ function GoalForm({ initial, accessCode, onUnauthorized, onDone, onCancel }: { i
   );
 }
 
-function TxList({ items }: { items: { key: string; label: string; sub: string; amount: number }[] }) {
+function TxList({ items }: { items: { key: string; label: string; sub: string; amount: number; onDelete?: () => void }[] }) {
   return (
     <ul className="divide-y divide-line/60">
       {items.map((t) => (
@@ -156,6 +173,13 @@ function TxList({ items }: { items: { key: string; label: string; sub: string; a
             {t.amount > 0 ? "+" : ""}
             {euro(t.amount)}
           </span>
+          {t.onDelete && (
+            <button onClick={t.onDelete} aria-label={`Supprimer l'opération : ${t.label}`} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised active:text-neg">
+              <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" />
+              </svg>
+            </button>
+          )}
         </li>
       ))}
     </ul>
@@ -168,6 +192,17 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [goalForm, setGoalForm] = useState<GoalDraft | null>(null);
+  const [editingTx, setEditingTx] = useState(false);
+
+  async function removeTx(t: { id?: number | string; label: string }) {
+    if (!confirmDelete(`l'opération « ${t.label} »`)) return;
+    try {
+      await deleteEntry(accessCode, { table: "transactions", id: Number(t.id) }, onUnauthorized);
+      load();
+    } catch (e) {
+      setNotice({ ok: false, text: e instanceof Error ? e.message : "Suppression impossible" });
+    }
+  }
 
   const load = useCallback(() => {
     fetch("/api/finances", { headers: { "x-access-code": accessCode } })
@@ -289,7 +324,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
           <GoalCard
             key={g.id}
             g={g}
-            onEdit={() => setGoalForm({ label: g.label, target: String(g.target), saved: String(g.saved), due: g.due_label ?? "" })}
+            onEdit={() => setGoalForm({ id: g.id, label: g.label, target: String(g.target), saved: String(g.saved), due: g.due_label ?? "" })}
           />
         ))}
         {goalForm ? (
@@ -315,8 +350,21 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
         {importButton}
         {recent.length > 0 && (
           <Card>
-            <Label>Dernières opérations</Label>
-            <TxList items={recent.map((t) => ({ key: String(t.id), label: t.label, sub: `${t.category} · ${shortDate(t.date)}`, amount: t.amount }))} />
+            <div className="flex items-center justify-between">
+              <Label>Dernières opérations</Label>
+              <button onClick={() => setEditingTx((e) => !e)} className="-my-3 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
+                {editingTx ? "Terminé" : "Modifier"}
+              </button>
+            </div>
+            <TxList
+              items={recent.map((t) => ({
+                key: String(t.id),
+                label: t.label,
+                sub: `${t.category} · ${shortDate(t.date)}`,
+                amount: t.amount,
+                onDelete: editingTx ? () => removeTx(t) : undefined,
+              }))}
+            />
           </Card>
         )}
       </div>

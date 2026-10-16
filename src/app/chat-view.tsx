@@ -4,7 +4,10 @@ import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
 import Orb, { orbLabel } from "./orb";
+import { splitReply, undoLabel, type Undo } from "@/lib/undo";
 import { greeting, Wordmark } from "./ui";
+
+const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
 
 type Message = { role: "user" | "assistant"; content: string };
 export type ChatHandle = { listen: () => void; focusInput: () => void; newConversation: () => void };
@@ -85,10 +88,46 @@ export default function ChatView({
 
   // Après une demande vocale, le chat se referme 3 s après la fin de la réponse (annulé dès que Ruben touche l'écran).
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const undoRef = useRef(false);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [undo, setUndo] = useState<{ actions: Undo[]; state: "ready" | "busy" | "done" | "error"; error?: string } | null>(null);
+
+  function showUndo(actions: Undo[]) {
+    clearTimeout(undoTimer.current);
+    undoRef.current = true;
+    setUndo({ actions, state: "ready" });
+    undoTimer.current = setTimeout(() => {
+      undoRef.current = false;
+      setUndo((u) => (u?.state === "ready" ? null : u)); // le bouton disparaît après quelques secondes
+    }, UNDO_MS);
+  }
+
+  async function doUndo() {
+    if (!undo || undo.state !== "ready") return;
+    cancelClose();
+    clearTimeout(undoTimer.current);
+    setUndo({ ...undo, state: "busy" });
+    try {
+      const res = await fetch("/api/undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-access-code": accessCode },
+        body: JSON.stringify({ steps: undo.actions.flatMap((a) => a.steps) }),
+      });
+      if (res.status === 401) return onUnauthorized();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `Erreur serveur (${res.status})`);
+      setUndo({ ...undo, state: "done" });
+      undoTimer.current = setTimeout(() => setUndo(null), 2500);
+    } catch (e) {
+      setUndo({ ...undo, state: "error", error: e instanceof Error ? e.message : "Annulation impossible" });
+    } finally {
+      undoRef.current = false;
+    }
+  }
   const cancelClose = () => clearTimeout(closeTimer.current);
   const closeSoon = () => {
     cancelClose();
-    closeTimer.current = setTimeout(onClose, 3000);
+    closeTimer.current = setTimeout(onClose, undoRef.current ? UNDO_MS + 1000 : 3000); // on laisse le temps d'annuler avant de refermer
   };
 
   function say(text: string, then?: () => void) {
@@ -117,7 +156,9 @@ export default function ChatView({
     setWaiting(true);
     setBusy(true);
     setError(null);
+    let streamed = ""; // texte + actions annulables tels que reçus
     let reply = "";
+    setUndo(null);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -131,10 +172,15 @@ export default function ChatView({
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        reply += value;
+        streamed += value;
+        // Après le texte, le serveur peut ajouter les actions annulables (voir src/lib/undo.ts) : jamais affichées comme du texte.
+        const parts = splitReply(streamed);
+        reply = parts.text;
         setWaiting(false);
         setMessages([...next, { role: "assistant", content: reply }]);
       }
+      const { actions } = splitReply(streamed);
+      if (actions.length) showUndo(actions);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
@@ -267,6 +313,20 @@ export default function ChatView({
                 <Orb state="listening" size={96} />
               </button>
               <p className="min-h-6 text-center text-lg font-medium text-fg/90">{interim || "Je t'écoute…"}</p>
+            </div>
+          )}
+          {undo && (
+            <div className="rise flex items-center gap-3" aria-live="polite">
+              {undo.state === "done" ? (
+                <p className="text-[13px] text-muted">C&apos;est annulé.</p>
+              ) : undo.state === "error" ? (
+                <p className="break-words text-[13px] text-neg">{undo.error}</p>
+              ) : (
+                <button onClick={doUndo} disabled={undo.state === "busy"} className="relative min-h-11 overflow-hidden rounded-full bg-raised px-4 text-[13px] font-medium text-fg ring-1 ring-line active:scale-95 disabled:opacity-60">
+                  <span aria-hidden>↩ </span>Annuler · {undoLabel(undo.actions)}
+                  {undo.state === "ready" && <span className="undo-bar absolute inset-x-0 bottom-0 h-0.5 bg-accent" style={{ animationDuration: `${UNDO_MS}ms` }} aria-hidden />}
+                </button>
+              )}
             </div>
           )}
           {waiting && (

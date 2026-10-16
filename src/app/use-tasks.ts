@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { postponeToTomorrow } from "@/lib/task-groups";
+import { confirmDelete, deleteEntry } from "./delete-entry";
 
 export type Task = { id: number; title: string; due_at: string | null; priority: number; notes: string | null; status: "todo" | "done" };
 
@@ -63,6 +64,16 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     });
   }
 
+  // Suppression définitive (après confirmation) : la tâche disparaît tout de suite, et revient si le serveur refuse.
+  function remove(t: Task) {
+    if (!confirmDelete(`la tâche « ${t.title} »`)) return;
+    setTasks((cur) => cur.filter((x) => x.id !== t.id));
+    deleteEntry(accessCode, { table: "tasks", id: t.id }, onUnauthorized).catch((e) => {
+      setTasks((cur) => (cur.some((x) => x.id === t.id) ? cur : [...cur, t]));
+      setError(e.message);
+    });
+  }
+
   // « Reporter à demain » en un geste : même heure demain, ou demain 9 h.
   function postpone(t: Task) {
     const due_at = postponeToTomorrow(t.due_at, new Date());
@@ -85,7 +96,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       });
   }
 
-  return { tasks, loaded, error, leaving, load, toggle, add, postpone };
+  return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove };
 }
 
 export type TasksApi = ReturnType<typeof useTasks>;

@@ -63,7 +63,7 @@ await page.route("**/api/**", (route) => {
   if (u.pathname === "/api/forme") return json(formeReady ? forme : { ready: false });
   if (u.pathname === "/api/bank/sync") return json({ imported: 3, duplicates: 12, skipped: 0, balance: 976.6, syncedAt: new Date().toISOString() });
   if (u.pathname === "/api/finances") return json(financesReady ? finances : { ready: false });
-  if (u.pathname === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "Voici ta journée :\n\n- **Appeler le médecin** avant 18 h\n- Renvoyer le dossier (*en retard*)" });
+  if (u.pathname === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "Voici ta journée :\n\n- **Appeler le médecin** avant 18 h\n- Renvoyer le dossier (*en retard*)\u001e" + JSON.stringify([{ label: "Séance « Musculation »", steps: [{ op: "delete", table: "workouts", id: 9 }] }]) });
   return route.continue();
 });
 
@@ -104,6 +104,9 @@ await tab("Planning");
 await shot("2-planning");
 await page.getByRole("tab", { name: "semaine" }).click();
 await shot("2b-planning-semaine");
+await page.getByRole("tab", { name: "jour" }).click();
+await page.getByRole("button", { name: "Modifier" }).click();
+await shot("2c-planning-modifier");
 await tab("Finances");
 await shot("3-finances");
 financesReady = true;

@@ -224,3 +224,22 @@ body {
     radial-gradient(circle at 10% 90%, rgba(108, 242, 255, 0.1), transparent 50%),
     linear-gradient(160deg, #15171c, #0a0b0e);
 }
+
+/* Barre qui se vide pendant que le bouton « Annuler » est disponible. */
+@keyframes undo-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.undo-bar {
+  transform-origin: left;
+  animation: undo-drain linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .undo-bar {
+    animation: none !important;
+  }
+}
