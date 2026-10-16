@@ -34,7 +34,11 @@ export function parseFrenchAmount(s: string): number | null {
   let t = s.replace(/[\s  €]/g, "").replace(/^\+/, "");
   if (!t) return null;
   // Virgule décimale française ; un point éventuel est alors un séparateur de milliers.
-  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  // Si les deux signes sont présents, le DERNIER est la décimale : « 1.234,56 » (fr) comme « 1,234.56 » (en). Virgule seule : décimale.
+  const comma = t.lastIndexOf(",");
+  const dot = t.lastIndexOf(".");
+  if (comma !== -1 && dot !== -1) t = dot > comma ? t.replace(/,/g, "") : t.replace(/\./g, "").replace(",", ".");
+  else if (comma !== -1) t = t.replace(",", ".");
   const n = Number(t);
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
 }
@@ -48,6 +52,12 @@ export function parseFrenchDate(s: string): string | null {
   const iso = `${year}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
   const check = new Date(`${iso}T12:00:00Z`);
   return check.getUTCMonth() + 1 === Number(mo) && check.getUTCDate() === Number(d) ? iso : null;
+}
+
+/** « 2026-10-05 12:30:00 » ou « 2026-10-05 » → « 2026-10-05 ». Renvoie null si ce n'est pas un vrai jour. */
+export function parseIsoDate(s: string): string | null {
+  const m = s.trim().match(/^(\d{4}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?/);
+  return m && new Date(`${m[1]}T12:00:00Z`).toISOString().slice(0, 10) === m[1] ? m[1] : null;
 }
 
 const norm = (s: string) => fold(s).trim();
@@ -79,7 +89,36 @@ export function importKeys(txs: RawTransaction[]): string[] {
   });
 }
 
-export type CsvResult ={ transactions: RawTransaction[]; skipped: number; error?: string };
+export type CsvResult = { transactions: RawTransaction[]; skipped: number; error?: string; format?: "standard" | "revolut" };
+
+/**
+ * Relevé Revolut (CSV ou Excel converti) : Type, Product, Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance.
+ * Date = Completed Date ; montant = Amount − Fee ; on ignore ce qui n'est pas COMPLETED (en attente, annulé, refusé)
+ * et ce qui n'est pas en euros (on ne convertit rien : aucun taux inventé).
+ */
+function parseRevolut(rows: string[][], col: Record<"completed" | "description" | "amount" | "fee" | "currency" | "state", number>): CsvResult {
+  const transactions: RawTransaction[] = [];
+  let skipped = 0;
+  for (const f of rows) {
+    const done = (f[col.state] ?? "").trim().toUpperCase() === "COMPLETED";
+    const currency = (f[col.currency] ?? "").trim().toUpperCase();
+    const date = parseIsoDate(f[col.completed] ?? "");
+    const label = (f[col.description] ?? "").replace(/\s+/g, " ").trim();
+    const amount = parseFrenchAmount(f[col.amount] ?? "");
+    const fee = col.fee === -1 ? 0 : (parseFrenchAmount(f[col.fee] ?? "") ?? 0);
+    if (!done || (currency && currency !== "EUR") || !date || !label || amount === null) {
+      skipped++;
+      continue;
+    }
+    const net = Math.round((amount - fee) * 100) / 100;
+    if (net === 0) {
+      skipped++;
+      continue;
+    }
+    transactions.push({ date, label, amount: net });
+  }
+  return { transactions, skipped, format: "revolut" };
+}
 
 export function parseBankCsv(text: string): CsvResult {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
@@ -88,6 +127,11 @@ export function parseBankCsv(text: string): CsvResult {
   if (headerAt === -1) return { transactions: [], skipped: 0, error: "En-tête introuvable (aucune colonne « Date »)." };
   const headerLine = lines[headerAt];
   const sep = (headerLine.match(/;/g)?.length ?? 0) >= (headerLine.match(/,/g)?.length ?? 0) ? ";" : ",";
+  const names = splitCsvLine(headerLine, sep).map(norm);
+  const rv = { completed: names.indexOf("completed date"), description: names.indexOf("description"), amount: names.indexOf("amount"), fee: names.indexOf("fee"), currency: names.indexOf("currency"), state: names.indexOf("state") };
+  if (rv.completed !== -1 && rv.description !== -1 && rv.amount !== -1 && rv.state !== -1) {
+    return parseRevolut(lines.slice(headerAt + 1).map((l) => splitCsvLine(l, sep)), rv);
+  }
   const col = findColumns(splitCsvLine(headerLine, sep));
   if (col.date === -1 || col.label === -1 || (col.amount === -1 && col.debit === -1 && col.credit === -1)) {
     return { transactions: [], skipped: 0, error: "Colonnes Date, Libellé et Montant (ou Débit/Crédit) introuvables." };
@@ -113,5 +157,5 @@ export function parseBankCsv(text: string): CsvResult {
     }
     transactions.push({ date, label, amount });
   }
-  return { transactions, skipped };
+  return { transactions, skipped, format: "standard" };
 }

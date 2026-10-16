@@ -16,6 +16,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
+    "read-excel-file": "^9.3.12",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "playwright": "^1.64.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "write-excel-file": "^4.1.1"
   }
 }

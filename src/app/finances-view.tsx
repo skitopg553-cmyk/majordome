@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
 import { parseFrenchAmount } from "@/lib/finance/csv";
+import { xlsxFileToCsv } from "@/lib/finance/xlsx";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
@@ -12,6 +13,18 @@ type Row = { category: string; spent: number; limit: number | null; over: boolea
 
 const ym = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
 const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
+
+/** CSV (UTF-8 ou Windows-1252) ou Excel .xlsx → texte CSV. L'ancien format .xls n'est pas géré : on le dit clairement. */
+async function fileToCsv(file: File) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".xls")) throw new Error("Ancien format Excel (.xls) non géré : enregistre le fichier en .xlsx ou en .csv.");
+  if (!name.endsWith(".xlsx")) return readCsv(file);
+  try {
+    return await xlsxFileToCsv(file);
+  } catch {
+    throw new Error("Ce fichier Excel n'a pas pu être lu. Essaie l'export CSV de ta banque.");
+  }
+}
 
 /** Les banques françaises exportent souvent en Windows-1252 : on essaie UTF-8, sinon on bascule. */
 async function readCsv(file: File) {
@@ -175,12 +188,12 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
       const res = await fetch("/api/finances/import", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: JSON.stringify({ csv: await readCsv(file) }),
+        body: JSON.stringify({ csv: await fileToCsv(file) }),
       });
       if (res.status === 401) return onUnauthorized();
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `Erreur serveur (${res.status})`);
-      const parts = [`${d.imported} opération${d.imported > 1 ? "s" : ""} ajoutée${d.imported > 1 ? "s" : ""}`];
+      const parts = [...(d.format === "revolut" ? ["Relevé Revolut reconnu"] : []), `${d.imported} opération${d.imported > 1 ? "s" : ""} ajoutée${d.imported > 1 ? "s" : ""}`];
       if (d.duplicates) parts.push(`${d.duplicates} déjà présente${d.duplicates > 1 ? "s" : ""}`);
       if (d.skipped) parts.push(`${d.skipped} ligne${d.skipped > 1 ? "s" : ""} ignorée${d.skipped > 1 ? "s" : ""}`);
       setNotice({ ok: true, text: parts.join(" · ") });
@@ -195,7 +208,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
 
   const importButton = (
     <>
-      <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+      <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       <button
         onClick={() => fileRef.current?.click()}
         disabled={importing}
@@ -204,7 +217,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
         <svg viewBox="0 0 24 24" className="size-[18px] text-accent" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
         </svg>
-        {importing ? "Import en cours…" : "Importer un relevé (CSV)"}
+        {importing ? "Import en cours…" : "Importer un relevé (CSV ou Excel)"}
       </button>
       {notice && <p className={`px-1 text-[13px] ${notice.ok ? "text-muted" : "text-neg"}`}>{notice.text}</p>}
     </>

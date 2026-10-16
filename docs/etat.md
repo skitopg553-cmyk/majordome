@@ -60,3 +60,8 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Elle peut noter séances, nuits, pas, budgets, dépenses (migration `0008_steps` appliquée). Elle voit ce qui est déjà noté et pose une question utile après chaque ajout. 115 tests (validation des entrées en code).
 - **Non testé de bout en bout** : ni la vraie IA ni la vraie base n'ont tourné en local (pas de clés). À tester sur téléphone : « aujourd'hui j'ai fait 2000 pas sans mon téléphone », « j'ai fait une séance de muscu ».
 - Pas encore possible : écrire dans l'agenda (non connecté), supprimer une donnée (volontaire).
+
+## Objectifs + import Revolut (16/10)
+- Objectifs : l'IA (`set_goal`) et le formulaire de Finances créent / mettent à jour les objectifs ; Accueil et Finances affichent le vrai (dégradé par défaut). Si Finances est réel sans objectif, l'Accueil invite à en créer un (plus d'exemple Australie).
+- Import : CSV ou .xlsx, format Revolut reconnu seul. 128 tests (faux relevé Revolut en CSV et en vrai .xlsx) + test navigateur réel d'un .xlsx.
+- **Pas testé avec un vrai export Revolut** (inventé d'après les colonnes décrites) : si un vrai fichier échoue, m'envoyer l'en-tête et 2 lignes anonymisées.

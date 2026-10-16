@@ -57,5 +57,5 @@ export async function POST(req: Request) {
   }));
   const { data, error } = await db.from("transactions").upsert(rows, { onConflict: "import_key", ignoreDuplicates: true }).select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ imported: data?.length ?? 0, duplicates: rows.length - (data?.length ?? 0), skipped: parsed.skipped, viaAi: unknown.length });
+  return NextResponse.json({ imported: data?.length ?? 0, duplicates: rows.length - (data?.length ?? 0), skipped: parsed.skipped, viaAi: unknown.length, format: parsed.format });
 }
