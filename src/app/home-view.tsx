@@ -48,7 +48,7 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
   task: "M5 12l4 4 10-10",
 };
 
-type Fin = { ready: false } | { ready: true; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
+type Fin = { ready: false } | { ready: true; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
 type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[] };
 
 export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
@@ -73,6 +73,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   }, [accessCode]);
   const realMonth = fin?.ready ? monthTotals(fin.transactions, parisDay(now).slice(0, 7)) : null;
   const realGoal = fin?.ready ? fin.goals[0] : undefined;
+  const bankBalance = fin?.ready && fin.bank?.ready ? (fin.bank.connection?.balance ?? null) : null; // vrai solde de la banque connectée, sinon null
   const noGoalYet = !!fin?.ready && !realGoal; // finances réelles mais aucun objectif : on invite à en créer un (pas d'exemple fictif)
   const goal = realGoal ?? f.goals[0];
   const realForme = forme?.ready
@@ -143,7 +144,13 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
       )}
 
       {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
-      {fin?.ready && fin.transactions.length > 0 ? (
+      {fin?.ready && bankBalance !== null ? (
+        <Card onClick={() => go("finances")}>
+          <Label>Solde {fin.bank?.connection?.bankName}</Label>
+          <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(bankBalance)}</p>
+          <p className="mt-1.5 text-[13px] text-muted">{euro(realMonth!.spent, false)} dépensés ce mois-ci</p>
+        </Card>
+      ) : fin?.ready && fin.transactions.length > 0 ? (
         <Card onClick={() => go("finances")}>
           <Label>Ce mois-ci</Label>
           <p className="mt-1 text-[30px] font-semibold leading-none tracking-tight tabular-nums">{euro(realMonth!.spent, false)}</p>

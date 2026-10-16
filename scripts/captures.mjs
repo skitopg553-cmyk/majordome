@@ -29,6 +29,7 @@ const today = parisDate(new Date());
 const daysAgo = (n) => parisDate(new Date(Date.now() - n * 86400e3));
 const finances = {
   ready: true,
+  bank: { ready: true, connection: { bankName: "Revolut", balance: 976.6, syncedAt: new Date(Date.now() - 5 * 60e3).toISOString(), validUntil: new Date(Date.now() + 10 * 86400e3).toISOString() } },
   transactions: [
     { id: 1, date: today, label: "CB CARREFOUR CITY", amount: -23.4, category: "Courses" },
     { id: 2, date: daysAgo(1), label: "PRLV NAVIGO", amount: -86.4, category: "Transport" },
@@ -60,6 +61,7 @@ await page.route("**/api/**", (route) => {
   if (u.pathname === "/api/memories") return json(m === "GET" ? { memories } : { ok: true });
   if (u.pathname === "/api/messages") return json({ messages: [] });
   if (u.pathname === "/api/forme") return json(formeReady ? forme : { ready: false });
+  if (u.pathname === "/api/bank/sync") return json({ imported: 3, duplicates: 12, skipped: 0, balance: 976.6, syncedAt: new Date().toISOString() });
   if (u.pathname === "/api/finances") return json(financesReady ? finances : { ready: false });
   if (u.pathname === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "Voici ta journée :\n\n- **Appeler le médecin** avant 18 h\n- Renvoyer le dossier (*en retard*)" });
   return route.continue();

@@ -99,6 +99,17 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
+  const [bankNotice, setBankNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Retour de la banque : /?bank=ok (ou erreur / refuse + msg brut) → on ouvre Finances avec le résultat, puis on nettoie l'adresse.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const bank = q.get("bank");
+    if (!bank) return;
+    setTab("finances");
+    setBankNotice(bank === "ok" ? { ok: true, text: "Banque connectée. Touche « Actualiser » pour lire ton solde et tes opérations." } : { ok: false, text: bank === "refuse" ? "Connexion refusée côté banque." + (q.get("msg") ? ` ${q.get("msg")}` : "") : (q.get("msg") ?? "La connexion a échoué.") });
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
   const [version, setVersion] = useState(0); // +1 à chaque fermeture du chat : Majordome a pu écrire (Forme, Finances…), les écrans se rechargent
   const [orb, setOrb] = useState<OrbState>("idle");
   const [speak, setSpeak] = useState(true);
@@ -161,7 +172,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
         {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
-        {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
+        {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} />}
         {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
       </div>
 

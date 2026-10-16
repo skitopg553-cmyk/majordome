@@ -5,10 +5,11 @@ import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
 import { parseFrenchAmount } from "@/lib/finance/csv";
 import { xlsxFileToCsv } from "@/lib/finance/xlsx";
+import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
-type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[] };
+type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo };
 type Row = { category: string; spent: number; limit: number | null; over: boolean };
 
 const ym = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
@@ -161,7 +162,7 @@ function TxList({ items }: { items: { key: string; label: string; sub: string; a
   );
 }
 
-export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: { accessCode: string; onUnauthorized: () => void; onAvatar: () => void }) {
+export default function FinancesView({ accessCode, onUnauthorized, onAvatar, bankNotice }: { accessCode: string; onUnauthorized: () => void; onAvatar: () => void; bankNotice?: { ok: boolean; text: string } | null }) {
   const [data, setData] = useState<Data | null>(null);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -245,6 +246,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar }: {
     return (
       <div className="space-y-3 px-4 pb-6">
         <Header title="Finances" onAvatar={onAvatar} />
+        <BankCard bank={data.bank} accessCode={accessCode} onUnauthorized={onUnauthorized} onChanged={load} incoming={bankNotice ?? null} />
         {data.transactions.length === 0 ? (
           <Card>
             <p className="text-[17px] font-semibold tracking-tight">Commence par un relevé</p>

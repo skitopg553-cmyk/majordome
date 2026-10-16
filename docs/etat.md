@@ -65,3 +65,11 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Objectifs : l'IA (`set_goal`) et le formulaire de Finances créent / mettent à jour les objectifs ; Accueil et Finances affichent le vrai (dégradé par défaut). Si Finances est réel sans objectif, l'Accueil invite à en créer un (plus d'exemple Australie).
 - Import : CSV ou .xlsx, format Revolut reconnu seul. 128 tests (faux relevé Revolut en CSV et en vrai .xlsx) + test navigateur réel d'un .xlsx.
 - **Pas testé avec un vrai export Revolut** (inventé d'après les colonnes décrites) : si un vrai fichier échoue, m'envoyer l'en-tête et 2 lignes anonymisées.
+
+## Session de l'après-midi (branche `aprem`) — journal
+### Choix faits à ta place
+- **URL de redirection banque** : tu ne me l'avais pas donnée. Constante unique `BANK_REDIRECT_URL` dans `src/lib/bank-config.ts`, valeur par défaut `https://majordome-bice.vercel.app/api/bank/callback` (NON confirmée). Elle doit être identique, au caractère près, à celle d'Enable Banking, sinon la banque refuse.
+- **Migrations à appliquer (je n'en applique aucune)** : `0009_bank_connections.sql` (sans elle, « Connecter » est masqué et affiche « pas encore activée »).
+- Première synchro = 90 jours en arrière ; ensuite on repart 7 jours avant la dernière. Si tu avais importé un CSV de la même période, des doublons sont possibles (les libellés banque et CSV diffèrent).
+- Retour de la banque : protégé par un « state » signé de 10 min (la banque ne peut pas envoyer le code d'accès). Messages d'erreur de l'API affichés bruts.
+### Tâche 1 — banque : faite (routes connecter / retour / synchro, carte Banque, vrai solde sur Accueil et Finances, alerte à 14 jours). Testée avec de faux appels, jamais avec la vraie banque.

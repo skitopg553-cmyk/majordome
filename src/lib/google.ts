@@ -1,7 +1,7 @@
 // Phase 2 (PRÉPARÉE, DÉSACTIVÉE) : connexion Google en LECTURE SEULE (Gmail + Agenda).
 // Interrupteur : GOOGLE_ENABLED=true dans Vercel. Tant qu'il est absent, les routes /api/google/* répondent 404.
 // Guide pour créer le client OAuth : docs/google-setup.md.
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { signState as signStateFor, verifyState as verifyStateFor } from "./signed-state";
 
 export const googleEnabled = () => process.env.GOOGLE_ENABLED === "true";
 
@@ -13,25 +13,9 @@ export const GOOGLE_SCOPES = [
   "email",
 ];
 
-const STATE_TTL_MS = 10 * 60_000; // le lien de connexion vaut 10 minutes
-
-/** « state » OAuth signé (HMAC) : prouve que la connexion a été lancée depuis l'app, sans mettre de secret dans l'URL. */
-export function signState(secret: string, now = Date.now()) {
-  const ts = String(now);
-  const sig = createHmac("sha256", secret).update(`google-oauth:${ts}`).digest("base64url");
-  return `${ts}.${sig}`;
-}
-
-export function verifyState(state: string | null, secret: string, now = Date.now()) {
-  if (!state) return false;
-  const [ts, sig] = state.split(".");
-  if (!ts || !sig || !/^\d+$/.test(ts)) return false;
-  const age = now - Number(ts);
-  if (age < 0 || age > STATE_TTL_MS) return false;
-  const expected = Buffer.from(createHmac("sha256", secret).update(`google-oauth:${ts}`).digest("base64url"));
-  const given = Buffer.from(sig);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
+// Le « state » signé est partagé avec la connexion bancaire (src/lib/signed-state.ts). Même calcul qu'avant : rien ne change.
+export const signState = (secret: string, now = Date.now()) => signStateFor(secret, "google-oauth", now);
+export const verifyState = (state: string | null, secret: string, now = Date.now()) => verifyStateFor(state, secret, "google-oauth", now);
 
 export function authUrl(clientId: string, redirectUri: string, state: string) {
   const p = new URLSearchParams({
