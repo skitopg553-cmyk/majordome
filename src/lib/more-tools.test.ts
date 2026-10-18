@@ -12,9 +12,9 @@ vi.mock("./supabase", async (orig) => ({
   supabaseAdmin: () => ({
     from(name: string) {
       const rows = (h.tables[name] ??= []);
-      const q: { op: string; filters: [string, unknown][]; values: R; key?: string; single: boolean; maybe: boolean } = { op: "select", filters: [], values: {}, single: false, maybe: false };
+      const q: { op: string; filters: ([string, unknown] | ((r: R) => boolean))[]; values: R; key?: string; single: boolean; maybe: boolean } = { op: "select", filters: [], values: {}, single: false, maybe: false };
       const run = () => {
-        const match = rows.filter((r) => q.filters.every(([k, v]) => r[k] === v));
+        const match = rows.filter((r) => q.filters.every((f) => (typeof f === "function" ? f(r) : r[f[0]] === f[1])));
         if (q.op === "insert") {
           const row = { id: h.nextId++, ...q.values };
           rows.push(row);
@@ -39,7 +39,11 @@ vi.mock("./supabase", async (orig) => ({
         upsert: (v: R, o: { onConflict: string }) => ((q.op = "upsert"), (q.values = v), (q.key = o.onConflict), b),
         eq: (k: string, v: unknown) => (q.filters.push([k, v]), b),
         gte: () => b,
-        or: () => b,
+        or: (expr: string) => {
+          const m = expr.match(/^last_generated.is.null,last_generated.lt.(.+)$/);
+          if (m) q.filters.push((r) => r.last_generated == null || String(r.last_generated) < m[1]);
+          return b;
+        },
         order: () => b,
         limit: () => b,
         single: () => ((q.single = true), b),
@@ -223,5 +227,27 @@ describe("set_alarm / set_timer (cartes pour l'app Horloge)", () => {
   it("refuse une heure ou une durée absurde, sans carte", async () => {
     expect((await call("set_alarm", { hour: 25 })).card).toBeUndefined();
     expect((await call("set_timer", {})).ok).toBe(false);
+  });
+});
+
+describe("deux appels le même jour (cron à 2 h 05 ET 3 h 05 UTC) : une seule tâche par règle", () => {
+  it("materializeToday appelé deux fois ne crée la tâche qu'une fois", async () => {
+    const now = new Date("2026-10-16T10:00:00+02:00");
+    h.tables.recurring_tasks = [{ id: 1, title: "Poubelles", kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null }];
+    h.tables.tasks = [];
+    expect(await materializeToday(supabaseAdmin() as never, now)).toBe(1);
+    expect(await materializeToday(supabaseAdmin() as never, now)).toBe(0); // le 2e passage trouve last_generated = aujourd'hui
+    expect(h.tables.tasks).toHaveLength(1);
+    // le lendemain, la règle redevient disponible
+    expect(await materializeToday(supabaseAdmin() as never, new Date("2026-10-17T10:00:00+02:00"))).toBe(1);
+    expect(h.tables.tasks).toHaveLength(2);
+  });
+  it("deux appels simultanés : un seul gagne le verrou", async () => {
+    const now = new Date("2026-10-16T10:00:00+02:00");
+    h.tables.recurring_tasks = [{ id: 1, title: "Poubelles", kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null }];
+    h.tables.tasks = [];
+    const [a, b] = await Promise.all([materializeToday(supabaseAdmin() as never, now), materializeToday(supabaseAdmin() as never, now)]);
+    expect(a + b).toBe(1);
+    expect(h.tables.tasks).toHaveLength(1);
   });
 });

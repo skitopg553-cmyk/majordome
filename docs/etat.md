@@ -9,10 +9,10 @@
 - **Planning** : agenda = éléments avec heure (frise, glissement qui suit le doigt, date réelle). Tâche = sans heure (Accueil). Vrais événements Google quand connecté.
 - **Finances** : import CSV / Excel (Revolut FR), budgets, capacité d'épargne, objectifs, connexion banque (code prêt, jamais testé en vrai). **Forme** : sommeil, séances, pas, repas (Ciqual : 166 aliments sur 261 officiels), temps d'écran = aperçu fictif. **Ta semaine** : chiffres réels + 2-3 phrases de l'IA vérifiées.
 - **Google (Agenda + Gmail, lecture seule)** : code terminé, **désactivé** (`GOOGLE_ENABLED`). Voir `docs/google-setup.md`.
-- **Serveur planifié** : récurrences à 4 h (Paris) et rappels chaque minute via Supabase pg_cron : code prêt, migrations non appliquées.
+- **Serveur planifié** : récurrences à 4 h (Paris) et rappels chaque minute via Supabase pg_cron : code prêt, migrations 0007 et 0013 à appliquer.
 
-## Migrations : AUCUNE n'est appliquée sauf 0001-0005 et 0008. Ordre conseillé (j'attends ton OK)
-1. `0012_recurring_tasks.sql` (récurrences) · 2. `0006_google.sql` (Google : jetons + propositions de mails, tables fermées) · 3. `0007_push.sql` (rappels, chaque minute ; demande le secret dans le Vault, `docs/rappels-setup.md`) · 4. `0013_cron_recurring.sql` (récurrences à 4 h) · 5. `0011_nutrition_screen.sql` (repas, objectif nutrition, temps d'écran) · 6. `0009_bank_connections.sql` et `0010_balance_snapshots.sql` (banque).
+## Migrations : 0001 à 0005, 0008, 0009, 0010, 0011 et 0012 sont DÉJÀ appliquées dans Supabase (vérifié par Ruben). Il reste 3 migrations (j'attends ton OK), dans cet ordre
+1. `0006_google.sql` (Google : jetons + propositions de mails, tables fermées) · 2. `0007_push.sql` (rappels, chaque minute ; demande le secret dans le Vault, `docs/rappels-setup.md`) · 3. `0013_cron_recurring.sql` (récurrences à 4 h Paris ; le secret du Vault doit exister, comme pour 0007).
 Le code marche sans elles (la fonction concernée reste simplement éteinte).
 
 ## À faire par toi (manuel)
