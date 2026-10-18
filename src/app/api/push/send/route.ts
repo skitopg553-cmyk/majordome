@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
+import { checkCron } from "@/lib/cron-auth";
 import { dueReminders, reminderPayload, type ReminderTask } from "@/lib/reminders";
 import { isMissingTable, supabaseAdmin } from "@/lib/supabase";
 
-// Envoi des rappels : appelé toutes les 5 min par pg_cron (Supabase), avec l'en-tête x-cron-secret.
+// Envoi des rappels : appelé chaque minute par pg_cron (Supabase), avec l'en-tête x-cron-secret.
 // Désactivé (404) tant que CRON_SECRET et les clés VAPID ne sont pas dans Vercel. Guide : docs/rappels-setup.md.
 export async function POST(req: Request) {
-  const { CRON_SECRET, NEXT_PUBLIC_VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv, VAPID_SUBJECT: subject } = process.env;
-  if (!CRON_SECRET || !pub || !priv || !subject) return NextResponse.json({ error: "Rappels non configurés" }, { status: 404 });
-  if (req.headers.get("x-cron-secret") !== CRON_SECRET) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
+  const { NEXT_PUBLIC_VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv, VAPID_SUBJECT: subject } = process.env;
+  const auth = checkCron(req);
+  if (auth === "off" || !pub || !priv || !subject) return NextResponse.json({ error: "Rappels non configurés" }, { status: 404 });
+  if (auth === "denied") return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   webpush.setVapidDetails(subject, pub, priv);
 
   const db = supabaseAdmin();

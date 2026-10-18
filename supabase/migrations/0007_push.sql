@@ -14,14 +14,14 @@ alter table public.push_subscriptions enable row level security;
 -- Une tâche n'est rappelée qu'une fois.
 alter table public.tasks add column if not exists reminded_at timestamptz;
 
--- Toutes les 5 minutes, Supabase appelle la route d'envoi de Vercel.
+-- Chaque minute, Supabase appelle la route d'envoi de Vercel.
 -- Le secret n'est PAS écrit ici : il est lu dans le Vault Supabase (secret nommé « cron_secret », voir le guide).
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
 select cron.schedule(
   'majordome-rappels',
-  '*/5 * * * *',
+  '* * * * *',
   $$
   select net.http_post(
     url     := 'https://majordome-bice.vercel.app/api/push/send',
