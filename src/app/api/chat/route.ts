@@ -5,6 +5,8 @@ import { sanitizeMessages } from "@/lib/chat-input";
 import { INSTRUCTIONS } from "@/lib/instructions";
 import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
+import { alarmWebText, timerWebText } from "@/lib/alarm-speech";
+import { detectAlarmIntent } from "@/lib/alarm-intent";
 import { CARDS_MARK, extractCard, type Card } from "@/lib/alarm";
 import { moodPrefix, MoodStripper, stripMood } from "@/lib/mascot";
 import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
@@ -66,6 +68,22 @@ export async function POST(req: Request) {
   };
 
   const run = (async () => {
+    // Réveil / minuteur dit clairement (« mets un réveil à 7 h demain ») : le CODE prépare la carte et écrit la phrase, sans appeler le modèle.
+    // Avant, le modèle écrivait « Touche le bouton » sans toujours appeler l'outil (constat du 18/10) : la carte manquait une fois sur deux.
+    const alarm = last?.role === "user" && typeof last.content === "string" ? detectAlarmIntent(last.content) : null;
+    if (alarm) {
+      const ok = (JSON.parse(await executeAndCollect(alarm.tool, alarm.args)) as { ok?: boolean }).ok === true;
+      const p = cards[cards.length - 1]?.params;
+      if (ok && p) {
+        const text = p.kind === "alarm" ? alarmWebText(p.hour, p.minutes, p.when) : timerWebText(p.seconds);
+        time("alarme_code", Date.now() - t0);
+        sent = true;
+        emit({ text, moods: ["happy"] });
+        firstText();
+        return text;
+      }
+      cards.length = 0; // l'outil a refusé : on laisse le modèle répondre, sans carte fantôme
+    }
     const context = await buildContext();
     time("contexte", Date.now() - t0);
     // Ordres explicites (« retiens que… », « objectif 3000 € pour… ») : exécutés par le code, avant le modèle (voir src/lib/intents.ts).
@@ -96,6 +114,12 @@ export async function POST(req: Request) {
       emit(stripper.finish()); // texte éventuellement retenu à la fin du flux
       reply = stripMood(reply).text; // l'historique ne garde jamais la balise
       persisted = reply;
+      // Jamais de promesse d'un bouton absent : la phrase parle d'un bouton mais aucune carte n'est envoyée.
+      if (!cards.length && /\bbouton\b/i.test(reply)) {
+        const warn = "\n\n⚠️ Je n'ai pas pu préparer ce réveil ou ce minuteur. Redis-le-moi avec l'heure, par exemple « réveil à 7 h ».";
+        ctrl.enqueue(enc.encode(warn));
+        reply += warn;
+      }
       if (claimsActionWithoutTool(reply, toolCalls)) {
         console.warn("[faux-enregistrement] la réponse affirme avoir noté quelque chose sans appeler d'outil");
         ctrl.enqueue(enc.encode(FALSE_CLAIM_WARNING));

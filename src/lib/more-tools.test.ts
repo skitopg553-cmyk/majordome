@@ -251,3 +251,21 @@ describe("deux appels le même jour (cron à 2 h 05 ET 3 h 05 UTC) : une seule t
     expect(h.tables.tasks).toHaveLength(1);
   });
 });
+
+describe("phrase → carte → texte : tout le chemin du réveil, sans IA", () => {
+  it("les phrases du 18/10 donnent TOUJOURS une carte, et la phrase affichée est celle du code", async () => {
+    const { detectAlarmIntent } = await import("./alarm-intent");
+    const { alarmWebText, timerWebText } = await import("./alarm-speech");
+    const run = async (phrase: string) => {
+      const intent = detectAlarmIntent(phrase)!;
+      const r = await call(intent.tool, intent.args as Record<string, unknown>);
+      expect(r.ok).toBe(true);
+      expect(r.card.params).toBeDefined();
+      const p = r.card.params;
+      return p.kind === "alarm" ? alarmWebText(p.hour, p.minutes, p.when) : timerWebText(p.seconds);
+    };
+    expect(await run("mets un réveil à 7h demain")).toMatch(/^Réveil (demain )?à sept heures prêt\. Touche le bouton pour le créer\.$/);
+    expect(await run("est-ce que tu peux mettre un réveil pour 7h demain s'il te plaît")).toContain("sept heures");
+    expect(await run("minuteur de 5 minutes")).toBe("Minuteur de cinq minutes prêt. Touche le bouton pour le lancer.");
+  });
+});

@@ -6,7 +6,9 @@ import { parisDay } from "./task-groups";
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
-export type Card = { kind: "alarm" | "timer"; title: string; detail: string; url: string };
+/** Ce qui a été réellement calculé : la coque Android s'en sert pour régler l'Horloge sans tap, et pour dire la confirmation. */
+export type CardParams = { kind: "alarm"; hour: number; minutes: number; label: string; when: string } | { kind: "timer"; seconds: number; label: string };
+export type Card = { kind: "alarm" | "timer"; title: string; detail: string; url: string; params?: CardParams };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const int = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
@@ -73,16 +75,19 @@ export function alarmCard(v: { hour: number; minutes: number; label: string; whe
     title: "Créer le réveil",
     detail: `${pad(v.hour)}:${pad(v.minutes)} · ${v.when}${v.label ? ` · ${v.label}` : ""}${v.warning ? `\n${v.warning}` : ""}`,
     url: alarmUrl(v.hour, v.minutes, v.label),
+    params: { kind: "alarm", hour: v.hour, minutes: v.minutes, label: v.label, when: v.when },
   };
 }
 export function timerCard(v: { seconds: number; label: string }): Card {
-  return { kind: "timer", title: "Lancer le minuteur", detail: `${durationLabel(v.seconds)}${v.label ? ` · ${v.label}` : ""}`, url: timerUrl(v.seconds, v.label) };
+  return { kind: "timer", title: "Lancer le minuteur", detail: `${durationLabel(v.seconds)}${v.label ? ` · ${v.label}` : ""}`, url: timerUrl(v.seconds, v.label), params: { kind: "timer", seconds: v.seconds, label: v.label } };
 }
 
 /** Une carte reçue du serveur n'est affichée que si son lien ouvre bien l'Horloge (jamais un lien quelconque). */
 export const isCard = (c: unknown): c is Card => {
   const o = c as Card;
-  return !!o && (o.kind === "alarm" || o.kind === "timer") && typeof o.title === "string" && typeof o.detail === "string" && typeof o.url === "string" && /^intent:#Intent;action=android\.intent\.action\.SET_(ALARM|TIMER);[^<>"\s]*;end$/.test(o.url);
+  const p = o?.params as Record<string, unknown> | undefined;
+  const paramsOk = p === undefined || (p.kind === "alarm" ? Number.isInteger(p.hour) && Number.isInteger(p.minutes) && (p.hour as number) >= 0 && (p.hour as number) <= 23 && (p.minutes as number) >= 0 && (p.minutes as number) <= 59 && typeof p.label === "string" && typeof p.when === "string" : p.kind === "timer" && Number.isInteger(p.seconds) && (p.seconds as number) >= 1 && (p.seconds as number) <= 86_400 && typeof p.label === "string");
+  return !!o && paramsOk && (o.kind === "alarm" || o.kind === "timer") && typeof o.title === "string" && typeof o.detail === "string" && typeof o.url === "string" && /^intent:#Intent;action=android\.intent\.action\.SET_(ALARM|TIMER);[^<>"\s]*;end$/.test(o.url);
 };
 
 // Cartes dans le flux du chat : derrière U+001C, après les autres éléments (comme les réglages).
