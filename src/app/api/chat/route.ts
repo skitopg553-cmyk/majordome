@@ -5,6 +5,7 @@ import { sanitizeMessages } from "@/lib/chat-input";
 import { INSTRUCTIONS } from "@/lib/instructions";
 import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
+import { CARDS_MARK, extractCard, type Card } from "@/lib/alarm";
 import { moodPrefix, MoodStripper, stripMood } from "@/lib/mascot";
 import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   // Actions annulables : chaque outil qui écrit renvoie « undo » ; on le retire avant de répondre au modèle (inutile pour lui)
   // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
   const actions: Undo[] = [];
+  const cards: Card[] = []; // réveils / minuteurs préparés : l'écran affiche un bouton qui ouvre l'app Horloge
   const settings: DeviceSetting[] = []; // réglages de l'appareil demandés (lecture à voix haute) : appliqués par l'écran
 
   // Humeur de la mascotte : le modèle commence sa réponse par « @mood:happy » ; on retire la balise du flux (affichage, lecture vocale, historique)
@@ -58,7 +60,9 @@ export async function POST(req: Request) {
     if (undo) actions.push(undo);
     const { setting } = extractSetting(result);
     if (setting) settings.push(setting);
-    return result;
+    const { result: clean, card } = extractCard(result);
+    if (card) cards.push(card);
+    return clean;
   };
 
   const run = (async () => {
@@ -99,6 +103,7 @@ export async function POST(req: Request) {
       }
       if (actions.length) ctrl.enqueue(enc.encode(ACTIONS_MARK + JSON.stringify(actions)));
       if (settings.length) ctrl.enqueue(enc.encode(SETTINGS_MARK + JSON.stringify(settings)));
+      if (cards.length) ctrl.enqueue(enc.encode(CARDS_MARK + JSON.stringify(cards)));
       ctrl.close();
     },
     (err) => {

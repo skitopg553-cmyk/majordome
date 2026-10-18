@@ -96,3 +96,16 @@ describe("réglages d'appareil dans le flux", () => {
     expect(extractSetting(JSON.stringify({ setting: { name: "autre", value: true } })).setting).toBeUndefined();
   });
 });
+
+describe("ordre des éléments en fin de flux (actions, réglages, cartes)", () => {
+  it("splitReply ne montre rien des trailers, même avec une carte en toute fin", async () => {
+    const { alarmCard, CARDS_MARK } = await import("./alarm");
+    const card = alarmCard({ hour: 7, minutes: 0, label: "", when: "demain", warning: null });
+    const mark = String.fromCharCode(29);
+    const raw = `Ok.${ACTIONS_MARK}[]${mark}[{"name":"read_aloud","value":true}]${CARDS_MARK}${JSON.stringify([card])}`;
+    expect(splitReply(raw).text).toBe("Ok.");
+    const { splitSettings } = await import("./undo");
+    const { splitCards } = await import("./alarm");
+    expect(splitSettings(splitCards(raw).rest).settings).toEqual([{ name: "read_aloud", value: true }]);
+  });
+});

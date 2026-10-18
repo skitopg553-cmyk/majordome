@@ -1,5 +1,6 @@
 // Outils « tout à la voix » : épargne, nutrition, temps d'écran, corrections et suppressions.
 // Mêmes règles que life-tools.ts : validation en code, chaque écriture renvoie « undo » (bouton Annuler).
+import { alarmCard, resolveAlarm, resolveTimer, timerCard } from "./alarm";
 import { matchGoal, type Goal } from "./finance/savings";
 import { dayTotals, parseFood, parseNutritionGoals } from "./nutrition/food";
 import { out, noTable, restorable, undoFor, upsertWithUndo, type Row } from "./life-tools";
@@ -63,6 +64,17 @@ export const MORE_TOOLS: ToolDef[] = [
     name: "set_setting",
     description: "Changer un réglage de l'appareil de Ruben. Seul réglage : read_aloud (lire les réponses à voix haute quand il parle). « Arrête de me répondre à voix haute » → value false.",
     parameters: { type: "object", properties: { name: { type: "string", enum: ["read_aloud"] }, value: { type: "boolean" } }, required: ["name", "value"] },
+  },
+  {
+    name: "set_alarm",
+    description:
+      "Préparer un RÉVEIL Android (« réveille-moi demain à 7 h », « mets un réveil dans 20 minutes »). Tu ne crées rien toi-même : l'app affiche une carte avec un bouton que Ruben touche pour ouvrir l'Horloge déjà remplie. Donne soit hour (+ minutes), avec day « tomorrow » s'il a dit demain, soit in_minutes pour « dans N minutes ». N'écris pas l'heure calculée dans ta réponse : la carte l'affiche.",
+    parameters: { type: "object", properties: { hour: { type: "integer", description: "0-23" }, minutes: { type: "integer", description: "0-59" }, day: { type: "string", enum: ["today", "tomorrow"] }, in_minutes: { type: "integer", description: "Réveil dans N minutes" }, label: { type: "string", description: "Libellé, ex. « Salle »" } } },
+  },
+  {
+    name: "set_timer",
+    description: "Préparer un MINUTEUR Android (« minuteur 20 minutes pour les pâtes »). Même principe que le réveil : une carte avec un bouton. Donne la durée en hours, minutes et/ou seconds.",
+    parameters: { type: "object", properties: { hours: { type: "integer" }, minutes: { type: "integer" }, seconds: { type: "integer" }, label: { type: "string" } } },
   },
   {
     name: "add_recurring_task",
@@ -170,6 +182,16 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
     case "set_setting": {
       if (args.name !== "read_aloud" || typeof args.value !== "boolean") return out({ ok: false, error: "name doit valoir read_aloud et value true ou false" });
       return out({ ok: true, setting: { name: "read_aloud", value: args.value } }); // appliqué par l'écran (réglage propre à cet appareil)
+    }
+    case "set_alarm": {
+      const r = resolveAlarm(args, now);
+      if (!r.ok) return out(r);
+      return out({ ok: true, prepare: "carte affichée à Ruben : il doit toucher le bouton pour créer le réveil", card: alarmCard(r.value) });
+    }
+    case "set_timer": {
+      const r = resolveTimer(args);
+      if (!r.ok) return out(r);
+      return out({ ok: true, prepare: "carte affichée à Ruben : il doit toucher le bouton pour lancer le minuteur", card: timerCard(r.value) });
     }
     case "add_recurring_task": {
       const title = clampText(args.title, MAX_TITLE);

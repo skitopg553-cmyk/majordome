@@ -210,3 +210,18 @@ describe("materializeToday (tâches récurrentes du jour)", () => {
     expect(h.tables.recurring_tasks.map((r) => r.last_generated)).toEqual(["2026-10-16", null, "2026-10-16", "2026-10-16"]);
   });
 });
+
+describe("set_alarm / set_timer (cartes pour l'app Horloge)", () => {
+  it("renvoie une carte avec le lien Android ; l'heure est calculée par le code", async () => {
+    const r = await call("set_alarm", { hour: 7, minutes: 30, day: "tomorrow", label: "Salle" });
+    expect(r.ok).toBe(true);
+    expect(r.card.kind).toBe("alarm");
+    expect(r.card.url).toContain("SET_ALARM;i.android.intent.extra.alarm.HOUR=7;i.android.intent.extra.alarm.MINUTES=30");
+    const t = await call("set_timer", { minutes: 20, label: "Pâtes" });
+    expect(t.card.url).toContain("LENGTH=1200");
+  });
+  it("refuse une heure ou une durée absurde, sans carte", async () => {
+    expect((await call("set_alarm", { hour: 25 })).card).toBeUndefined();
+    expect((await call("set_timer", {})).ok).toBe(false);
+  });
+});

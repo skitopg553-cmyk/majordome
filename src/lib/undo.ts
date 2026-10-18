@@ -1,3 +1,5 @@
+import { splitCards } from "./alarm";
+
 // Annuler ce que l'IA vient d'écrire, et supprimer une entrée depuis un écran : mêmes règles strictes pour les deux.
 // Seules les tables et colonnes listées ici peuvent être touchées : une demande mal formée est refusée, jamais devinée.
 
@@ -79,7 +81,7 @@ export function undoLabel(actions: Undo[]) {
 /** Ce que le serveur envoie après le texte de la réponse : un séparateur de fin d'enregistrement (U+001E) puis le JSON des actions annulables. */
 export const ACTIONS_MARK = "\u001e";
 export function splitReply(raw: string): { text: string; actions: Undo[] } {
-  raw = splitSettings(raw).rest;
+  raw = splitSettings(splitCards(raw).rest).rest; // les cartes (réveils…) sont en toute fin de flux : on les retire d'abord
   const i = raw.indexOf(ACTIONS_MARK);
   if (i === -1) return { text: raw, actions: [] };
   let actions: Undo[] = [];

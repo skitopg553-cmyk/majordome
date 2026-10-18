@@ -167,3 +167,5 @@ Voir le Journal de nuit ci-dessous. Rien n'est mergé dans `main`.
 - Gain faible, laissé de côté : réduire le contexte (mémoire, tâches) envoyé à l'IA ; temps d'écran réel (attend une source de données, Tasker).
 - La tâche planifiée « Majordome-soir » n'a pas pu être créée par moi (garde-fou) : à lancer toi-même si tu veux des runs automatiques.
 - T12 FAIT : briefing du soir (annonce demain après 18 h) + carte « Ta forme » avec les kcal du jour. Liste terminée : arrêt intelligent (rien à désactiver, la tâche planifiée n'existe pas).
+- Bloc A FAIT (mascotte). Bloc B en cours : réveils / minuteurs.
+- Bloc B FAIT : outils `set_alarm` / `set_timer` (calcul de l'heure en code) → carte dans le chat avec bouton « Créer le réveil » / « Lancer le minuteur » qui ouvre l'Horloge Android (lien intent: dans un vrai lien, tap requis) ; en vocal, le chat ne se referme pas tant que la carte n'est pas touchée ou fermée. **À TESTER SUR TÉLÉPHONE** : on ne sait pas si l'app installée (PWA) laisse passer les liens intent:.

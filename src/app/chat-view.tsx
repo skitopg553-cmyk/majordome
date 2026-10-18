@@ -2,6 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { splitCards, type Card } from "@/lib/alarm";
 import { splitMood } from "@/lib/mascot";
 import { orbLabel, orbState, pickFrenchVoice, plainText } from "@/lib/voice";
 import Majordome from "./majordome";
@@ -94,6 +95,16 @@ export default function ChatView({
   // Après une demande vocale, le chat se referme 3 s après la fin de la réponse (annulé dès que Ruben touche l'écran).
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const undoRef = useRef(false);
+  // Réveils / minuteurs préparés par l'IA : une carte avec un bouton (Android n'autorise pas une app web à créer un réveil seule).
+  const [cards, setCards] = useState<Card[]>([]);
+  const cardsRef = useRef(false);
+  const viaVoiceRef = useRef(false);
+  function dismissCard(i: number) {
+    const left = cards.filter((_, k) => k !== i);
+    setCards(left);
+    cardsRef.current = left.length > 0;
+    if (!left.length && viaVoiceRef.current) closeSoon(); // la conversation vocale se referme une fois la carte traitée
+  }
   const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [undo, setUndo] = useState<{ actions: Undo[]; state: "ready" | "busy" | "done" | "error"; error?: string } | null>(null);
 
@@ -132,6 +143,7 @@ export default function ChatView({
   const cancelClose = () => clearTimeout(closeTimer.current);
   const closeSoon = () => {
     cancelClose();
+    if (cardsRef.current) return; // une carte attend un tap : le chat ne se referme pas tout seul
     closeTimer.current = setTimeout(onClose, undoRef.current ? UNDO_MS + 1000 : 3000); // on laisse le temps d'annuler avant de refermer
   };
 
@@ -179,6 +191,9 @@ export default function ChatView({
     let reply = "";
     let moodShown = false;
     setUndo(null);
+    setCards([]);
+    cardsRef.current = false;
+    viaVoiceRef.current = viaVoice;
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -205,9 +220,15 @@ export default function ChatView({
         setMessages([...next, { role: "assistant", content: reply }]);
       }
       const body = splitMood(streamed).rest;
+      const got = splitCards(body).cards;
+      if (got.length) {
+        setCards(got);
+        cardsRef.current = true;
+        cancelClose();
+      }
       const { actions } = splitReply(body);
       if (actions.length) showUndo(actions);
-      for (const s of splitSettings(body).settings) onSpeakChange(s.value);
+      for (const s of splitSettings(splitCards(body).rest).settings) onSpeakChange(s.value);
     } catch (e) {
       if (!reply) {
         // Rien reçu : aucune perte. Le message revient dans le champ (et la bulle disparaît) ; en cas de panne de réseau, il repart tout seul au retour de la connexion.
@@ -375,6 +396,22 @@ export default function ChatView({
               )}
             </div>
           )}
+          {cards.map((c, i) => (
+            <div key={i} className="rise flex items-center gap-3 rounded-2xl bg-surface p-3" aria-live="polite">
+              <div className="min-w-0 flex-1">
+                <p className="whitespace-pre-line text-[14px] leading-snug text-fg">{c.detail}</p>
+              </div>
+              {/* Un vrai lien : l'ouverture de l'Horloge doit venir d'un tap, sinon Chrome la bloque */}
+              <a href={c.url} onClick={() => dismissCard(i)} className="flex min-h-11 shrink-0 items-center rounded-full bg-accent px-4 text-[13px] font-semibold text-ink active:scale-95">
+                {c.title}
+              </a>
+              <button onClick={() => dismissCard(i)} aria-label="Fermer cette carte" className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised">
+                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+          ))}
           {waiting && (
             <p className="flex items-center gap-2 text-sm text-faint" aria-live="polite">
               Majordome écrit
