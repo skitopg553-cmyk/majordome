@@ -6,6 +6,7 @@ import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Bu
 import { parseFrenchAmount } from "@/lib/finance/csv";
 import { xlsxFileToCsv } from "@/lib/finance/xlsx";
 import { callApi } from "./api-client";
+import { mascotApi } from "./mascot-engine";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 import BankCard, { type BankInfo } from "./bank-card";
 import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
@@ -303,6 +304,15 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
   );
 
   // Chargement : squelette discret (rien qui saute à l'arrivée des données).
+  // Une dépense « plus élevée que d'habitude » qui apparaît (ajoutée à la voix, importée…) : la mascotte est surprise 2 s (jamais au premier chargement).
+  const unusualIds = data?.ready ? unusualExpenses(data.transactions, ym()).map((t) => String(t.id)) : null;
+  const seenUnusual = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!unusualIds) return;
+    if (seenUnusual.current && unusualIds.some((id) => !seenUnusual.current!.has(id))) mascotApi.react("surprised", 2000);
+    seenUnusual.current = new Set(unusualIds);
+  }, [unusualIds?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!data) {
     return (
       <div className="space-y-3 px-4 pb-6">

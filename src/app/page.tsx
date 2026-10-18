@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ChatView, { type ChatHandle } from "./chat-view";
 import { isStatement, shortcutFromSearch } from "@/lib/shortcuts";
 import HomeView from "./home-view";
-import Orb, { type OrbState } from "./orb";
+import Majordome from "./majordome";
 import { Wordmark } from "./ui";
 import { useTasks } from "./use-tasks";
 import dynamic from "next/dynamic";
@@ -67,7 +67,9 @@ export default function Home() {
     return (
       <main className="flex min-h-full items-center justify-center px-6">
         <div className="w-full max-w-xs space-y-6 text-center">
-          <Orb state="idle" size={72} />
+          <span className="mx-auto flex size-24 items-center justify-center rounded-full bg-ink">
+            <Majordome size={40} />
+          </span>
           <h1><Wordmark className="text-[40px]" /></h1>
           <input
             type="password"
@@ -144,7 +146,6 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
   const [version, setVersion] = useState(0); // +1 à chaque fermeture du chat : Majordome a pu écrire (Forme, Finances…), les écrans se rechargent
-  const [orb, setOrb] = useState<OrbState>("idle");
   const [speak, setSpeak] = useState(true);
   const chat = useRef<ChatHandle>(null);
   const unauthorized = useCallback(() => onForget("Code d'accès incorrect"), [onForget]);
@@ -214,7 +215,9 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
         {LEFT.map(tabButton)}
         <div className="relative flex justify-center">
           <button onClick={talk} aria-label="Parler à Majordome" className="absolute -top-7 rounded-full border-[5px] border-ink transition-transform active:scale-95">
-            <Orb state={chatOpen ? orb : "idle"} size={64} />
+            <span className="flex size-16 items-center justify-center rounded-full bg-ink shadow-[0_0_24px_rgba(108,242,255,0.16)] ring-1 ring-line/70">
+              <Majordome size={26} />
+            </span>
           </button>
           <button
             onClick={type}
@@ -240,7 +243,6 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
           setVersion((v) => v + 1);
         }}
         onUnauthorized={unauthorized}
-        onState={setOrb}
         onSpeakChange={changeSpeak}
       />
 

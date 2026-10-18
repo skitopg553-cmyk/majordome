@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { drainQueue, enqueue, friendlyError, isNetworkError } from "@/lib/offline";
 import { postponeToTomorrow } from "@/lib/task-groups";
 import { callApi } from "./api-client";
+import { mascotApi } from "./mascot-engine";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 
 export type Task = { id: number; title: string; due_at: string | null; priority: number; notes: string | null; status: "todo" | "done" };
@@ -33,6 +34,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
   // L'écran change tout de suite ; on annule si le serveur refuse.
   function toggle(t: Task) {
     const done = t.status === "todo";
+    if (done) mascotApi.react("happy", 2000); // la mascotte sourit quand on coche
     const apply = (status: Task["status"]) => setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, status } : x)));
     const stopLeaving = () =>
       setLeaving((s) => {
@@ -93,6 +95,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
       .then((d) => setTasks((cur) => cur.map((x) => (x.id === tempId ? d.task : x))))
       .catch((e) => {
         if (isNetworkError(e)) {
+          mascotApi.react("sad", 2000);
           // Hors ligne : la tâche reste affichée et part au retour du réseau (file en mémoire du téléphone).
           enqueue(localStorage, { title, due_at, priority });
           setError("Hors ligne : ta tâche sera ajoutée dès que le réseau revient.");

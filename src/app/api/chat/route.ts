@@ -5,6 +5,7 @@ import { sanitizeMessages } from "@/lib/chat-input";
 import { INSTRUCTIONS } from "@/lib/instructions";
 import { applyIntents, claimsActionWithoutTool, FALSE_CLAIM_WARNING } from "@/lib/intents";
 import { supabaseAdmin } from "@/lib/supabase";
+import { moodPrefix, MoodStripper, stripMood } from "@/lib/mascot";
 import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
@@ -34,6 +35,21 @@ export async function POST(req: Request) {
   const actions: Undo[] = [];
   const settings: DeviceSetting[] = []; // réglages de l'appareil demandés (lecture à voix haute) : appliqués par l'écran
 
+  // Humeur de la mascotte : le modèle commence sa réponse par « @mood:happy » ; on retire la balise du flux (affichage, lecture vocale, historique)
+  // et on envoie l'humeur en tête du flux (voir src/lib/mascot.ts). Une humeur trouvée après le début du texte est ignorée.
+  const stripper = new MoodStripper();
+  let moodSent = false;
+  let bytesSent = false;
+  const emit = (r: { text: string; moods: ReturnType<MoodStripper["feed"]>["moods"] }) => {
+    if (r.moods.length && !moodSent && !bytesSent) {
+      ctrl.enqueue(enc.encode(moodPrefix(r.moods[0])));
+      bytesSent = moodSent = true;
+    }
+    if (r.text) {
+      ctrl.enqueue(enc.encode(r.text));
+      bytesSent = true;
+    }
+  };
   let toolCalls = 0; // outils appelés dans ce message (par le système ou par le modèle) : sert à repérer un faux « c'est noté »
   const last = messages[messages.length - 1];
   const executeAndCollect = async (name: string, args: Record<string, unknown>) => {
@@ -62,7 +78,7 @@ export async function POST(req: Request) {
       onText: (d) => {
         if (!sent) time("premier_mot", Date.now() - t0);
         sent = true;
-        ctrl.enqueue(enc.encode(d));
+        emit(stripper.feed(d));
         firstText();
       },
     });
@@ -73,6 +89,8 @@ export async function POST(req: Request) {
       time("total", Date.now() - t0);
       report();
       // Faux « c'est noté » : on le dit tout de suite, et on le garde dans l'historique pour que le modèle ne le croie pas la fois suivante.
+      emit(stripper.finish()); // texte éventuellement retenu à la fin du flux
+      reply = stripMood(reply).text; // l'historique ne garde jamais la balise
       persisted = reply;
       if (claimsActionWithoutTool(reply, toolCalls)) {
         console.warn("[faux-enregistrement] la réponse affirme avoir noté quelque chose sans appeler d'outil");

@@ -7,6 +7,7 @@ import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { briefing } from "@/lib/briefing";
 import { homeTasks } from "@/lib/planning";
 import { parisDay } from "@/lib/task-groups";
+import Majordome from "./majordome";
 import TaskRow from "./task-row";
 import TaskSheet from "./task-sheet";
 import { Avatar, Bar, Card, DemoBanner, euro, greeting, Label, SkeletonRows, Wordmark } from "./ui";
@@ -98,7 +99,12 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   return (
     <div className="space-y-3 px-4 pb-8">
       <div className="flex h-14 items-center justify-between px-1">
-        <Wordmark className="text-[19px]" />
+        <span className="flex items-center gap-2.5">
+          <Wordmark className="text-[19px]" />
+          <span className="flex size-9 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">
+            <Majordome size={13} />
+          </span>
+        </span>
         <Avatar onClick={onAvatar} />
       </div>
 

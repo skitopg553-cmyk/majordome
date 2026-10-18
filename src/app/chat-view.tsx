@@ -2,8 +2,10 @@
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { orbState, pickFrenchVoice, plainText, type OrbState } from "@/lib/voice";
-import Orb, { orbLabel } from "./orb";
+import { splitMood } from "@/lib/mascot";
+import { orbLabel, orbState, pickFrenchVoice, plainText } from "@/lib/voice";
+import Majordome from "./majordome";
+import { mascotApi } from "./mascot-engine";
 import { splitReply, splitSettings, undoLabel, type Undo } from "@/lib/undo";
 import { friendlyError, isNetworkError } from "@/lib/offline";
 import { greeting, Wordmark } from "./ui";
@@ -36,7 +38,6 @@ export default function ChatView({
   speak,
   onClose,
   onUnauthorized,
-  onState,
   onSpeakChange,
 }: {
   ref: React.Ref<ChatHandle>;
@@ -45,7 +46,6 @@ export default function ChatView({
   speak: boolean; // lire les réponses à voix haute quand on a parlé
   onClose: () => void;
   onUnauthorized: () => void;
-  onState: (s: OrbState) => void;
   onSpeakChange: (v: boolean) => void; // l'IA a changé la lecture à voix haute
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -62,7 +62,7 @@ export default function ChatView({
   const recRef = useRef<any>(null);
 
   const state = orbState({ listening, waiting, busy, speaking });
-  useEffect(() => onState(state), [state, onState]);
+  useEffect(() => mascotApi.setVoice(state), [state]); // les yeux de toute l'app suivent l'état vocal
 
   // Historique : on recharge les derniers messages (après la dernière « Nouvelle conversation »).
   useEffect(() => {
@@ -143,6 +143,7 @@ export default function ChatView({
     u.lang = "fr-FR";
     u.voice = pickFrenchVoice(synth.getVoices());
     u.onstart = () => setSpeaking(true);
+    u.onboundary = () => mascotApi.pulse(); // un petit rebond des yeux à chaque mot
     u.onend = u.onerror = () => {
       setSpeaking(false);
       then?.();
@@ -176,6 +177,7 @@ export default function ChatView({
     setError(null);
     let streamed = ""; // texte + actions annulables tels que reçus
     let reply = "";
+    let moodShown = false;
     setUndo(null);
     try {
       const res = await fetch("/api/chat", {
@@ -191,21 +193,30 @@ export default function ChatView({
         const { done, value } = await reader.read();
         if (done) break;
         streamed += value;
-        // Après le texte, le serveur peut ajouter les actions annulables (voir src/lib/undo.ts) : jamais affichées comme du texte.
-        const parts = splitReply(streamed);
+        // En tête : l'humeur de la mascotte ; après le texte : les actions annulables (voir src/lib/undo.ts). Jamais affichées comme du texte.
+        const lead = splitMood(streamed);
+        if (lead.mood && !moodShown) {
+          moodShown = true;
+          mascotApi.setAiMood(lead.mood); // visible 5 s, puis retour doux au neutre
+        }
+        const parts = splitReply(lead.rest);
         reply = parts.text;
         setWaiting(false);
         setMessages([...next, { role: "assistant", content: reply }]);
       }
-      const { actions } = splitReply(streamed);
+      const body = splitMood(streamed).rest;
+      const { actions } = splitReply(body);
       if (actions.length) showUndo(actions);
-      for (const s of splitSettings(streamed).settings) onSpeakChange(s.value);
+      for (const s of splitSettings(body).settings) onSpeakChange(s.value);
     } catch (e) {
       if (!reply) {
         // Rien reçu : aucune perte. Le message revient dans le champ (et la bulle disparaît) ; en cas de panne de réseau, il repart tout seul au retour de la connexion.
         setMessages(messages);
         setInput((cur) => cur || text);
-        if (isNetworkError(e)) retryText.current = text;
+        if (isNetworkError(e)) {
+          retryText.current = text;
+          mascotApi.react("sad", 2000);
+        }
       }
       setError(friendlyError(e));
     } finally {
@@ -294,7 +305,9 @@ export default function ChatView({
             <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
-        <Orb state={state} size={30} />
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">
+          <Majordome size={15} />
+        </span>
         <div className="min-w-0 flex-1">
           <Wordmark className="text-[17px] leading-none" />
           <p className="mt-1 text-xs text-faint">{state === "idle" ? "À ton service" : orbLabel(state)}</p>
@@ -329,15 +342,21 @@ export default function ChatView({
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="rise md max-w-[94%] text-[15.5px] leading-relaxed text-fg/95">
-                <Markdown>{m.content}</Markdown>
+              <div key={i} className="rise flex max-w-[94%] gap-3">
+                {/* Avatar : seulement sur la dernière réponse (la place reste réservée aux autres : rien ne bouge) */}
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">{i === messages.length - 1 && <Majordome size={10} />}</span>
+                <div className="md min-w-0 text-[15.5px] leading-relaxed text-fg/95">
+                  <Markdown>{m.content}</Markdown>
+                </div>
               </div>
             ),
           )}
           {listening && (
             <div className="flex flex-col items-center gap-5 py-10" aria-live="polite">
               <button onClick={listen} aria-label="J'ai fini, envoyer" className="rounded-full active:scale-95">
-                <Orb state="listening" size={96} />
+                <span className="flex size-28 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">
+                  <Majordome size={44} />
+                </span>
               </button>
               <p className="min-h-6 text-center text-lg font-medium text-fg/90">{interim || "Je t'écoute…"}</p>
             </div>

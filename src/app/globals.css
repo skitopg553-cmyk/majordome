@@ -96,90 +96,30 @@ body {
   animation: rise 220ms ease-out;
 }
 
-/* ---- Orbe de Majordome : repos, écoute, réflexion, parole ---- */
-.orb {
+/* ---- Mascotte « majordome. » : deux yeux blancs sur fond noir, lueur cyan (voir src/app/majordome.tsx) ----
+   Chaque œil est un rectangle blanc arrondi ; deux « paupières » de la couleur du fond (--fond) sont posées dessus :
+   celle du haut (penchable : les sourcils) et celle du bas (arrondie : les joues du sourire). Les tailles et positions sont animées en JS. */
+.mascot-eye {
   position: relative;
-  display: inline-block;
-  border-radius: 9999px;
-}
-.orb-core {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
+  background: #fff;
   overflow: hidden;
-  /* gros point lumineux : cœur presque blanc, bord cyan, halo */
-  background: radial-gradient(circle at 42% 38%, #f2feff 0%, #a9f8ff 22%, #6cf2ff 52%, #1fb8cc 100%);
-  box-shadow:
-    0 0 18px rgba(108, 242, 255, 0.55),
-    0 0 48px rgba(108, 242, 255, 0.22);
 }
-/* reflet tournant (visible surtout en réflexion) */
-.orb-core::after {
-  content: "";
+.mascot-lt,
+.mascot-lb {
   position: absolute;
-  inset: -30%;
-  background: conic-gradient(from 0deg, transparent 0 60%, rgba(255, 244, 220, 0.55) 75%, transparent 90%);
-  opacity: 0;
+  background: var(--fond);
 }
-/* anneau qui s'étend (écoute) */
-.orb::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 1.5px solid var(--color-accent);
-  opacity: 0;
+.mascot-lt {
+  width: 300%;
+  height: 100%;
+  left: -100%;
+  transform-origin: 50% 100%;
 }
-.orb-idle .orb-core {
-  animation: orb-breathe 4.5s ease-in-out infinite;
-}
-.orb-listening::before {
-  animation: orb-ring 1.4s ease-out infinite;
-}
-.orb-listening .orb-core {
-  animation: orb-breathe 1.4s ease-in-out infinite;
-}
-.orb-thinking .orb-core::after {
-  opacity: 1;
-  animation: orb-spin 1.6s linear infinite;
-}
-.orb-speaking .orb-core {
-  animation: orb-speak 0.5s ease-in-out infinite alternate;
-}
-@keyframes orb-breathe {
-  50% {
-    transform: scale(1.045);
-  }
-}
-@keyframes orb-ring {
-  from {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  to {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
-@keyframes orb-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes orb-speak {
-  from {
-    transform: scale(0.97);
-  }
-  to {
-    transform: scale(1.06);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .orb *,
-  .orb::before,
-  .orb .orb-core::after {
-    animation: none !important;
-  }
+.mascot-lb {
+  width: 150%;
+  height: 110%;
+  left: -25%;
+  border-radius: 50%;
 }
 
 @keyframes sheet-up {
@@ -258,4 +198,11 @@ body {
 }
 .fade {
   animation: fade 200ms ease-out;
+}
+
+/* Les champs de saisie ont déjà leur propre anneau arrondi : pas de rectangle d'outline par-dessus */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }

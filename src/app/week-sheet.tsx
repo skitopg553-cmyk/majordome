@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Mirror } from "@/lib/mirror";
-import Orb from "./orb";
+import Majordome from "./majordome";
 import { euro } from "./ui";
 
 const fmt = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "long" });
@@ -73,7 +73,7 @@ export default function WeekSheet({ accessCode, onClose, onUnauthorized }: { acc
             {data?.note && (
               <div className="rounded-[22px] bg-surface p-5">
                 <div className="flex items-center gap-3">
-                  <Orb state="idle" size={28} />
+                  <Majordome size={14} fond="#111215" />
                   <p className="text-[13px] font-medium text-muted">Le mot de Majordome</p>
                 </div>
                 <p className="mt-3 text-[15px] leading-relaxed">{data.note}</p>

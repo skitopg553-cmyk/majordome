@@ -34,3 +34,11 @@ export function pickFrenchVoice<V extends VoiceLike>(voices: V[]): V | null {
     null
   );
 }
+
+const LABEL: Record<OrbState, string> = {
+  idle: "Majordome",
+  listening: "Je t'écoute…",
+  thinking: "Je réfléchis…",
+  speaking: "Majordome parle",
+};
+export const orbLabel = (s: OrbState) => LABEL[s];

@@ -20,3 +20,11 @@ describe("règle agenda / tâche dans les consignes de l'IA", () => {
     expect(dueAt).toMatch(/AGENDA/);
   });
 });
+
+describe("humeur de la mascotte dans les consignes", () => {
+  it("le modèle doit commencer par @mood: et ne jamais culpabiliser", () => {
+    expect(INSTRUCTIONS).toContain("@mood:xxx");
+    expect(INSTRUCTIONS).toMatch(/angry.*SEULEMENT si Ruben te parle mal/);
+    expect(INSTRUCTIONS).toMatch(/jamais le culpabiliser|ne doit jamais le culpabiliser/);
+  });
+});
