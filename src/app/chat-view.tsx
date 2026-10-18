@@ -3,6 +3,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { splitCards, type Card } from "@/lib/alarm";
+import { isNative, nativeParams, setNative } from "@/lib/native-alarm";
 import { splitMood } from "@/lib/mascot";
 import { orbLabel, orbState, pickFrenchVoice, plainText } from "@/lib/voice";
 import Majordome from "./majordome";
@@ -222,9 +223,23 @@ export default function ChatView({
       const body = splitMood(streamed).rest;
       const got = splitCards(body).cards;
       if (got.length) {
-        setCards(got);
-        cardsRef.current = true;
-        cancelClose();
+        const auto = isNative() ? nativeParams(got) : [];
+        if (auto.length) {
+          const results = [];
+          for (const p of auto) results.push(await setNative(p));
+          const failed = results.filter((r) => !r.ok);
+          reply = results.map((r) => r.text).join(" "); // phrase du code (heure réellement envoyée) à la place de celle du serveur
+          setMessages([...next, { role: "assistant", content: reply }]);
+          if (failed.length) {
+            setCards(got); // repli : le bouton reste là, comme sur le web
+            cardsRef.current = true;
+            cancelClose();
+          }
+        } else {
+          setCards(got);
+          cardsRef.current = true;
+          cancelClose();
+        }
       }
       const { actions } = splitReply(body);
       if (actions.length) showUndo(actions);

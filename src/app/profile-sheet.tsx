@@ -2,6 +2,7 @@
 
 import CostCard from "./cost-card";
 import MemoryView from "./memory-view";
+import NativeTestRow from "./native-test-row";
 import RemindersRow from "./reminders-row";
 
 // Derrière l'avatar (comme dans les apps bancaires) : Mémoire & objectifs + Réglages.
@@ -56,6 +57,7 @@ export default function ProfileSheet({
             />
           </label>
           <RemindersRow accessCode={accessCode} />
+          <NativeTestRow />
           <button onClick={onNewConversation} className="flex min-h-14 w-full items-center text-left text-[15px]">
             Nouvelle conversation
           </button>

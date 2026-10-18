@@ -1,0 +1,14 @@
+{
+  "appId": "fr.majordome.app",
+  "appName": "majordome.",
+  "webDir": "www",
+  "server": {
+    "url": "https://majordome-bice.vercel.app",
+    "cleartext": false,
+    "allowNavigation": ["majordome-bice.vercel.app"]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#050506"
+  }
+}

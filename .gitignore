@@ -19,3 +19,20 @@ captures/
 .ciq/
 soir.log
 .soir.lock
+
+# Coque Android (Capacitor) : on garde le code, pas les fichiers générés ni les clés de signature
+android/node_modules/
+android/android/.gradle/
+android/android/build/
+android/android/app/build/
+android/android/local.properties
+android/android/app/src/main/assets/public/
+android/android/app/src/main/assets/capacitor.config.json
+android/android/app/src/main/assets/capacitor.plugins.json
+android/android/capacitor-cordova-android-plugins/
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties
+google-services.json

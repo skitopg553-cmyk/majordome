@@ -1,0 +1,17 @@
+{
+  "name": "majordome-android",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Coque Android (Capacitor) de majordome. : charge le site déployé sur Vercel et ajoute le plugin Alarm (réveils et minuteurs sans tap).",
+  "scripts": {
+    "sync": "cap sync android",
+    "apk": "cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}
