@@ -26,7 +26,7 @@ Durée : ~15 minutes. Tout est gratuit.
    - `openid` et `email`
    (Rien d'autre. Si Google propose `gmail.modify` ou `gmail.send` : **non**.)
 5. Partie **Audience / Utilisateurs test** → **Ajouter des utilisateurs** → ton adresse Gmail.
-   L'app reste en mode « Test » : c'est normal pour un usage perso, pas besoin de validation Google.
+   L'app reste en mode « Test » : c'est normal pour un usage perso, pas besoin de validation Google (mais la connexion expire alors tous les ~7 jours : voir plus bas).
 
 ## 4. Créer l'ID client OAuth
 1. **API et services** → **Identifiants** → **Créer des identifiants** → **ID client OAuth**.
@@ -47,10 +47,23 @@ Vercel → projet `majordome` → **Settings** → **Environment Variables** →
 
 Puis **Deployments** → dernier déploiement → **Redeploy** (toute nouvelle variable exige un redeploy).
 
-## 6. Créer la table et se connecter
-1. Valide et applique la migration `supabase/migrations/0006_google.sql` (table `google_tokens`).
-2. La connexion se lance avec `POST /api/google/connect` : l'écran de l'app pour le faire viendra avec la phase 2. Google te montre les autorisations : tu dois voir uniquement « Afficher vos e-mails » et « Afficher vos agendas ».
-3. Au retour, l'app s'ouvre avec `?google=ok`.
+## 6. Appliquer la migration (1 min)
+Supabase → **SQL Editor** : colle le contenu de `supabase/migrations/0006_google.sql` et exécute. Elle crée deux tables, toutes les deux **fermées** (RLS sans règle + droits retirés à « anon » et « authenticated » : seul le serveur peut y toucher) :
+- `google_tokens` : le jeton qui permet de LIRE Gmail et l'Agenda ;
+- `mail_suggestions` : l'identifiant d'un mail et ce qui en a été extrait (titre, date, lieu). Jamais le contenu des mails.
+
+## 7. Se connecter depuis l'app (1 min)
+1. Ouvre l'app : sur l'Accueil, une carte **Google** apparaît avec le bouton **Connecter Google** (elle n'apparaît que si `GOOGLE_ENABLED=true` et que la migration est appliquée).
+2. Touche-le : Google te montre les autorisations. Tu dois voir seulement « Afficher vos e-mails » et « Afficher vos agendas ». Si Google dit « application non validée » : **Paramètres avancés → Accéder à Majordome (non sécurisé)** (c'est ton propre projet).
+3. Au retour, l'Accueil affiche « Google est connecté ». Tes vrais événements apparaissent dans **Planning**, les mails importants dans le briefing, et les rendez-vous trouvés dans tes mails sous forme de cartes **RDV trouvé dans un mail**.
+
+## Ce que fait majordome avec Google (tout en lecture seule)
+- **Agenda** : lit tes événements (Planning) et détecte tes séances de sport passées (Forme).
+- **Mails** : lit les mails **non lus des 48 dernières heures**. Un filtre en code garde ceux qui parlent d'un rendez-vous ; l'IA (Haiku) n'en lit que 20 par jour au maximum ; la date est vérifiée par le code. S'il y a déjà un événement au même moment dans ton agenda, rien n'est proposé.
+- **Il n'écrit jamais chez Google.** « Ajouter à Google Agenda » ouvre Google Agenda avec le formulaire déjà rempli : c'est Google qui enregistre, après ton tap.
+
+## ⚠️ La connexion expire environ toutes les 2 semaines… ou toutes les semaines en mode « Test »
+Tant que l'app Google Cloud est en mode **Test**, Google invalide le jeton au bout de **7 jours environ**. Aucun écran cassé : l'Accueil affiche alors une carte **Reconnecter Google** (un tap). Pour éviter ça : Google Auth Platform → **Audience** → **Publier l'application** (reste « non validée » : tu es le seul utilisateur, c'est possible pour un usage perso).
 
 ## Couper l'accès à tout moment
 - Dans Vercel : supprime `GOOGLE_ENABLED` (ou mets `false`) + Redeploy → plus aucune lecture.
@@ -63,4 +76,5 @@ Puis **Deployments** → dernier déploiement → **Redeploy** (toute nouvelle v
 | `?google=lien-expire` | Plus de 10 min entre le clic et le retour : relance. |
 | `?google=sans-acces-hors-ligne` | Google n'a pas renvoyé de refresh token : supprime l'accès (lien ci-dessus) et reconnecte. |
 | `?google=table-manquante` | Migration 0006 pas appliquée. |
+| Carte « Reconnecter Google » | Le jeton a expiré (mode Test : ~7 jours) : touche le bouton. |
 | `redirect_uri_mismatch` (page Google) | L'URI de l'étape 4 et `GOOGLE_REDIRECT_URI` ne sont pas strictement identiques. |

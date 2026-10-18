@@ -7,6 +7,7 @@ import { addDays, parisDay } from "@/lib/task-groups";
 import DayPager, { type PagerHandle } from "./day-pager";
 import TaskSheet from "./task-sheet";
 import { DemoBanner, Header, hhmm, SkeletonRows } from "./ui";
+import type { GoogleApi } from "./use-google";
 import type { Task, TasksApi } from "./use-tasks";
 
 const LETTERS = ["L", "M", "M", "J", "V", "S", "D"];
@@ -45,8 +46,10 @@ function PlanRow({ t, done, time, onToggle, onOpen }: { t: Task; done: boolean; 
   );
 }
 
-/** Un RDV FICTIF : marqué « fictif » pour ne jamais le confondre avec le réel. */
-function EventRow({ e }: { e: DemoEvent }) {
+type Ev = { id: string; title: string; start: string; end: string };
+
+/** Un événement d'agenda en lecture seule. Les RDV d'aperçu sont marqués « fictif » pour ne jamais être confondus avec le réel ; ceux de Google sont réels. */
+function EventRow({ e, fictif = false }: { e: Ev; fictif?: boolean }) {
   return (
     <li className="flex min-h-11 items-center gap-2 text-[15px] text-fg/80">
       <span className="h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
@@ -54,12 +57,13 @@ function EventRow({ e }: { e: DemoEvent }) {
       <span className="shrink-0 text-xs tabular-nums text-faint">
         {hhmm(e.start)}–{hhmm(e.end)}
       </span>
-      <span className="shrink-0 rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wider text-faint">fictif</span>
+      {fictif && <span className="shrink-0 rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wider text-faint">fictif</span>}
     </li>
   );
 }
 
-export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi; onAvatar: () => void }) {
+export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: TasksApi; google: GoogleApi; onAvatar: () => void }) {
+  const real = google.state === "ok"; // Google connecté : les vrais événements remplacent l'aperçu fictif
   const now = new Date();
   const today = parisDay(now);
   const [title, setTitle] = useState("");
@@ -86,8 +90,12 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
   // Une colonne pour le jour d : la frise des heures (agenda seulement). Le pager en affiche trois : précédent, courant, suivant.
   const dayPanel = (d: string) => {
     const byHour = planDay(api.tasks, d);
-    const events = demoEvents().filter((e) => parisDay(new Date(e.start)) === d && new Date(e.end) > now);
-    const eventsByHour = new Map<number, DemoEvent[]>();
+    const events: Ev[] = real
+      ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d)
+      : demoEvents().filter((e) => parisDay(new Date(e.start)) === d && new Date(e.end) > now);
+    // « Toute la journée » (jours fériés, anniversaires…) : une petite ligne au-dessus de la frise, un événement de plusieurs jours est sur chacun de ses jours.
+    const allDay = real ? google.events.filter((e) => e.allDay && parisDay(new Date(e.start)) <= d && d < parisDay(new Date(e.end))) : [];
+    const eventsByHour = new Map<number, Ev[]>();
     for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
     const nowHM = d === today ? parisHM(now.toISOString()) : null;
     const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
@@ -102,12 +110,23 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
         h = to;
       } else rows.push({ h });
     }
-    const empty = api.loaded && !byHour.size && !events.length;
+    const empty = api.loaded && !byHour.size && !events.length && !allDay.length;
     return (
       <div className="pt-2">
-        <div className="pb-1">
-          <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs" />
-        </div>
+        {!real && (
+          <div className="pb-1">
+            <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs" />
+          </div>
+        )}
+        {allDay.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5 pt-2" aria-label="Toute la journée">
+            {allDay.map((e) => (
+              <li key={e.id} className="rounded-full bg-surface px-3 py-1 text-[12px] text-muted">
+                {e.title}
+              </li>
+            ))}
+          </ul>
+        )}
         {api.error && <p className="pt-2 text-sm text-neg">{api.error}</p>}
         {!api.loaded && (
           <div className="pt-4">
@@ -140,7 +159,7 @@ export default function PlanningView({ tasks: api, onAvatar }: { tasks: TasksApi
                       <ul className="divide-y divide-line/60 py-0.5">
                         {items.map((t) => row(t, parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
                         {evs.map((e) => (
-                          <EventRow key={e.id} e={e} />
+                          <EventRow key={e.id} e={e} fictif={!real} />
                         ))}
                       </ul>
                     )}

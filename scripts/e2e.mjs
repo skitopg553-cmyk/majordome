@@ -24,6 +24,7 @@ const run = async (name, fn) => {
       if (m === "PATCH") state.tasks = state.tasks.map((t) => (t.id === body.id ? { ...t, status: body.done ? "done" : "todo" } : t));
       return json(m === "GET" ? { tasks: state.tasks } : { ok: true });
     }
+    if (p.startsWith("/api/google/")) return json({ state: "off", events: [] });
     if (p === "/api/messages") return json({ messages: [] });
     if (p === "/api/undo") return json({ ok: true, undone: 1 });
     if (p === "/api/chat") {

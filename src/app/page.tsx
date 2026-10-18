@@ -6,6 +6,7 @@ import { isStatement, shortcutFromSearch } from "@/lib/shortcuts";
 import HomeView from "./home-view";
 import Majordome from "./majordome";
 import { Wordmark } from "./ui";
+import { useGoogle } from "./use-google";
 import { useTasks } from "./use-tasks";
 import dynamic from "next/dynamic";
 
@@ -150,6 +151,23 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   const chat = useRef<ChatHandle>(null);
   const unauthorized = useCallback(() => onForget("Code d'accès incorrect"), [onForget]);
   const tasks = useTasks(accessCode, unauthorized);
+  const google = useGoogle(accessCode, unauthorized);
+  const [googleNotice, setGoogleNotice] = useState<string | null>(null);
+  // Retour de Google : /?google=ok | refuse | lien-expire | erreur | table-manquante | sans-acces-hors-ligne → un message simple sur l'Accueil.
+  useEffect(() => {
+    const g = new URLSearchParams(window.location.search).get("google");
+    if (!g) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const texts: Record<string, string> = {
+      ok: "Google est connecté. Ton agenda et tes mails vont apparaître.",
+      refuse: "Connexion Google refusée de ton côté. Tu peux réessayer quand tu veux.",
+      "lien-expire": "Le lien de connexion a expiré (10 minutes). Relance la connexion.",
+      "table-manquante": "Connexion faite, mais la base n'est pas prête (migration 0006 à appliquer).",
+      "sans-acces-hors-ligne": "Google n'a pas donné l'accès durable. Relance la connexion et accepte tout.",
+    };
+    setGoogleNotice(texts[g] ?? "La connexion Google a échoué. Réessaie.");
+    if (g === "ok") google.refresh();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { load } = tasks;
 
   useEffect(() => {
@@ -204,8 +222,8 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   return (
     <main className="mx-auto flex h-dvh max-w-2xl flex-col">
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
-        {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
-        {tab === "planning" && <PlanningView tasks={tasks} onAvatar={openProfile} />}
+        {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} google={google} googleNotice={googleNotice} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
+        {tab === "planning" && <PlanningView tasks={tasks} google={google} onAvatar={openProfile} />}
         {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} sharedFile={sharedFile} onSharedDone={() => setSharedFile(null)} />}
         {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
       </div>

@@ -11,6 +11,7 @@ import Majordome from "./majordome";
 import TaskRow from "./task-row";
 import TaskSheet from "./task-sheet";
 import { Avatar, Bar, Card, DemoBanner, euro, greeting, Label, SkeletonRows, Wordmark } from "./ui";
+import type { GoogleApi } from "./use-google";
 import type { TasksApi } from "./use-tasks";
 
 type Go = (tab: "planning" | "finances" | "forme") => void;
@@ -46,7 +47,8 @@ const KIND_ICON: Record<DemoProposal["kind"], string> = {
 type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; budgets?: Budget[]; savings?: { capacity: { months: number; free: number } }; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
 type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[]; nutrition?: { meals: { kcal: number }[] } | null };
 
-export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; go: Go; onAvatar: () => void; onWeek: () => void }) {
+export default function HomeView({ accessCode, tasks: api, google, googleNotice, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; google: GoogleApi; googleNotice: string | null; go: Go; onAvatar: () => void; onWeek: () => void }) {
+  const gOk = google.state === "ok";
   const [decided, setDecided] = useState<Record<string, "ok" | "no">>({}); // « À valider » : choix locaux, rien n'est exécuté
   const now = new Date();
   // Tâches = éléments SANS heure (les éléments avec une heure sont de l'agenda, dans le Planning). Celles qu'on vient de cocher restent le temps de l'animation.
@@ -90,6 +92,8 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
   const lines = api.loaded
     ? briefing({
         tasks: api.tasks,
+        events: gOk ? google.events : [],
+        mails: gOk ? google.mails : null,
         now,
         free: fin?.ready && fin.savings && fin.savings.capacity.months > 0 ? fin.savings.capacity.free : null,
         overBudget: over ? { category: over.category, over: over.spent - over.limit! } : null,
@@ -149,6 +153,45 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
         </form>
       </Card>
       {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
+
+      {/* Google (lecture seule) : connecter, reconnecter (jeton expiré), ou résultat de la connexion */}
+      {(google.state === "not-connected" || google.state === "reconnect" || googleNotice) && (
+        <Card>
+          <Label>Google</Label>
+          <p className="mt-1 text-[14px] leading-snug text-muted">
+            {googleNotice ?? (google.state === "reconnect" ? "Google n'est plus connecté (la connexion a expiré). Reconnecte-le pour retrouver ton agenda et tes mails." : "Connecte ton agenda et tes mails : majordome les lit sans jamais rien écrire chez Google.")}
+          </p>
+          {(google.state === "not-connected" || google.state === "reconnect") && (
+            <button onClick={() => void google.connect().catch(() => {})} className="mt-3 min-h-11 rounded-full bg-accent px-5 text-[14px] font-semibold text-ink active:scale-95">
+              {google.state === "reconnect" ? "Reconnecter Google" : "Connecter Google"}
+            </button>
+          )}
+        </Card>
+      )}
+
+      {/* Rendez-vous trouvés dans les mails : Ruben choisit, majordome n'écrit rien chez Google (le lien ouvre Google Agenda, qui écrit après son tap) */}
+      {gOk &&
+        google.suggestions.map((s) => (
+          <Card key={s.id}>
+            <Label>RDV trouvé dans un mail</Label>
+            <p className="mt-1 text-[17px] font-semibold leading-snug tracking-tight">{s.title}</p>
+            <p className="text-[13px] text-muted">
+              {new Date(s.start).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" })} · {new Date(s.start).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" })}
+              {s.place ? ` · ${s.place}` : ""}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => void google.answer(s.id, "task")} className="min-h-11 rounded-full bg-accent px-4 text-[13px] font-semibold text-ink active:scale-95">
+                Ajouter à mon planning
+              </button>
+              <a href={s.calendarUrl} target="_blank" rel="noopener noreferrer" onClick={() => void google.answer(s.id, "added")} className="flex min-h-11 items-center rounded-full bg-raised px-4 text-[13px] font-medium text-fg ring-1 ring-line active:scale-95">
+                Ajouter à Google Agenda
+              </a>
+              <button onClick={() => void google.answer(s.id, "dismissed")} className="min-h-11 rounded-full px-3 text-[13px] font-medium text-muted active:bg-raised">
+                Ignorer
+              </button>
+            </div>
+          </Card>
+        ))}
 
       {/* Argent — RÉEL si des opérations sont importées, sinon aperçu FICTIF (phase 4) */}
       {fin?.ready && shownBalance ? (
@@ -249,7 +292,8 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
         </svg>
       </Card>
 
-      {/* À valider : propositions que Ruben accepte ou refuse d'un tap — FICTIF (phase 2) */}
+      {/* À valider : propositions que Ruben accepte ou refuse d'un tap — FICTIF (phase 2), remplacé par les vraies quand Google est connecté */}
+      {!gOk && (
       <Card>
         <div className="flex items-center justify-between">
           <Label>À valider</Label>
@@ -297,6 +341,7 @@ export default function HomeView({ accessCode, tasks: api, go, onAvatar, onWeek 
           <DemoBanner phase={DEMO_PHASE.agenda} what="propositions fictives" />
         </div>
       </Card>
+      )}
     </div>
   );
 }
