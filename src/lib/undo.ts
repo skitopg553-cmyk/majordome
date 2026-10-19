@@ -16,6 +16,7 @@ export const RESTORABLE: Record<string, string[]> = {
   food_logs: ["date", "label", "grams", "kcal", "protein", "carbs", "fat", "estimated"],
   nutrition_goals: ["kcal", "protein", "carbs", "fat"],
   screen_time_logs: ["date", "minutes"],
+  recurring_exceptions: ["rule_id", "day", "action", "new_day", "new_start", "new_end"],
   recurring_tasks: ["title", "kind", "weekday", "month_day", "at_time", "last_generated", "days", "end_time", "habit"],
 };
 
@@ -42,7 +43,7 @@ const cleanValues = (table: string, v: unknown): Record<string, string | number 
 
 /** Valide une liste d'étapes venant du navigateur. Renvoie null au moindre doute. */
 export function parseUndoSteps(input: unknown): UndoStep[] | null {
-  if (!Array.isArray(input) || input.length === 0 || input.length > 20) return null;
+  if (!Array.isArray(input) || input.length === 0 || input.length > 300) return null; // « supprime tout » peut toucher des dizaines de lignes
   const steps: UndoStep[] = [];
   for (const s of input) {
     if (!s || typeof s !== "object") return null;

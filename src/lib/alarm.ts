@@ -8,7 +8,14 @@ const fail = (error: string): { ok: false; error: string } => ({ ok: false, erro
 
 /** Ce qui a été réellement calculé : la coque Android s'en sert pour régler l'Horloge sans tap, et pour dire la confirmation. */
 export type CardParams = { kind: "alarm"; hour: number; minutes: number; label: string; when: string } | { kind: "timer"; seconds: number; label: string };
-export type Card = { kind: "alarm" | "timer"; title: string; detail: string; url: string; params?: CardParams };
+/** Suppression en masse demandée à l'IA : rien n'est supprimé avant que Ruben touche « Supprimer » sur la carte. */
+export type BulkRequest = { scope: "all" | "period"; from?: string; to?: string; include_reminders?: boolean };
+export type Card = { kind: "alarm" | "timer" | "confirm"; title: string; detail: string; url: string; params?: CardParams; bulk?: BulkRequest };
+const isDayStr = (v: unknown) => v === undefined || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v));
+const isBulk = (b: unknown): b is BulkRequest => {
+  const o = b as BulkRequest;
+  return !!o && (o.scope === "all" || (o.scope === "period" && typeof o.from === "string" && typeof o.to === "string")) && isDayStr(o.from) && isDayStr(o.to) && (o.include_reminders === undefined || typeof o.include_reminders === "boolean");
+};
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const int = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
@@ -85,6 +92,7 @@ export function timerCard(v: { seconds: number; label: string }): Card {
 /** Une carte reçue du serveur n'est affichée que si son lien ouvre bien l'Horloge (jamais un lien quelconque). */
 export const isCard = (c: unknown): c is Card => {
   const o = c as Card;
+  if (o?.kind === "confirm") return typeof o.title === "string" && typeof o.detail === "string" && o.url === "" && isBulk(o.bulk);
   const p = o?.params as Record<string, unknown> | undefined;
   const paramsOk = p === undefined || (p.kind === "alarm" ? Number.isInteger(p.hour) && Number.isInteger(p.minutes) && (p.hour as number) >= 0 && (p.hour as number) <= 23 && (p.minutes as number) >= 0 && (p.minutes as number) <= 59 && typeof p.label === "string" && typeof p.when === "string" : p.kind === "timer" && Number.isInteger(p.seconds) && (p.seconds as number) >= 1 && (p.seconds as number) <= 86_400 && typeof p.label === "string");
   return !!o && paramsOk && (o.kind === "alarm" || o.kind === "timer") && typeof o.title === "string" && typeof o.detail === "string" && typeof o.url === "string" && /^intent:#Intent;action=android\.intent\.action\.SET_(ALARM|TIMER);[^<>"\s]*;end$/.test(o.url);

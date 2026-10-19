@@ -98,8 +98,8 @@ describe("endOfWeek", () => {
 
 describe("recapText", () => {
   it("liste exacte à partir de deux éléments, sans doublon ; rien pour un seul", () => {
-    expect(recapText(["Travail lundi-vendredi 9 h-17 h", "Salle lundi, mercredi, vendredi 18 h-20 h", "Travail lundi-vendredi 9 h-17 h"])).toBe("Noté :\n- Travail lundi-vendredi 9 h-17 h\n- Salle lundi, mercredi, vendredi 18 h-20 h");
-    expect(recapText(["Seul"])).toBe("");
+    expect(recapText(["Travail lundi-vendredi 9 h-17 h", "Salle lundi, mercredi, vendredi 18 h-20 h", "Travail lundi-vendredi 9 h-17 h"])).toBe("Fait :\n- Travail lundi-vendredi 9 h-17 h\n- Salle lundi, mercredi, vendredi 18 h-20 h");
+    expect(recapText(["Seul"])).toBe("Fait : Seul");
     expect(recapText([])).toBe("");
   });
 });

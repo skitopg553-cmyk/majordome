@@ -93,7 +93,7 @@ export async function applyIntents(text: string, exec: (name: string, args: Reco
  */
 export function claimsActionWithoutTool(reply: string, toolCalls: number): boolean {
   if (toolCalls > 0) return false;
-  return /\b(?:j'ai|c'est|je viens d(?:e\s+|'))\s*(?:bien\s+|maintenant\s+)?(?:note|ajout\w*|cree|enregistr\w*|memoris\w*|mis a jour|marque|programme|retenu)\b/.test(fold(reply).replace(/[’]/g, "'"));
+  return /\b(?:j'ai|c'est|je viens d(?:e\s+|'))\s*(?:bien\s+|maintenant\s+)?(?:note|ajout\w*|cree|enregistr\w*|memoris\w*|mis a jour|marque|programme|retenu|supprim\w*|modifi\w*|deplac\w*|efface)\b|\btout est (?:maintenant\s+)?(?:supprim|efface|vide|note|en place|fait)/.test(fold(reply).replace(/[’]/g, "'"));
 }
 
 export const FALSE_CLAIM_WARNING = "\n\n⚠️ Attention : je n'ai en fait rien enregistré cette fois. Redis-le-moi pour que je le note vraiment.";

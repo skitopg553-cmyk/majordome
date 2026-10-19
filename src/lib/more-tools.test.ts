@@ -183,11 +183,12 @@ describe("set_setting", () => {
 });
 
 describe("add_recurring_task", () => {
-  it("la phrase est comprise en code, la règle enregistrée, annulable", async () => {
-    const r = await call("add_recurring_task", { title: "Sortir les poubelles", every: "tous les lundis", time: "20:00" });
+  it("pense-bête qui revient : la phrase est comprise en code, la règle enregistrée, annulable ; avec une heure, c'est add_event", async () => {
+    expect((await call("add_recurring_task", { title: "Sortir les poubelles", every: "tous les lundis", time: "20:00" })).error).toMatch(/add_event/);
+    const r = await call("add_recurring_task", { title: "Sortir les poubelles", every: "tous les lundis" });
     expect(r.ok).toBe(true);
-    expect(r.saved.quand).toBe("chaque lundi à 20:00");
-    expect(h.tables.recurring_tasks[0]).toMatchObject({ title: "Sortir les poubelles", kind: "weekly", weekday: 1, at_time: "20:00" });
+    expect(r.saved.quand).toBe("chaque lundi");
+    expect(h.tables.recurring_tasks[0]).toMatchObject({ title: "Sortir les poubelles", kind: "weekly", weekday: 1, at_time: null });
     expect(r.undo.steps).toEqual([{ op: "delete", table: "recurring_tasks", id: 100 }]);
   });
   it("refuse une récurrence floue ou une heure invalide, et ne crée rien", async () => {

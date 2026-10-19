@@ -29,3 +29,22 @@ Playwright, 390×844 et 360×800, données simulées réalistes (semaine complè
 Rien trouvé sur les 36 captures : aucun débordement horizontal, aucune erreur de console, aucun contraste sous 4,5:1, aucune zone tactile réelle sous 44 px, écrans vides et chargement corrects, célébration absente avec « réduire les animations ».
 
 **Ce que ces tests ne couvrent PAS** : tout le natif Android (réveil, temps d'écran, vibration) ; le ressenti « premium » (fluidité de la célébration, du glissement) : tu jugeras sur ton téléphone ; la vraie base et la vraie IA (les écrans reçoivent des données simulées ; l'IA se mesure avec `npm run eval:ia`, que je n'ai pas pu lancer car les clés sont vides dans .env.local) ; les écrans Finances et Forme avec données (hors périmètre de cette session).
+
+## Calendrier (19/10, session « calendrier » : `npm run qa:calendrier`)
+
+**Pourquoi l'IA a menti le 19/10** (lecture seule de la base) : « supprime toutes les tâches » → l'outil de suppression exigeait un identifiant par élément, il a échoué ; l'IA a quand même écrit « Tout est maintenant supprimé ». Rien ne vérifiait que la phrase correspondait à ce que les outils avaient fait. Corrigé : l'IA retrouve par titre et jour, la phrase finale est écrite par le code d'après les outils, et un échec est annoncé par le code (« ⚠️ Rien n'a été fait : … »).
+
+Playwright, 390×844 et 360×800, semaine réelle chargée (12 pavés), chevauchements (dentiste pendant un cours, réunion pendant un cours), titre très long, deux pense-bêtes. Parcours : vue Jour, vue Semaine, créer en touchant un créneau vide, modifier toute la série, déplacer une seule fois, supprimer une fois, supprimer la série, modifier puis supprimer un ponctuel. **Tous les parcours passent dans les deux tailles.** L'API y est simulée (le planificateur, lui, est testé à part).
+
+| # | Écran | Défaut | Gravité | État |
+|---|---|---|---|---|
+| 1 | Grille Jour | Le texte des pavés était centré verticalement (titre au milieu d'un cours de 3 h) | moyenne | **corrigé** (en haut du pavé) |
+| 2 | Grille Semaine | Mots coupés lettre par lettre (« Cour / s ») dans les colonnes étroites | haute | **corrigé** |
+| 3 | Grille Jour | Un titre très long débordait du pavé | moyenne | **corrigé** (autant de lignes que la hauteur permet, puis « … ») |
+| 4 | Fiche | Boutons des jours (L M M J V S D) à 42 px en 360 px de large | basse | **corrigé** (44 px) |
+| 5 | Grille Semaine, 360 px | Deux pavés qui se chevauchent dans une colonne font ~20 px de large : pas de texte, seulement la couleur | basse | non corrigé : accepté (toucher ouvre la fiche ; la vue Jour montre tout) |
+| 6 | Grille | Un événement de 20 min fait 22 px de haut (< 44 px) | basse | non corrigé : la hauteur suit la durée, comme Google Agenda |
+| 7 | Grille | Appui long pour déplacer, poignée pour allonger | — | non fait (bonus jugé risqué sans essai sur un vrai téléphone) |
+| 8 | Fiche | Pas de bouton « Annuler » après une modification à la main (seulement une confirmation avant de supprimer) | basse | non corrigé |
+
+**Ce que ces tests ne couvrent PAS** : la vraie IA (`npm run eval:ia` n'a pas pu tourner : clés vides dans .env.local) ; l'écriture dans la vraie base (`applyOps` n'a tourné que contre la simulation) ; les gestes sur un vrai téléphone (glisser pour changer de jour pendant qu'on fait défiler la grille) ; les rendez-vous Google dans la grille (Google pas connecté) ; la lecture vocale du récapitulatif.

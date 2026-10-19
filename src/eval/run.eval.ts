@@ -10,7 +10,7 @@ const hasKey = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase() === "opena
 describe.skipIf(!hasKey)("évaluation de l'IA (vrai modèle)", () => {
   it("score sur les phrases d'évaluation", { timeout: 900_000 }, async () => {
     const results: Awaited<ReturnType<typeof runCase>>[] = [];
-    for (let i = 0; i < CASES.length; i += 4) results.push(...(await Promise.all(CASES.slice(i, i + 4).map((c) => runCase(c).catch((e) => ({ id: c.id, say: c.say, pass: false, why: `erreur : ${e instanceof Error ? e.message : e}`, items: [], reply: "", recap: "" }))))));
+    for (let i = 0; i < CASES.length; i += 4) results.push(...(await Promise.all(CASES.slice(i, i + 4).map((c) => runCase(c).catch((e) => ({ id: c.id, say: [c.say].flat().join(" ⏎ "), pass: false, why: `erreur : ${e instanceof Error ? e.message : e}`, items: [], reply: "" }))))));
     const s = summarize(results);
     console.log(`\n=== SCORE : ${s.passed} / ${s.total} (${Math.round((100 * s.passed) / s.total)} %) ===`);
     for (const f of s.failed) {

@@ -13,11 +13,13 @@ describe("règle agenda / tâche dans les consignes de l'IA", () => {
   });
   it("les descriptions d'outils l'expliquent", () => {
     const add = TOOLS.find((t) => t.name === "add_task")!;
-    expect(add.description).toMatch(/agenda/i);
-    expect(add.description).toMatch(/tâche/i);
+    expect(add.description).toMatch(/PENSE-BÊTE/);
+    expect(add.description).toMatch(/add_event/); // avec une heure, c'est un événement
     const dueAt = (add.parameters as { properties: { due_at: { description: string } } }).properties.due_at.description;
     expect(dueAt).toContain("T00:00:00");
-    expect(dueAt).toMatch(/AGENDA/);
+    const ev = TOOLS.find((t) => t.name === "add_event")!;
+    expect(ev.description).toMatch(/début ET une fin/);
+    expect(ev.description).toMatch(/pause n'est pas un événement/i);
   });
 });
 
