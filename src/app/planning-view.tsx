@@ -1,276 +1,257 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { eventsOn, fromMin, hmOf, layoutDay, remindersFor, toMin, type CalEvent } from "@/lib/calendar";
 import type { AgendaEvent } from "@/lib/google-api";
-import { dotsFor, hourRange, parisHM, planDay, weekOf } from "@/lib/planning";
-import { occurrencesOn, type Occurrence } from "@/lib/slots";
+import { weekOf } from "@/lib/planning";
 import { addDays, parisDay } from "@/lib/task-groups";
-import DayPager, { type PagerHandle } from "./day-pager";
+import EventEditor, { type EditorTarget } from "./event-editor";
 import EventSheet from "./event-sheet";
-import SlotSheet from "./slot-sheet";
+import TaskRow from "./task-row";
 import TaskSheet from "./task-sheet";
-import { Header, hhmm, SkeletonRows } from "./ui";
+import { Header } from "./ui";
 import type { GoogleApi } from "./use-google";
 import type { SlotsApi } from "./use-slots";
-import type { Task, TasksApi } from "./use-tasks";
+import type { TasksApi } from "./use-tasks";
 
+const H = 48; // hauteur d'une heure dans la grille, en pixels
 const LETTERS = ["L", "M", "M", "J", "V", "S", "D"];
-/** « Sam. 17 oct. » : la vraie date, jamais « Demain » ni « Aujourd'hui ». */
 const headerDate = (day: string) => {
   const t = new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 const longDate = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
-const num = (day: string) => Number(day.slice(8));
 const chevron = (d: string) => (
   <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
     <path d={d} />
   </svg>
 );
+const nowMin = () => toMin(hmOf(new Date().toISOString()));
 
-/** Une tâche du jour : la case ronde coche, le reste ouvre la fiche. Chaque zone fait au moins 44 px de haut. */
-function PlanRow({ t, done, time, onToggle, onOpen }: { t: Task; done: boolean; time?: string; onToggle: () => void; onOpen: () => void }) {
+/** Un pavé : sa hauteur = sa durée. Toucher = sa fiche. */
+function Block({ e, col, cols, compact, onOpen }: { e: CalEvent; col: number; cols: number; compact: boolean; onOpen: () => void }) {
+  const top = (toMin(e.start) / 60) * H;
+  const height = Math.max(((toMin(e.end) - toMin(e.start)) / 60) * H - 2, compact ? 16 : 22);
+  const tone = e.source === "google" ? "bg-raised ring-1 ring-line text-fg/90" : e.recurring ? "bg-accent/15 text-fg" : "bg-accent/30 text-fg";
+  const showTimes = !compact && height >= 36;
+  const lines = Math.max(1, Math.floor((height - 4 - (showTimes ? 15 : 0)) / (compact ? 13 : 16))); // autant de lignes de titre que la hauteur le permet
+  const narrow = compact && cols > 1; // pavés côte à côte dans une colonne de semaine : trop étroits pour du texte lisible
   return (
-    <li className="rise flex items-center">
-      <button onClick={onToggle} disabled={t.id < 0} aria-pressed={done} aria-label={done ? `Rouvrir : ${t.title}` : `Terminer : ${t.title}`} className="-ml-3 flex size-11 shrink-0 items-center justify-center">
-        <span className={`flex size-5 items-center justify-center rounded-full border transition-all duration-300 ${done ? "scale-110 border-accent bg-accent text-ink" : "border-faint"}`}>
-          {done && (
-            <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
-              <path d="M5 12l5 5 9-10" />
-            </svg>
-          )}
+    <button
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onOpen();
+      }}
+      aria-label={`${e.title}, ${e.start} à ${e.end}`}
+      className={`absolute flex flex-col items-start justify-start overflow-hidden rounded-lg border-l-2 border-accent text-left active:brightness-125 ${compact ? "px-0.5 py-0.5" : "px-1.5 py-1"} ${tone}`}
+      style={{ top, height, left: `calc(${(col / cols) * 100}% + 1px)`, width: `calc(${100 / cols}% - 2px)` }}
+    >
+      {!narrow && (
+        <span className={`w-full overflow-hidden font-semibold leading-tight ${compact ? "text-[10px] [word-break:keep-all]" : "text-[13px] break-words"}`} style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: lines }}>
+          {e.title}
         </span>
-      </button>
-      <button onClick={onOpen} disabled={t.id < 0} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug transition-opacity duration-300 ${done ? "text-faint line-through opacity-60" : ""}`}>
-        {t.priority === 1 && !done && <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Priorité haute" />}
-        <span className={`line-clamp-2 min-w-0 flex-1 break-words ${t.priority === 3 && !done ? "text-muted" : ""}`}>{t.title}</span>
-        {time ? <span className="shrink-0 text-xs tabular-nums text-faint">{time}</span> : null}
-      </button>
-    </li>
+      )}
+      {showTimes && <span className="text-[11px] tabular-nums text-fg/70">{`${e.start}–${e.end}`}</span>}
+    </button>
   );
 }
 
-/** Une ligne de la frise qui n'est pas une tâche : un rendez-vous Google (lecture seule) ou une occurrence d'un créneau qui revient. Toucher la ligne ouvre sa fiche. */
-type Entry = { id: string; title: string; start: string; end: string | null; open: () => void };
-function EntryRow({ e }: { e: Entry }) {
+/** Une colonne de jour : lignes des heures, pavés côte à côte s'ils se chevauchent, ligne de l'heure actuelle. Toucher un vide = créer à cette heure. */
+function DayColumn({ day, events, today, compact, onCreate, onOpen }: { day: string; events: CalEvent[]; today: string; compact: boolean; onCreate: (start: string) => void; onOpen: (e: CalEvent) => void }) {
+  const layout = useMemo(() => layoutDay(events), [events]);
   return (
-    <li>
-      <button onClick={e.open} className="flex min-h-11 w-full items-center gap-2 text-left text-[15px] text-fg/80">
-        <span className="h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{e.title}</span>
-        <span className="shrink-0 text-xs tabular-nums text-faint">{e.end ? `${hhmm(e.start)}–${hhmm(e.end)}` : hhmm(e.start)}</span>
-      </button>
-    </li>
+    <div
+      className="relative h-full min-w-0 flex-1 border-l border-line/70"
+      onClick={(e) => {
+        const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+        onCreate(fromMin(Math.min(Math.floor(((y / H) * 60) / 30) * 30, 23 * 60)));
+      }}
+      data-day={day}
+    >
+      {Array.from({ length: 24 }, (_, h) => (
+        <div key={h} className="absolute inset-x-0 border-t border-line/50" style={{ top: h * H }} aria-hidden />
+      ))}
+      {events.map((e) => {
+        const l = layout.get(e.key) ?? { col: 0, cols: 1 };
+        return <Block key={e.key} e={e} col={l.col} cols={l.cols} compact={compact} onOpen={() => onOpen(e)} />;
+      })}
+      {day === today && <div className="glow pointer-events-none absolute inset-x-0 h-0.5 bg-accent" style={{ top: (nowMin() / 60) * H }} aria-hidden />}
+    </div>
   );
 }
 
 export default function PlanningView({ tasks: api, google, slots, accessCode, onUnauthorized, onAvatar }: { tasks: TasksApi; google: GoogleApi; slots: SlotsApi; accessCode: string; onUnauthorized: () => void; onAvatar: () => void }) {
-  const real = google.state === "ok"; // sans Google : seulement les éléments de Majordome avec une heure
-  const now = new Date();
-  const today = parisDay(now);
-  const [title, setTitle] = useState("");
-  const [due, setDue] = useState("");
-  const [priority, setPriority] = useState(2);
-  const [showOptions, setShowOptions] = useState(true); // un événement a toujours une date et une heure
+  const today = parisDay(new Date());
   const [day, setDay] = useState(today);
-  const [openId, setOpenId] = useState<number | null>(null);
-  const [openEvent, setOpenEvent] = useState<AgendaEvent | null>(null);
-  const [openOcc, setOpenOcc] = useState<Occurrence | null>(null);
-  const pager = useRef<PagerHandle>(null);
+  const [view, setView] = useState<"day" | "week">("day");
+  const [editor, setEditor] = useState<EditorTarget | null>(null);
+  const [openGoogle, setOpenGoogle] = useState<AgendaEvent | null>(null);
+  const [openTask, setOpenTask] = useState<number | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [newReminder, setNewReminder] = useState("");
+  const scroller = useRef<HTMLDivElement>(null);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const real = google.state === "ok";
 
-  function add() {
-    const clean = title.trim();
-    if (!clean || !due) return; // sans heure, ce serait une tâche : elle se crée sur l'Accueil
-    api.add(clean, new Date(due).toISOString(), priority);
-    setTitle("");
-    setDue("");
-    setPriority(2);
-  }
+  const days = view === "day" ? [day] : weekOf(day);
+  const eventsFor = (d: string): CalEvent[] => [
+    ...eventsOn(d, api.tasks, slots.rules, slots.exceptions),
+    ...(real
+      ? google.events
+          .filter((g) => !g.allDay && parisDay(new Date(g.start)) === d)
+          .map((g) => ({ key: `g${g.id}`, source: "google" as const, id: g.id, googleId: g.id, title: g.title, day: d, start: hmOf(g.start), end: parisDay(new Date(g.end)) === d ? hmOf(g.end) : "23:59", recurring: false, habit: false }))
+      : []),
+  ];
+  const allDay = real && view === "day" ? google.events.filter((e) => e.allDay && parisDay(new Date(e.start)) <= day && day < parisDay(new Date(e.end))) : [];
+  const reminders = remindersFor(view === "day" ? day : today, api.tasks.map((t) => (api.leaving.has(t.id) ? { ...t, status: "todo" as const } : t)), today);
+  const opened = openTask !== null ? api.tasks.find((t) => t.id === openTask) : undefined;
 
-  const isDone = (t: Task) => t.status === "done" || api.leaving.has(t.id);
-  const opened = openId !== null ? api.tasks.find((t) => t.id === openId) : undefined;
-  const row = (t: Task, time?: string) => <PlanRow key={t.id} t={t} done={isDone(t)} time={time} onToggle={() => api.toggle(t)} onOpen={() => setOpenId(t.id)} />;
+  // À l'ouverture (et au changement de vue) : la grille défile vers l'heure actuelle, ou 7 h.
+  useEffect(() => {
+    const h = days.includes(today) ? Math.max(0, Math.floor(nowMin() / 60) - 1) : 7;
+    scroller.current?.scrollTo({ top: h * H });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
-  // Une colonne pour le jour d : la frise des heures (agenda seulement). Le pager en affiche trois : précédent, courant, suivant.
-  const dayPanel = (d: string) => {
-    const byHour = planDay(api.tasks, d);
-    const g = real ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d) : [];
-    // Créneaux qui reviennent : calculés ici pour ce jour (les semaines futures se voient tout de suite), jamais copiés dans les tâches.
-    const events: Entry[] = [
-      ...g.map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, open: () => setOpenEvent(e) })),
-      ...occurrencesOn(slots.rules, slots.exceptions, d).map((o) => ({ id: o.key, title: o.title, start: o.start, end: o.end, open: () => setOpenOcc(o) })),
-    ].sort((a, b) => a.start.localeCompare(b.start));
-    // « Toute la journée » (jours fériés, anniversaires…) : une petite ligne au-dessus de la frise, un événement de plusieurs jours est sur chacun de ses jours.
-    const allDay = real ? google.events.filter((e) => e.allDay && parisDay(new Date(e.start)) <= d && d < parisDay(new Date(e.end))) : [];
-    const eventsByHour = new Map<number, Entry[]>();
-    for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
-    const nowHM = d === today ? parisHM(now.toISOString()) : null;
-    const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
-    // Heures vides qui se suivent : regroupées en une seule ligne fine (« 07–12 h »), pour ne pas allonger l'écran.
-    const isBusy = (h: number) => byHour.has(h) || eventsByHour.has(h) || nowHM?.h === h;
-    const rows: ({ h: number } | { from: number; to: number })[] = [];
-    for (let h = start; h <= end; h++) {
-      let to = h;
-      while (!isBusy(h) && to + 1 <= end && !isBusy(to + 1)) to++;
-      if (to > h) {
-        rows.push({ from: h, to });
-        h = to;
-      } else rows.push({ h });
-    }
-    const empty = api.loaded && !byHour.size && !events.length && !allDay.length;
-    return (
-      <div className="pt-2">
-        {allDay.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5 pt-2" aria-label="Toute la journée">
-            {allDay.map((e) => (
-              <li key={e.id}>
-                <button onClick={() => setOpenEvent(e)} className="min-h-8 rounded-full bg-surface px-3 py-1 text-[12px] text-muted active:bg-raised">
-                  {e.title}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {api.error && <p className="pt-2 text-sm text-neg">{api.error}</p>}
-        {!api.loaded && (
-          <div className="pt-4">
-            <SkeletonRows rows={4} />
-          </div>
-        )}
-        {/* Frise des heures : une ligne par heure, l'agenda posé dessus */}
-        {api.loaded && !empty && (
-          <ol className="relative mt-4" aria-label="Heures">
-            {rows.map((r) => {
-              if ("from" in r) {
-                return (
-                  <li key={`gap${r.from}`} className="flex min-h-9">
-                    <span className="w-14 shrink-0 whitespace-nowrap pt-3 text-xs tabular-nums text-faint">
-                      {String(r.from).padStart(2, "0")}–{String(r.to).padStart(2, "0")} h
-                    </span>
-                    <div className="min-w-0 flex-1 border-l border-line" />
-                  </li>
-                );
-              }
-              const h = r.h;
-              const items = byHour.get(h) ?? [];
-              const evs = eventsByHour.get(h) ?? [];
-              const busy = items.length > 0 || evs.length > 0;
-              return (
-                <li key={h} className={`relative flex ${busy ? "" : "min-h-9"}`}>
-                  <span className={`w-14 shrink-0 whitespace-nowrap pt-3 text-xs tabular-nums ${nowHM?.h === h ? "font-semibold text-accent" : busy ? "text-muted" : "text-faint"}`}>{String(h).padStart(2, "0")}:00</span>
-                  <div className="min-w-0 flex-1 border-l border-line pl-3">
-                    {busy && (
-                      <ul className="divide-y divide-line/60 py-0.5">
-                        {items.map((t) => row(t, t.end_at ? `${hhmm(t.due_at!)}–${hhmm(t.end_at)}` : parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
-                        {evs.map((e) => (
-                          <EntryRow key={e.id} e={e} />
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {nowHM?.h === h && <span className="glow pointer-events-none absolute h-px bg-accent" style={{ top: `${(nowHM.m / 60) * 100}%`, left: "3.5rem", right: 0 }} aria-hidden />}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {empty && <p className="pt-10 text-center text-[15px] text-muted">Rien de prévu ce jour.</p>}
-      </div>
-    );
+  const step = (n: number) => setDay((d) => addDays(d, view === "day" ? n : 7 * n));
+  const open = (e: CalEvent, shownDay: string) => {
+    if (e.source === "google") return setOpenGoogle(google.events.find((g) => g.id === e.googleId) ?? null);
+    setEditor({ mode: "edit", event: e, shownDay, rule: e.source === "rule" ? slots.rules.find((r) => r.id === e.id) : undefined });
   };
+  function done(msg: string) {
+    setEditor(null);
+    setNotice(msg);
+    api.load();
+    slots.reload();
+    setTimeout(() => setNotice(null), 4000);
+  }
+  const title = view === "day" ? headerDate(day) : `Semaine du ${headerDate(weekOf(day)[0])}`;
 
   return (
     <div className="pb-6">
       <div className="px-4">
         <Header title="Planning" onAvatar={onAvatar} />
-        {/* Ajout rapide d'un événement : sans IA, gratuit et instantané */}
-        <div className="flex gap-2">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="Nouvel événement…"
-            aria-label="Nouvel événement"
-            className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50"
-          />
-          <button
-            onClick={() => setShowOptions((v) => !v)}
-            aria-label="Date et priorité"
-            aria-expanded={showOptions}
-            className={`flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface ${showOptions || due ? "text-accent" : "text-muted"}`}
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-              <rect x="4" y="5" width="16" height="15" rx="2" />
-              <path d="M4 10h16M9 3v4M15 3v4" />
-            </svg>
+        {/* Barre : précédent / date (toucher = revenir à aujourd'hui) / suivant, puis + */}
+        <div className="flex items-center gap-1">
+          <button onClick={() => step(-1)} aria-label={view === "day" ? "Jour précédent" : "Semaine précédente"} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised">
+            {chevron("M15 6l-6 6 6 6")}
           </button>
-          <button onClick={add} disabled={!title.trim() || !due} aria-label="Ajouter à l'agenda" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink disabled:opacity-25">
+          {day === today ? (
+            <h2 className="min-w-0 flex-1 truncate text-center text-[16px] font-semibold tracking-tight">{title}</h2>
+          ) : (
+            <button onClick={() => setDay(today)} aria-label={`${longDate(day)} : revenir à aujourd'hui`} className="min-h-11 min-w-0 flex-1 truncate text-center text-[16px] font-semibold tracking-tight">
+              {title}
+            </button>
+          )}
+          <button onClick={() => step(1)} aria-label={view === "day" ? "Jour suivant" : "Semaine suivante"} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised">
+            {chevron("M9 6l6 6-6 6")}
+          </button>
+          <button onClick={() => setEditor({ mode: "create", day, start: fromMin(Math.min((Math.floor(nowMin() / 60) + 1) * 60, 23 * 60)) })} aria-label="Nouvel événement" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-ink active:scale-95">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
         </div>
-        {showOptions && (
-          <div className="rise mt-2 flex gap-2">
-            <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Date et heure" className="h-12 min-w-0 flex-1 rounded-2xl bg-surface px-3 text-sm text-muted outline-none [color-scheme:dark] focus:ring-1 focus:ring-accent/50" />
-            <select value={priority} onChange={(e) => setPriority(Number(e.target.value))} aria-label="Priorité" className="h-12 rounded-2xl bg-surface px-3 text-sm text-muted outline-none focus:ring-1 focus:ring-accent/50">
-              <option value={1}>Haute</option>
-              <option value={2}>Normale</option>
-              <option value={3}>Basse</option>
-            </select>
-          </div>
-        )}
+        <div className="mt-2 grid grid-cols-2 rounded-full bg-surface p-1" role="tablist" aria-label="Vue">
+          {(["day", "week"] as const).map((v) => (
+            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`min-h-11 rounded-full text-[14px] font-semibold ${view === v ? "bg-raised text-fg" : "text-muted"}`}>
+              {v === "day" ? "Jour" : "Semaine"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Semaine en mini-points : un point par élément d'agenda (3 au plus) ; un point accent au-dessus de la lettre marque aujourd'hui */}
-      <nav className="mt-4 grid grid-cols-7 px-2" aria-label="Semaine">
-        {weekOf(day).map((d, i) => {
-          const n = Math.min(3, dotsFor(api.tasks, d) + occurrencesOn(slots.rules, slots.exceptions, d).length);
-          const selected = d === day;
-          return (
-            <button
-              key={d}
-              onClick={() => pager.current?.goTo(d)}
-              aria-current={d === today ? "date" : undefined}
-              aria-pressed={selected}
-              aria-label={`${longDate(d)}${d === today ? " (aujourd'hui)" : ""}${n ? `, ${n >= 3 ? "3 événements ou plus" : `${n} événement${n > 1 ? "s" : ""}`}` : ""}`}
-              className="flex min-h-14 flex-col items-center justify-center gap-0.5"
-            >
-              <span className={`size-1 rounded-full ${d === today ? "bg-accent" : ""}`} aria-hidden />
-              <span className="text-[11px] text-muted">{LETTERS[i]}</span>
-              <span className={`flex size-8 items-center justify-center rounded-full text-[14px] tabular-nums ${selected ? "bg-accent font-semibold text-ink" : "text-fg"}`}>{num(d)}</span>
-              <span className="flex h-1.5 gap-0.5" aria-hidden>
-                {Array.from({ length: n }, (_, k) => (
-                  <span key={k} className="size-1 rounded-full bg-muted" />
-                ))}
-              </span>
-            </button>
-          );
-        })}
+      {/* Les 7 jours : en vue Jour, toucher un jour l'ouvre ; en vue Semaine, ce sont les en-têtes des colonnes */}
+      <nav className="mt-2 flex pl-11 pr-2" aria-label="Semaine">
+        {weekOf(day).map((d, i) => (
+          <button
+            key={d}
+            onClick={() => {
+              setDay(d);
+              setView("day");
+            }}
+            aria-current={d === today ? "date" : undefined}
+            aria-pressed={view === "day" && d === day}
+            aria-label={longDate(d)}
+            className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center"
+          >
+            <span className="text-[11px] text-muted">{LETTERS[i]}</span>
+            <span className={`flex size-7 items-center justify-center rounded-full text-[13px] tabular-nums ${view === "day" && d === day ? "bg-accent font-semibold text-ink" : d === today ? "font-semibold text-accent" : "text-fg"}`}>{Number(d.slice(8))}</span>
+          </button>
+        ))}
       </nav>
 
-      {/* Date réelle + flèches ; hors d'aujourd'hui, toucher la date ramène à aujourd'hui */}
-      <div className="flex items-center gap-1 px-3 pt-3">
-        <button onClick={() => pager.current?.goTo(addDays(day, -1))} aria-label="Jour précédent" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
-          {chevron("M15 6l-6 6 6 6")}
-        </button>
-        {day === today ? (
-          <h2 className="min-w-0 flex-1 text-center text-[17px] font-semibold tracking-tight">{headerDate(day)}</h2>
-        ) : (
-          <button onClick={() => pager.current?.goTo(today)} aria-label={`${longDate(day)} : revenir à aujourd'hui`} className="min-h-11 min-w-0 flex-1 text-center text-[17px] font-semibold tracking-tight">
-            {headerDate(day)}
-          </button>
-        )}
-        <button onClick={() => pager.current?.goTo(addDays(day, 1))} aria-label="Jour suivant" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
-          {chevron("M9 6l6 6-6 6")}
-        </button>
+      {allDay.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5 px-4 pb-1" aria-label="Toute la journée">
+          {allDay.map((e) => (
+            <li key={e.id}>
+              <button onClick={() => setOpenGoogle(e)} className="min-h-8 rounded-full bg-surface px-3 py-1 text-[12px] text-muted active:bg-raised">
+                {e.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* La grille : 0 h-24 h ; glisser à gauche / à droite change de jour (ou de semaine) */}
+      <div
+        ref={scroller}
+        className="relative h-[58dvh] touch-pan-y overflow-y-auto overscroll-contain border-y border-line/70"
+        onPointerDown={(e) => (swipe.current = { x: e.clientX, y: e.clientY })}
+        onPointerUp={(e) => {
+          const s = swipe.current;
+          swipe.current = null;
+          if (s && Math.abs(e.clientX - s.x) > 70 && Math.abs(e.clientY - s.y) < 40) step(e.clientX < s.x ? 1 : -1);
+        }}
+        aria-label="Grille horaire"
+      >
+        <div className="relative flex pr-2" style={{ height: 24 * H }}>
+          <div className="relative w-11 shrink-0" aria-hidden>
+            {Array.from({ length: 23 }, (_, i) => (
+              <span key={i} className="absolute -translate-y-1/2 pl-1.5 text-[11px] tabular-nums text-faint" style={{ top: (i + 1) * H }}>
+                {String(i + 1).padStart(2, "0")}:00
+              </span>
+            ))}
+          </div>
+          {days.map((d) => (
+            <DayColumn key={d} day={d} events={eventsFor(d)} today={today} compact={view === "week"} onCreate={(start) => setEditor({ mode: "create", day: d, start })} onOpen={(e) => open(e, d)} />
+          ))}
+        </div>
       </div>
+      {notice && (
+        <p className="rise mx-4 mt-2 rounded-2xl bg-surface px-4 py-3 text-[13px] text-fg" aria-live="polite">
+          {notice}
+        </p>
+      )}
 
-      <DayPager ref={pager} day={day} onDay={setDay} render={dayPanel} />
+      {/* Pense-bêtes : à cocher, JAMAIS dans la grille */}
+      <section className="mt-3 px-4" aria-label="Pense-bêtes">
+        <h3 className="px-1 text-[13px] font-medium text-muted">{view === "day" && day !== today ? `À faire ${longDate(day)}` : "À faire aujourd'hui"}</h3>
+        {reminders.length > 0 ? (
+          <ul className="mt-1">
+            {reminders.map((t) => (
+              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => setOpenTask(t.id)} />
+            ))}
+          </ul>
+        ) : (
+          <p className="px-1 pt-1 text-[14px] text-faint">Rien à cocher.</p>
+        )}
+        <form
+          className="mt-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newReminder.trim()) return;
+            api.add(newReminder.trim(), null, 2); // sans heure : un pense-bête
+            setNewReminder("");
+          }}
+        >
+          <input value={newReminder} onChange={(e) => setNewReminder(e.target.value)} placeholder="Nouveau pense-bête…" aria-label="Nouveau pense-bête" className="h-11 w-full rounded-full bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50" />
+        </form>
+      </section>
 
-      {openOcc && <SlotSheet key={openOcc.key} o={openOcc} slots={slots} accessCode={accessCode} onUnauthorized={onUnauthorized} onClose={() => setOpenOcc(null)} />}
-      {openEvent && <EventSheet e={openEvent} onClose={() => setOpenEvent(null)} />}
-      {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
+      {editor && <EventEditor target={editor} accessCode={accessCode} onUnauthorized={onUnauthorized} onDone={done} onClose={() => setEditor(null)} />}
+      {openGoogle && <EventSheet e={openGoogle} onClose={() => setOpenGoogle(null)} />}
+      {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenTask(null)} />}
     </div>
   );
 }
