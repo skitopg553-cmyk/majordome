@@ -5,7 +5,7 @@ import { splitCards } from "./alarm";
 
 /** Colonnes qu'on a le droit de remettre à leur ancienne valeur, par table. */
 export const RESTORABLE: Record<string, string[]> = {
-  tasks: ["title", "due_at", "priority", "notes", "status", "done_at"],
+  tasks: ["title", "due_at", "end_at", "priority", "notes", "status", "done_at"],
   memories: ["content", "category"],
   savings_goals: ["label", "target", "saved", "due_label"],
   workouts: ["date", "kind", "minutes"],
@@ -16,7 +16,7 @@ export const RESTORABLE: Record<string, string[]> = {
   food_logs: ["date", "label", "grams", "kcal", "protein", "carbs", "fat", "estimated"],
   nutrition_goals: ["kcal", "protein", "carbs", "fat"],
   screen_time_logs: ["date", "minutes"],
-  recurring_tasks: ["title", "kind", "weekday", "month_day", "at_time", "last_generated"],
+  recurring_tasks: ["title", "kind", "weekday", "month_day", "at_time", "last_generated", "days", "end_time", "habit"],
 };
 
 /** Tables dont une ligne peut être supprimée depuis l'app (toujours après confirmation). */

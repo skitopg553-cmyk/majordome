@@ -10,6 +10,7 @@ import { detectAlarmIntent } from "@/lib/alarm-intent";
 import { CARDS_MARK, extractCard, type Card } from "@/lib/alarm";
 import { moodPrefix, MoodStripper, stripMood } from "@/lib/mascot";
 import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
+import { recapText } from "@/lib/slots";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
 export async function POST(req: Request) {
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
   const actions: Undo[] = [];
   const cards: Card[] = []; // réveils / minuteurs préparés : l'écran affiche un bouton qui ouvre l'app Horloge
+  const recaps: string[] = []; // une ligne par élément créé (écrite par l'outil, donc par le code) : récapitulatif exact en fin de réponse
   const settings: DeviceSetting[] = []; // réglages de l'appareil demandés (lecture à voix haute) : appliqués par l'écran
 
   // Humeur de la mascotte : le modèle commence sa réponse par « @mood:happy » ; on retire la balise du flux (affichage, lecture vocale, historique)
@@ -64,6 +66,12 @@ export async function POST(req: Request) {
     if (setting) settings.push(setting);
     const { result: clean, card } = extractCard(result);
     if (card) cards.push(card);
+    try {
+      const recap = (JSON.parse(clean) as { recap?: unknown }).recap;
+      if (typeof recap === "string") recaps.push(recap);
+    } catch {
+      /* résultat non JSON : pas de récapitulatif */
+    }
     return clean;
   };
 
@@ -114,6 +122,11 @@ export async function POST(req: Request) {
       emit(stripper.finish()); // texte éventuellement retenu à la fin du flux
       reply = stripMood(reply).text; // l'historique ne garde jamais la balise
       persisted = reply;
+      const recap = recapText(recaps); // plusieurs éléments d'un coup : la liste exacte de ce qui a été créé
+      if (recap) {
+        ctrl.enqueue(enc.encode(`\n\n${recap}`));
+        persisted = reply = `${reply}\n\n${recap}`;
+      }
       // Jamais de promesse d'un bouton absent : la phrase parle d'un bouton mais aucune carte n'est envoyée.
       if (!cards.length && /\bbouton\b/i.test(reply)) {
         const warn = "\n\n⚠️ Je n'ai pas pu préparer ce réveil ou ce minuteur. Redis-le-moi avec l'heure, par exemple « réveil à 7 h ».";

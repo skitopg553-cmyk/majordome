@@ -26,7 +26,7 @@ export function parseDueAt(v: unknown): string | null {
   return Number.isNaN(Date.parse(v)) ? null : v;
 }
 
-export type TaskFields = { title?: string; due_at?: string; priority?: number; notes?: string };
+export type TaskFields = { title?: string; due_at?: string; end_at?: string; priority?: number; notes?: string };
 export type FieldsResult = { ok: true; fields: TaskFields } | { ok: false; error: string };
 
 /** Champs d'une tâche issus d'une saisie ou d'un appel d'outil : bornés, validés. Seuls les champs présents sont renvoyés. */
@@ -41,6 +41,14 @@ export function taskFields(a: Record<string, unknown>, opts: { requireTitle: boo
     const due = parseDueAt(a.due_at);
     if (!due) return { ok: false, error: "due_at invalide : date ISO 8601 AVEC fuseau, ex. 2026-10-16T10:00:00+02:00" };
     fields.due_at = due;
+  }
+  if (a.end_at !== undefined && a.end_at !== null) {
+    const end = parseDueAt(a.end_at);
+    if (!end) return { ok: false, error: "end_at invalide : date ISO 8601 AVEC fuseau, ex. 2026-10-16T12:00:00+02:00" };
+    // La fin n'a de sens qu'avec un début, le même jour, plus tard (un créneau, pas un voyage).
+    if (!fields.due_at) return { ok: false, error: "end_at demande aussi due_at (l'heure de début)" };
+    if (Date.parse(end) <= Date.parse(fields.due_at) || Date.parse(end) - Date.parse(fields.due_at) > 86_400_000) return { ok: false, error: "end_at doit être après due_at, dans les 24 h" };
+    fields.end_at = end;
   }
   if (a.priority !== undefined && a.priority !== null) {
     if (a.priority !== 1 && a.priority !== 2 && a.priority !== 3) return { ok: false, error: "priority invalide : 1 (haute), 2 (normale) ou 3 (basse)" };

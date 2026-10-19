@@ -7,6 +7,7 @@ import { out, noTable, restorable, undoFor, upsertWithUndo, type Row } from "./l
 import { parseExpense, parseWorkout } from "./life";
 import { clampText, MAX_MEMORY, MAX_TITLE } from "./limits";
 import { parseAtTime, parseRecurrence, ruleLabel } from "./recurrence";
+import { parseSlot, sameSlot, slotRecap } from "./slots";
 import { listRules } from "./recurring-store";
 import { isMissingTable, supabaseAdmin } from "./supabase";
 import { parisDay } from "./task-groups";
@@ -81,6 +82,16 @@ export const MORE_TOOLS: ToolDef[] = [
     description:
       "Créer une tâche qui REVIENT : « tous les lundis », « chaque jour », « tous les mois le 5 ». Transmets la phrase de récurrence telle que dite dans every (le code la comprend). Avec une heure précise (time, HH:MM) c'est un rendez-vous d'agenda ; sans heure, une simple tâche. La tâche apparaît le jour même, au premier chargement de l'app.",
     parameters: { type: "object", properties: { title: { type: "string" }, every: { type: "string", description: "ex. « tous les lundis »" }, time: { type: "string", description: "HH:MM, facultatif" } }, required: ["title", "every"] },
+  },
+  {
+    name: "add_slot",
+    description:
+      "Créer un CRÉNEAU qui REVIENT (travail, cours, salle, boxe, méditation…) : un titre, la liste des jours, l'heure de début et de fin. UN appel par activité, avec TOUS ses jours (« travail du lundi au vendredi de 9h à 17h » = days [\"lundi\",\"mardi\",\"mercredi\",\"jeudi\",\"vendredi\"], start 09:00, end 17:00) ; jamais un appel par jour ni par heure. Une pause n'est pas un créneau. habit = true pour une habitude de discipline à confirmer ensuite (salle, sport, méditation). Transmets les jours et les heures tels que dits : le CODE les valide, tu ne calcules aucune date. Si les jours ne sont pas clairs, pose UNE question courte avant d'appeler.",
+    parameters: {
+      type: "object",
+      properties: { title: { type: "string" }, days: { type: "array", items: { type: "string" }, description: "ex. [\"lundi\",\"mercredi\"]" }, start: { type: "string", description: "HH:MM" }, end: { type: "string", description: "HH:MM, facultatif" }, habit: { type: "boolean" } },
+      required: ["title", "days", "start"],
+    },
   },
   {
     name: "delete_entry",
@@ -193,6 +204,16 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       if (!r.ok) return out(r);
       return out({ ok: true, prepare: "carte affichée à Ruben : il doit toucher le bouton pour lancer le minuteur", card: timerCard(r.value) });
     }
+    case "add_slot": {
+      const p = parseSlot(args);
+      if (!p.ok) return out(p);
+      const known = await listRules(db);
+      const dup = (known ?? []).find((r) => sameSlot({ title: r.title, days: r.days ?? null, at_time: r.at_time }, p.value));
+      if (dup) return out({ ok: false, error: `ce créneau existe déjà (#${dup.id} « ${dup.title} »). Ne le crée pas deux fois.` });
+      const r = await db.from("recurring_tasks").insert({ title: p.value.title, kind: "weekly", weekday: Number(p.value.days.split(",")[0]), days: p.value.days, at_time: p.value.start, end_time: p.value.end, habit: p.value.habit ? 1 : 0 }).select("id").single();
+      const recap = slotRecap(p.value);
+      return finish(r.error, "Créneau", { saved: { ...p.value, id: r.data?.id }, recap }, r.data ? undoFor(`Créneau « ${p.value.title} »`, "recurring_tasks", r.data.id as number, null) : undefined);
+    }
     case "add_recurring_task": {
       const title = clampText(args.title, MAX_TITLE);
       if (!title) return out({ ok: false, error: "title requis (texte non vide)" });
@@ -200,8 +221,13 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       if (!rule.ok) return out(rule);
       const at = parseAtTime(args.time);
       if (!at.ok) return out(at);
+      const known = await listRules(db);
+      const same = (k: { title: string; kind: string; weekday: number | null; month_day: number | null; at_time: string | null }) => k.title.trim().toLowerCase() === title.toLowerCase() && k.kind === rule.value.kind && k.weekday === rule.value.weekday && k.month_day === rule.value.month_day && k.at_time === at.value;
+      const dup = (known ?? []).find(same);
+      if (dup) return out({ ok: false, error: `cette récurrence existe déjà (#${dup.id} « ${dup.title} »). Ne la crée pas deux fois.` });
       const r = await db.from("recurring_tasks").insert({ title, ...rule.value, at_time: at.value }).select("id").single();
-      return finish(r.error, "Récurrence", { saved: { title, quand: ruleLabel({ ...rule.value, at_time: at.value }) } }, r.data ? undoFor(`Récurrence « ${title} »`, "recurring_tasks", r.data.id as number, null) : undefined);
+      const quand = ruleLabel({ ...rule.value, at_time: at.value });
+      return finish(r.error, "Récurrence", { saved: { title, quand }, recap: `${title} ${quand}` }, r.data ? undoFor(`Récurrence « ${title} »`, "recurring_tasks", r.data.id as number, null) : undefined);
     }
     case "delete_entry": {
       const kind = String(args.kind ?? "");

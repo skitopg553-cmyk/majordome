@@ -5,7 +5,7 @@ import { taskFields, taskPatch } from "@/lib/limits";
 import { materializeToday } from "@/lib/recurring-store";
 import { isSimilar } from "@/lib/tools";
 
-const COLS = "id,title,due_at,priority,notes,status";
+const COLS = "*"; // « * » : la colonne end_at (migration 0014) apparaît toute seule dès qu'elle existe, et l'app marche sans
 
 export async function GET(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });

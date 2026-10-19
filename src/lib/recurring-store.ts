@@ -6,7 +6,9 @@ import { parisDay } from "./task-groups";
 type Db = ReturnType<typeof supabaseAdmin>;
 
 export async function listRules(db: Db): Promise<StoredRule[] | null> {
-  const r = await db.from("recurring_tasks").select("id,title,kind,weekday,month_day,at_time,last_generated").order("id");
+  // Colonnes de la migration 0014 (jours multiples, fin, habitude) : si elle n'est pas appliquée, on retombe sur les anciennes colonnes.
+  let r: { data: unknown[] | null; error: { code?: string; message: string } | null } = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated,days,end_time,habit").order("id");
+  if (r.error && isMissingTable(r.error)) r = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated").order("id");
   if (r.error) {
     if (!isMissingTable(r.error)) console.error("recurring_tasks :", r.error.message);
     return null; // table absente ou illisible : pas de récurrence

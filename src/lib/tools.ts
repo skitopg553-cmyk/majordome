@@ -1,5 +1,6 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
 import { hasTime } from "./planning";
+import { oneOffRecap } from "./slots";
 import { clampText, MAX_MEMORY, taskFields } from "./limits";
 import { executeMoreTool, MORE_TOOLS, moreContext } from "./more-tools";
 import { supabaseAdmin } from "./supabase";
@@ -14,15 +15,16 @@ const DUE_AT = {
   description:
     "Échéance ISO 8601 avec fuseau. AVEC heure précise (« demain 10h ») : ex. 2026-10-16T10:00:00+02:00 = élément d'AGENDA (Planning). SANS heure (« demain », « vendredi ») : minuit, ex. 2026-10-16T00:00:00+02:00 = TÂCHE (Accueil). Pas de date du tout : n'envoie pas ce champ.",
 };
+const END_AT = { type: "string", description: "Heure de FIN d'un créneau ponctuel (même format que due_at, même jour, après le début). Seulement si Ruben donne une fin (« de 20h à 22h »). Jamais sans due_at." };
 const PRIORITY = { type: "integer", enum: [1, 2, 3], description: "1 = haute, 2 = normale, 3 = basse" };
 
 const TASK_TOOLS: ToolDef[] = [
   {
     name: "add_task",
-    description: "Créer un élément pour Ruben. Avec une heure précise dans la phrase → élément d'agenda (due_at avec cette heure). Sans heure → simple tâche (due_at à minuit, ou aucune date). N'invente jamais une heure.",
+    description: "Créer UN élément ponctuel (une seule fois) : PENSE-BÊTE = simple tâche sans horaire (« ranger ma chambre ») → sans heure (due_at à minuit, ou aucune date), il se coche et n'apparaît jamais dans le Planning ; CRÉNEAU ponctuel avec heure = élément d'agenda, affiché dans le Planning (« dîner avec Arthur lundi 20h », « de 20h à 22h ») → due_at avec l'heure de début et end_at si une fin est dite. Ce qui REVIENT (travail, salle…) n'est PAS pour cet outil (→ add_slot). N'invente jamais une heure.",
     parameters: {
       type: "object",
-      properties: { title: { type: "string" }, due_at: DUE_AT, priority: PRIORITY, notes: { type: "string" } },
+      properties: { title: { type: "string" }, due_at: DUE_AT, end_at: END_AT, priority: PRIORITY, notes: { type: "string" } },
       required: ["title"],
     },
   },
@@ -85,6 +87,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
 
   let res: { data: unknown; error: { message: string } | null };
   let undo: Undo | undefined;
+  let recap: string | undefined; // phrase écrite par le CODE, reprise dans le récapitulatif final de la route
   const idOf = (d: unknown) => (d && typeof d === "object" && "id" in d ? Number((d as { id: unknown }).id) : NaN);
   switch (name) {
     case "add_task": {
@@ -100,7 +103,11 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         });
       }
       res = await db.from("tasks").insert(f.fields).select("id").single();
-      if (!res.error) undo = { label: `Tâche « ${f.fields.title} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
+      if (!res.error) {
+        undo = { label: `Tâche « ${f.fields.title} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
+        const due = f.fields.due_at;
+        recap = due && hasTime(due) ? oneOffRecap(f.fields.title!, due, f.fields.end_at ?? null) : `Pense-bête : ${f.fields.title}`;
+      }
       break;
     }
     case "update_task": {
@@ -143,7 +150,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
   }
   if (res.error) return JSON.stringify({ ok: false, error: res.error.message });
   if (Array.isArray(res.data) && res.data.length === 0) return JSON.stringify({ ok: false, error: "id introuvable" });
-  return JSON.stringify({ ok: true, result: res.data, ...(undo ? { undo } : {}) });
+  return JSON.stringify({ ok: true, result: res.data, ...(recap ? { recap } : {}), ...(undo ? { undo } : {}) });
 }
 
 const TZ = "Europe/Paris";
