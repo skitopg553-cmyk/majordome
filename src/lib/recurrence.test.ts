@@ -49,6 +49,14 @@ describe("occurrence du jour", () => {
     const rules: StoredRule[] = [{ ...base, id: 1, last_generated: "2026-10-15" }, { ...base, id: 2, last_generated: "2026-10-16" }, { ...base, id: 3, kind: "weekly", weekday: 1, last_generated: null }];
     expect(dueToday(rules, "2026-10-16").map((r) => r.id)).toEqual([1]); // 2 déjà fait, 3 tombe le lundi
   });
+  it("un créneau (avec heure) n'est jamais copié dans les tâches : il est calculé à l'affichage", () => {
+    const slot: StoredRule = { id: 9, title: "Travail", at_time: "09:00", kind: "daily", weekday: null, month_day: null, last_generated: null };
+    expect(dueToday([slot], "2026-10-16")).toEqual([]);
+  });
+  it("plusieurs jours par règle (days)", () => {
+    const r = { kind: "weekly" as const, weekday: null, month_day: null, days: "1,3,5" };
+    expect([ "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-23", "2026-10-24"].map((d) => occursOn(r, d))).toEqual([true, false, true, true, false]);
+  });
   it("libellé lisible", () => {
     expect(ruleLabel({ kind: "weekly", weekday: 1, month_day: null, at_time: "09:00" })).toBe("chaque lundi à 09:00");
     expect(ruleLabel({ kind: "monthly", weekday: null, month_day: 5 })).toBe("le 5 de chaque mois");

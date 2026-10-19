@@ -71,3 +71,16 @@ describe("taskPatch (modification depuis l'écran)", () => {
     for (const bad of [{ due_at: "demain" }, { title: "  " }, { priority: 9 }, {}, { id: 3 }]) expect(taskPatch(bad)).toMatchObject({ ok: false });
   });
 });
+
+describe("end_at : fin d'un créneau", () => {
+  const start = "2026-10-19T20:00:00+02:00";
+  it("accepte une fin valide avec début", () => {
+    expect(taskFields({ title: "Dîner", due_at: start, end_at: "2026-10-19T22:00:00+02:00" }, { requireTitle: true })).toMatchObject({ ok: true, fields: { end_at: "2026-10-19T22:00:00+02:00" } });
+  });
+  it("refuse : sans début, avant le début, plus de 24 h après, format invalide", () => {
+    expect(taskFields({ title: "x", end_at: "2026-10-19T22:00:00+02:00" }, { requireTitle: true }).ok).toBe(false);
+    expect(taskFields({ title: "x", due_at: start, end_at: "2026-10-19T19:00:00+02:00" }, { requireTitle: true }).ok).toBe(false);
+    expect(taskFields({ title: "x", due_at: start, end_at: "2026-10-21T20:00:00+02:00" }, { requireTitle: true }).ok).toBe(false);
+    expect(taskFields({ title: "x", due_at: start, end_at: "demain" }, { requireTitle: true }).ok).toBe(false);
+  });
+});

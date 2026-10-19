@@ -206,12 +206,12 @@ describe("add_recurring_task", () => {
 describe("materializeToday (tâches récurrentes du jour)", () => {
   const now = new Date("2026-10-16T10:00:00+02:00"); // vendredi
   const rule = (id: number, extra: Record<string, unknown>) => ({ id, title: "R" + id, kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null, ...extra });
-  it("crée une tâche par règle qui tombe aujourd'hui, avec ou sans heure, et note le jour", async () => {
+  it("crée une tâche par règle SANS heure qui tombe aujourd'hui ; une règle avec heure est un créneau (calculé à l'affichage, jamais copié)", async () => {
     h.tables.recurring_tasks = [rule(1, {}), rule(2, { kind: "weekly", weekday: 1 }), rule(3, { at_time: "09:30" }), rule(4, { last_generated: "2026-10-16" })];
     h.tables.tasks = [];
-    expect(await materializeToday(supabaseAdmin() as never, now)).toBe(2);
-    expect(h.tables.tasks.map((t) => [t.title, t.due_at])).toEqual([["R1", "2026-10-15T22:00:00.000Z"], ["R3", "2026-10-16T07:30:00.000Z"]]);
-    expect(h.tables.recurring_tasks.map((r) => r.last_generated)).toEqual(["2026-10-16", null, "2026-10-16", "2026-10-16"]);
+    expect(await materializeToday(supabaseAdmin() as never, now)).toBe(1);
+    expect(h.tables.tasks.map((t) => [t.title, t.due_at])).toEqual([["R1", "2026-10-15T22:00:00.000Z"]]);
+    expect(h.tables.recurring_tasks.map((r) => r.last_generated)).toEqual(["2026-10-16", null, null, "2026-10-16"]);
   });
 });
 

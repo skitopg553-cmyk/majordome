@@ -7,7 +7,7 @@ import { callApi } from "./api-client";
 import { mascotApi } from "./mascot-engine";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 
-export type Task = { id: number; title: string; due_at: string | null; priority: number; notes: string | null; status: "todo" | "done" };
+export type Task = { id: number; title: string; due_at: string | null; end_at?: string | null; priority: number; notes: string | null; status: "todo" | "done" };
 
 /** Tâches réelles (table tasks), partagées par l'Accueil et le Planning. Mises à jour optimistes. */
 export function useTasks(accessCode: string, onUnauthorized: () => void) {

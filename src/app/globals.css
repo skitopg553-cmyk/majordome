@@ -206,3 +206,19 @@ textarea:focus-visible,
 select:focus-visible {
   outline: none;
 }
+
+/* Célébration d'un « oui » à une habitude (≈ 1,5 s). Fond #050506, accent cyan #6CF2FF. Jamais de capture de toucher. */
+@keyframes celebrate-ring { to { stroke-dashoffset: 0; } }
+@keyframes celebrate-check { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes celebrate-pop { 0% { opacity: 0; transform: scale(0.82); } 25% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes celebrate-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes celebrate-burst { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); } }
+.celebrate { background: radial-gradient(circle at center, rgba(5, 5, 6, 0.78), rgba(5, 5, 6, 0.35) 70%, transparent); animation: celebrate-out 1500ms ease-out forwards; }
+.celebrate-glow { animation: celebrate-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; filter: drop-shadow(0 0 18px rgba(108, 242, 255, 0.45)); }
+.celebrate-ring { animation: celebrate-ring 900ms cubic-bezier(0.3, 0.7, 0.2, 1) 80ms forwards; }
+.celebrate-check { stroke-dasharray: 1; stroke-dashoffset: 1; animation: celebrate-check 380ms ease-out 700ms forwards; }
+.celebrate-dot { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 9999px; background: #6cf2ff; opacity: 0; animation: celebrate-burst 700ms ease-out forwards; }
+.celebrate-text { animation: celebrate-pop 400ms ease-out 450ms both; }
+@media (prefers-reduced-motion: reduce) {
+  .celebrate, .celebrate * { animation: none !important; }
+}
