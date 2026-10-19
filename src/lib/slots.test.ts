@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoredRule } from "./recurrence";
-import { recapText, daysLabel, endOfWeek, occurrencesOn, oneOffRecap, parseDays, parseHour, parseSlot, sameSlot, slotRecap, type SlotException } from "./slots";
+import { parseSlotAction, recapText, daysLabel, endOfWeek, occurrencesOn, oneOffRecap, parseDays, parseHour, parseSlot, sameSlot, slotRecap, type SlotException } from "./slots";
 
 describe("parseDays : les jours sont validés en code", () => {
   it.each([
@@ -101,5 +101,25 @@ describe("recapText", () => {
     expect(recapText(["Travail lundi-vendredi 9 h-17 h", "Salle lundi, mercredi, vendredi 18 h-20 h", "Travail lundi-vendredi 9 h-17 h"])).toBe("Noté :\n- Travail lundi-vendredi 9 h-17 h\n- Salle lundi, mercredi, vendredi 18 h-20 h");
     expect(recapText(["Seul"])).toBe("");
     expect(recapText([])).toBe("");
+  });
+});
+
+describe("parseSlotAction", () => {
+  const today = "2026-10-19";
+  it("skip, move, habit valides", () => {
+    expect(parseSlotAction({ action: "skip", rule_id: 3, day: "2026-10-21" }, today)).toMatchObject({ ok: true });
+    expect(parseSlotAction({ action: "move", rule_id: 3, day: "2026-10-21", new_day: "2026-10-24", new_start: "10h", new_end: "12:00" }, today)).toEqual({ ok: true, value: { action: "move", rule_id: 3, day: "2026-10-21", new_day: "2026-10-24", new_start: "10:00", new_end: "12:00" } });
+    expect(parseSlotAction({ action: "habit", rule_id: 3, day: "2026-10-18", status: "missed", then: "tomorrow" }, today)).toMatchObject({ ok: true, value: { then: "tomorrow" } });
+    expect(parseSlotAction({ action: "habit", rule_id: 3, day: "2026-10-18", status: "done", then: "week" }, today)).toMatchObject({ ok: true, value: { then: null } }); // pas de reprogrammation après un « oui »
+  });
+  it("refuse l'invalide : jour futur pour un bilan, jour irréel, fin avant début, id absurde", () => {
+    for (const bad of [
+      { action: "habit", rule_id: 3, day: "2026-10-20", status: "done" },
+      { action: "skip", rule_id: 3, day: "2026-02-30" },
+      { action: "move", rule_id: 3, day: "2026-10-21", new_day: "2026-10-24", new_start: "10:00", new_end: "09:00" },
+      { action: "skip", rule_id: -1, day: "2026-10-21" },
+      { action: "supprimer", rule_id: 3, day: "2026-10-21" },
+      { action: "habit", rule_id: 3, day: "2026-10-18", status: "peut-être" },
+    ]) expect(parseSlotAction(bad as never, today).ok).toBe(false);
   });
 });

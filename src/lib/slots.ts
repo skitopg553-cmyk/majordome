@@ -131,3 +131,38 @@ export function recapText(lines: string[]) {
   const uniq = [...new Set(lines)];
   return uniq.length >= 2 ? `Noté :\n${uniq.map((l) => `- ${l}`).join("\n")}` : "";
 }
+
+// ---------- Actions de l'écran (supprimer / déplacer une occurrence, répondre au bilan d'une habitude) ----------
+
+export type SlotAction =
+  | { action: "skip"; rule_id: number; day: string }
+  | { action: "move"; rule_id: number; day: string; new_day: string; new_start: string; new_end: string | null }
+  | { action: "habit"; rule_id: number; day: string; status: "done" | "missed"; then: "tomorrow" | "week" | null };
+
+const isDay = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(`${s}T12:00:00Z`).toISOString().slice(0, 10) === s;
+
+/** Valide ce que l'écran envoie. Un bilan ne peut concerner qu'un jour passé ou le jour même. */
+export function parseSlotAction(b: Record<string, unknown>, today: string): Res<SlotAction> {
+  const rule_id = b.rule_id;
+  if (typeof rule_id !== "number" || !Number.isSafeInteger(rule_id) || rule_id < 1) return fail("rule_id invalide");
+  if (!isDay(b.day)) return fail("day invalide (AAAA-MM-JJ)");
+  if (b.action === "skip") return { ok: true, value: { action: "skip", rule_id, day: b.day } };
+  if (b.action === "move") {
+    const start = parseHour(b.new_start);
+    if (!isDay(b.new_day) || !start.ok) return fail("new_day (AAAA-MM-JJ) et new_start (HH:MM) requis");
+    let end: string | null = null;
+    if (b.new_end) {
+      const e = parseHour(b.new_end);
+      if (!e.ok || e.value <= start.value) return fail("new_end invalide : après le début, le même jour");
+      end = e.value;
+    }
+    return { ok: true, value: { action: "move", rule_id, day: b.day, new_day: b.new_day, new_start: start.value, new_end: end } };
+  }
+  if (b.action === "habit") {
+    if (b.status !== "done" && b.status !== "missed") return fail("status doit être done ou missed");
+    if (b.day > today) return fail("on ne répond pas pour un jour à venir");
+    const then = b.then === "tomorrow" || b.then === "week" ? b.then : null;
+    return { ok: true, value: { action: "habit", rule_id, day: b.day, status: b.status, then: b.status === "missed" ? then : null } };
+  }
+  return fail("action inconnue : skip, move ou habit");
+}

@@ -3,12 +3,15 @@
 import { useRef, useState } from "react";
 import type { AgendaEvent } from "@/lib/google-api";
 import { dotsFor, hourRange, parisHM, planDay, weekOf } from "@/lib/planning";
+import { occurrencesOn, type Occurrence } from "@/lib/slots";
 import { addDays, parisDay } from "@/lib/task-groups";
 import DayPager, { type PagerHandle } from "./day-pager";
 import EventSheet from "./event-sheet";
+import SlotSheet from "./slot-sheet";
 import TaskSheet from "./task-sheet";
 import { Header, hhmm, SkeletonRows } from "./ui";
 import type { GoogleApi } from "./use-google";
+import type { SlotsApi } from "./use-slots";
 import type { Task, TasksApi } from "./use-tasks";
 
 const LETTERS = ["L", "M", "M", "J", "V", "S", "D"];
@@ -47,22 +50,21 @@ function PlanRow({ t, done, time, onToggle, onOpen }: { t: Task; done: boolean; 
   );
 }
 
-/** Un rendez-vous Google (lecture seule) : toucher la ligne ouvre sa fiche. */
-function EventRow({ e, onOpen }: { e: AgendaEvent; onOpen: () => void }) {
+/** Une ligne de la frise qui n'est pas une tâche : un rendez-vous Google (lecture seule) ou une occurrence d'un créneau qui revient. Toucher la ligne ouvre sa fiche. */
+type Entry = { id: string; title: string; start: string; end: string | null; open: () => void };
+function EntryRow({ e }: { e: Entry }) {
   return (
     <li>
-      <button onClick={onOpen} className="flex min-h-11 w-full items-center gap-2 text-left text-[15px] text-fg/80">
+      <button onClick={e.open} className="flex min-h-11 w-full items-center gap-2 text-left text-[15px] text-fg/80">
         <span className="h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
         <span className="min-w-0 flex-1 truncate">{e.title}</span>
-        <span className="shrink-0 text-xs tabular-nums text-faint">
-          {hhmm(e.start)}–{hhmm(e.end)}
-        </span>
+        <span className="shrink-0 text-xs tabular-nums text-faint">{e.end ? `${hhmm(e.start)}–${hhmm(e.end)}` : hhmm(e.start)}</span>
       </button>
     </li>
   );
 }
 
-export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: TasksApi; google: GoogleApi; onAvatar: () => void }) {
+export default function PlanningView({ tasks: api, google, slots, accessCode, onUnauthorized, onAvatar }: { tasks: TasksApi; google: GoogleApi; slots: SlotsApi; accessCode: string; onUnauthorized: () => void; onAvatar: () => void }) {
   const real = google.state === "ok"; // sans Google : seulement les éléments de Majordome avec une heure
   const now = new Date();
   const today = parisDay(now);
@@ -73,6 +75,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
   const [day, setDay] = useState(today);
   const [openId, setOpenId] = useState<number | null>(null);
   const [openEvent, setOpenEvent] = useState<AgendaEvent | null>(null);
+  const [openOcc, setOpenOcc] = useState<Occurrence | null>(null);
   const pager = useRef<PagerHandle>(null);
 
   function add() {
@@ -91,10 +94,15 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
   // Une colonne pour le jour d : la frise des heures (agenda seulement). Le pager en affiche trois : précédent, courant, suivant.
   const dayPanel = (d: string) => {
     const byHour = planDay(api.tasks, d);
-    const events = real ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d) : [];
+    const g = real ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d) : [];
+    // Créneaux qui reviennent : calculés ici pour ce jour (les semaines futures se voient tout de suite), jamais copiés dans les tâches.
+    const events: Entry[] = [
+      ...g.map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, open: () => setOpenEvent(e) })),
+      ...occurrencesOn(slots.rules, slots.exceptions, d).map((o) => ({ id: o.key, title: o.title, start: o.start, end: o.end, open: () => setOpenOcc(o) })),
+    ].sort((a, b) => a.start.localeCompare(b.start));
     // « Toute la journée » (jours fériés, anniversaires…) : une petite ligne au-dessus de la frise, un événement de plusieurs jours est sur chacun de ses jours.
     const allDay = real ? google.events.filter((e) => e.allDay && parisDay(new Date(e.start)) <= d && d < parisDay(new Date(e.end))) : [];
-    const eventsByHour = new Map<number, AgendaEvent[]>();
+    const eventsByHour = new Map<number, Entry[]>();
     for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
     const nowHM = d === today ? parisHM(now.toISOString()) : null;
     const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
@@ -153,9 +161,9 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
                   <div className="min-w-0 flex-1 border-l border-line pl-3">
                     {busy && (
                       <ul className="divide-y divide-line/60 py-0.5">
-                        {items.map((t) => row(t, parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
+                        {items.map((t) => row(t, t.end_at ? `${hhmm(t.due_at!)}–${hhmm(t.end_at)}` : parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
                         {evs.map((e) => (
-                          <EventRow key={e.id} e={e} onOpen={() => setOpenEvent(e)} />
+                          <EntryRow key={e.id} e={e} />
                         ))}
                       </ul>
                     )}
@@ -217,7 +225,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
       {/* Semaine en mini-points : un point par élément d'agenda (3 au plus) ; un point accent au-dessus de la lettre marque aujourd'hui */}
       <nav className="mt-4 grid grid-cols-7 px-2" aria-label="Semaine">
         {weekOf(day).map((d, i) => {
-          const n = dotsFor(api.tasks, d);
+          const n = Math.min(3, dotsFor(api.tasks, d) + occurrencesOn(slots.rules, slots.exceptions, d).length);
           const selected = d === day;
           return (
             <button
@@ -260,6 +268,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
 
       <DayPager ref={pager} day={day} onDay={setDay} render={dayPanel} />
 
+      {openOcc && <SlotSheet key={openOcc.key} o={openOcc} slots={slots} accessCode={accessCode} onUnauthorized={onUnauthorized} onClose={() => setOpenOcc(null)} />}
       {openEvent && <EventSheet e={openEvent} onClose={() => setOpenEvent(null)} />}
       {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
     </div>

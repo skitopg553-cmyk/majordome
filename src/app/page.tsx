@@ -7,6 +7,7 @@ import HomeView from "./home-view";
 import Majordome from "./majordome";
 import { Wordmark } from "./ui";
 import { useGoogle } from "./use-google";
+import { useSlots } from "./use-slots";
 import Splash from "./splash";
 import { useTasks } from "./use-tasks";
 import dynamic from "next/dynamic";
@@ -153,6 +154,11 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
   const unauthorized = useCallback(() => onForget("Code d'accès incorrect"), [onForget]);
   const tasks = useTasks(accessCode, unauthorized);
   const google = useGoogle(accessCode, unauthorized);
+  const slots = useSlots(accessCode, unauthorized);
+  const reloadSlots = slots.reload;
+  useEffect(() => {
+    if (version) reloadSlots(); // le chat vient de se fermer : il a pu créer des créneaux
+  }, [version, reloadSlots]);
   const [googleNotice, setGoogleNotice] = useState<string | null>(null);
   // Retour de Google : /?google=ok | refuse | lien-expire | erreur | table-manquante | sans-acces-hors-ligne → un message simple sur l'Accueil.
   useEffect(() => {
@@ -225,7 +231,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
       <Splash show={!tasks.loaded} />
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} google={google} googleNotice={googleNotice} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
-        {tab === "planning" && <PlanningView tasks={tasks} google={google} onAvatar={openProfile} />}
+        {tab === "planning" && <PlanningView tasks={tasks} google={google} slots={slots} accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
         {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} sharedFile={sharedFile} onSharedDone={() => setSharedFile(null)} />}
         {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
       </div>
