@@ -1,6 +1,11 @@
 # Temps d'écran : envoyer le chiffre depuis Tasker
 
-Une application web ne peut pas lire le temps d'écran du téléphone. **État actuel : la carte « Temps d'écran » de Forme est un APERÇU fictif** (bandeau « fictif »). La lecture de capture d'écran par l'IA et l'outil vocal ont été retirés ; seules la table `screen_time_logs` (migration 0011) et la route ci-dessous existent, et rien dans l'app ne les lit ni ne les écrit (prêt pour Tasker).
+Une application web ne peut pas lire le temps d'écran du téléphone. **État actuel (19/10)** : plus aucun chiffre fictif. La carte « Temps d'écran » de Forme affiche les VRAIS chiffres de la table `screen_time_logs`, alimentée de deux façons :
+
+1. **Automatique, dans l'appli Android de majordome** (plugin `Usage`, `UsageStatsManager`) : à l'ouverture de Forme, l'appli lit les 14 derniers jours et les envoie à la route ci-dessous. Il faut autoriser UNE fois « Accès aux données d'utilisation » (bouton « Autoriser l'accès » sur la carte → réglages d'Android → majordome → activer). Nécessite de reconstruire l'APK (voir `docs/android-setup.md`). Limite : le total additionne toutes les applis au premier plan, lanceur d'écran d'accueil compris, donc il peut dépasser un peu le chiffre de « Bien-être numérique ».
+2. **Tasker** (alternative, ci-dessous).
+
+Sur le web (navigateur, PWA), la carte explique que seule l'appli Android peut le lire.
 
 ## La route
 

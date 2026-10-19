@@ -58,7 +58,7 @@ export default function DayPager({ ref, day, onDay, render }: { ref: React.Ref<P
   return (
     <div
       ref={viewport}
-      className="touch-pan-y overflow-hidden"
+      className="min-h-[55dvh] touch-pan-y overflow-hidden"
       onPointerDown={(e) => {
         if (!pending) gesture.current = { x: e.clientX, y: e.clientY, t: performance.now(), active: false };
       }}

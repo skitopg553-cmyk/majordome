@@ -7,6 +7,7 @@ import HomeView from "./home-view";
 import Majordome from "./majordome";
 import { Wordmark } from "./ui";
 import { useGoogle } from "./use-google";
+import Splash from "./splash";
 import { useTasks } from "./use-tasks";
 import dynamic from "next/dynamic";
 
@@ -62,7 +63,7 @@ export default function Home() {
     setCodeError(message);
   }, []);
 
-  if (!ready) return null;
+  if (!ready) return <Splash show />;
 
   if (!accessCode) {
     return (
@@ -221,6 +222,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
 
   return (
     <main className="mx-auto flex h-dvh max-w-2xl flex-col">
+      <Splash show={!tasks.loaded} />
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
         {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} google={google} googleNotice={googleNotice} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
         {tab === "planning" && <PlanningView tasks={tasks} google={google} onAvatar={openProfile} />}

@@ -19,9 +19,10 @@ describe("jeton d'accès", () => {
 
 describe("Agenda", () => {
   it("événement avec heure, toute la journée, annulé, sans fin", () => {
-    expect(normalizeEvent({ id: "a", summary: "Dentiste", location: "Paris 9e", start: { dateTime: "2026-10-20T14:00:00+02:00" }, end: { dateTime: "2026-10-20T15:00:00+02:00" } })).toEqual({
-      id: "a", title: "Dentiste", start: "2026-10-20T14:00:00+02:00", end: "2026-10-20T15:00:00+02:00", allDay: false, place: "Paris 9e",
+    expect(normalizeEvent({ id: "a", summary: "Dentiste", location: "Paris 9e", htmlLink: "https://www.google.com/calendar/event?eid=abc", start: { dateTime: "2026-10-20T14:00:00+02:00" }, end: { dateTime: "2026-10-20T15:00:00+02:00" } })).toEqual({
+      id: "a", title: "Dentiste", start: "2026-10-20T14:00:00+02:00", end: "2026-10-20T15:00:00+02:00", allDay: false, place: "Paris 9e", link: "https://www.google.com/calendar/event?eid=abc",
     });
+    expect(normalizeEvent({ id: "l", htmlLink: "javascript:alert(1)", start: { dateTime: "2026-10-20T14:00:00Z" }, end: { dateTime: "2026-10-20T15:00:00Z" } })?.link).toBeNull(); // lien non https refusé
     expect(normalizeEvent({ id: "b", summary: "Férié", start: { date: "2026-11-01" }, end: { date: "2026-11-02" } })).toMatchObject({ allDay: true, start: "2026-10-31T23:00:00.000Z" });
     expect(normalizeEvent({ id: "c", status: "cancelled", start: { dateTime: "2026-10-20T14:00:00Z" }, end: { dateTime: "2026-10-20T15:00:00Z" } })).toBeNull();
     expect(normalizeEvent({ id: "d", start: { dateTime: "2026-10-20T14:00:00Z" } })).toBeNull();

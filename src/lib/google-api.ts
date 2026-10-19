@@ -43,9 +43,9 @@ async function get<T>(url: string, accessToken: string, fetchFn: FetchFn): Promi
 
 // ---------- Agenda ----------
 
-export type AgendaEvent = { id: string; title: string; start: string; end: string; allDay: boolean; place: string | null };
+export type AgendaEvent = { id: string; title: string; start: string; end: string; allDay: boolean; place: string | null; link: string | null };
 
-type RawEvent = { id?: string; summary?: string; location?: string; status?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } };
+type RawEvent = { id?: string; htmlLink?: string; summary?: string; location?: string; status?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } };
 
 /** Événement Google → format de l'app. Les événements annulés sont ignorés ; un événement « toute la journée » commence à minuit (heure de Paris). */
 export function normalizeEvent(e: RawEvent): AgendaEvent | null {
@@ -54,7 +54,7 @@ export function normalizeEvent(e: RawEvent): AgendaEvent | null {
   const start = e.start.dateTime ?? (e.start.date ? parisIso(e.start.date, 0, 0) : "");
   const end = e.end.dateTime ?? (e.end.date ? parisIso(e.end.date, 0, 0) : "");
   if (!start || !end || Number.isNaN(Date.parse(start))) return null;
-  return { id: e.id, title: (e.summary ?? "(sans titre)").slice(0, 120), start, end, allDay, place: e.location ? e.location.slice(0, 120) : null };
+  return { id: e.id, title: (e.summary ?? "(sans titre)").slice(0, 120), start, end, allDay, place: e.location ? e.location.slice(0, 120) : null, link: e.htmlLink?.startsWith("https://") ? e.htmlLink : null };
 }
 
 export async function listEvents(accessToken: string, from: Date, to: Date, fetchFn: FetchFn = fetch): Promise<AgendaEvent[]> {

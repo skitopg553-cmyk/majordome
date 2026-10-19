@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { DEMO_PHASE, demoEvents, type DemoEvent } from "@/lib/demo-data";
+import type { AgendaEvent } from "@/lib/google-api";
 import { dotsFor, hourRange, parisHM, planDay, weekOf } from "@/lib/planning";
 import { addDays, parisDay } from "@/lib/task-groups";
 import DayPager, { type PagerHandle } from "./day-pager";
+import EventSheet from "./event-sheet";
 import TaskSheet from "./task-sheet";
-import { DemoBanner, Header, hhmm, SkeletonRows } from "./ui";
+import { Header, hhmm, SkeletonRows } from "./ui";
 import type { GoogleApi } from "./use-google";
 import type { Task, TasksApi } from "./use-tasks";
 
@@ -46,24 +47,23 @@ function PlanRow({ t, done, time, onToggle, onOpen }: { t: Task; done: boolean; 
   );
 }
 
-type Ev = { id: string; title: string; start: string; end: string };
-
-/** Un événement d'agenda en lecture seule. Les RDV d'aperçu sont marqués « fictif » pour ne jamais être confondus avec le réel ; ceux de Google sont réels. */
-function EventRow({ e, fictif = false }: { e: Ev; fictif?: boolean }) {
+/** Un rendez-vous Google (lecture seule) : toucher la ligne ouvre sa fiche. */
+function EventRow({ e, onOpen }: { e: AgendaEvent; onOpen: () => void }) {
   return (
-    <li className="flex min-h-11 items-center gap-2 text-[15px] text-fg/80">
-      <span className="h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">{e.title}</span>
-      <span className="shrink-0 text-xs tabular-nums text-faint">
-        {hhmm(e.start)}–{hhmm(e.end)}
-      </span>
-      {fictif && <span className="shrink-0 rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wider text-faint">fictif</span>}
+    <li>
+      <button onClick={onOpen} className="flex min-h-11 w-full items-center gap-2 text-left text-[15px] text-fg/80">
+        <span className="h-4 w-0.5 shrink-0 rounded-full bg-accent/50" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">{e.title}</span>
+        <span className="shrink-0 text-xs tabular-nums text-faint">
+          {hhmm(e.start)}–{hhmm(e.end)}
+        </span>
+      </button>
     </li>
   );
 }
 
 export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: TasksApi; google: GoogleApi; onAvatar: () => void }) {
-  const real = google.state === "ok"; // Google connecté : les vrais événements remplacent l'aperçu fictif
+  const real = google.state === "ok"; // sans Google : seulement les éléments de Majordome avec une heure
   const now = new Date();
   const today = parisDay(now);
   const [title, setTitle] = useState("");
@@ -72,6 +72,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
   const [showOptions, setShowOptions] = useState(true); // un événement a toujours une date et une heure
   const [day, setDay] = useState(today);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [openEvent, setOpenEvent] = useState<AgendaEvent | null>(null);
   const pager = useRef<PagerHandle>(null);
 
   function add() {
@@ -90,12 +91,10 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
   // Une colonne pour le jour d : la frise des heures (agenda seulement). Le pager en affiche trois : précédent, courant, suivant.
   const dayPanel = (d: string) => {
     const byHour = planDay(api.tasks, d);
-    const events: Ev[] = real
-      ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d)
-      : demoEvents().filter((e) => parisDay(new Date(e.start)) === d && new Date(e.end) > now);
+    const events = real ? google.events.filter((e) => !e.allDay && parisDay(new Date(e.start)) === d) : [];
     // « Toute la journée » (jours fériés, anniversaires…) : une petite ligne au-dessus de la frise, un événement de plusieurs jours est sur chacun de ses jours.
     const allDay = real ? google.events.filter((e) => e.allDay && parisDay(new Date(e.start)) <= d && d < parisDay(new Date(e.end))) : [];
-    const eventsByHour = new Map<number, Ev[]>();
+    const eventsByHour = new Map<number, AgendaEvent[]>();
     for (const e of events) eventsByHour.set(parisHM(e.start).h, [...(eventsByHour.get(parisHM(e.start).h) ?? []), e]);
     const nowHM = d === today ? parisHM(now.toISOString()) : null;
     const { start, end } = hourRange([...byHour.keys(), ...eventsByHour.keys()], nowHM);
@@ -113,16 +112,13 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
     const empty = api.loaded && !byHour.size && !events.length && !allDay.length;
     return (
       <div className="pt-2">
-        {!real && (
-          <div className="pb-1">
-            <DemoBanner phase={DEMO_PHASE.agenda} what="rendez-vous fictifs" />
-          </div>
-        )}
         {allDay.length > 0 && (
           <ul className="flex flex-wrap gap-1.5 pt-2" aria-label="Toute la journée">
             {allDay.map((e) => (
-              <li key={e.id} className="rounded-full bg-surface px-3 py-1 text-[12px] text-muted">
-                {e.title}
+              <li key={e.id}>
+                <button onClick={() => setOpenEvent(e)} className="min-h-8 rounded-full bg-surface px-3 py-1 text-[12px] text-muted active:bg-raised">
+                  {e.title}
+                </button>
               </li>
             ))}
           </ul>
@@ -159,7 +155,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
                       <ul className="divide-y divide-line/60 py-0.5">
                         {items.map((t) => row(t, parisHM(t.due_at!).m ? hhmm(t.due_at!) : undefined))}
                         {evs.map((e) => (
-                          <EventRow key={e.id} e={e} fictif={!real} />
+                          <EventRow key={e.id} e={e} onOpen={() => setOpenEvent(e)} />
                         ))}
                       </ul>
                     )}
@@ -264,6 +260,7 @@ export default function PlanningView({ tasks: api, google, onAvatar }: { tasks: 
 
       <DayPager ref={pager} day={day} onDay={setDay} render={dayPanel} />
 
+      {openEvent && <EventSheet e={openEvent} onClose={() => setOpenEvent(null)} />}
       {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
     </div>
   );

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -40,6 +40,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Régler un réveil / un minuteur dans l'Horloge (plugin Alarm) -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+    <!-- Temps d'écran réel (plugin Usage) : lecture seule, activée par toi dans les réglages « Accès aux données d'utilisation » -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
 
     <!-- Android 11+ : sans ceci, resolveActivity() ne « voit » pas l'appli Horloge et renvoie toujours null -->
     <queries>

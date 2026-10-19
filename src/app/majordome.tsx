@@ -26,6 +26,7 @@ export default function Majordome({ size = 40, fond = "#050506", className = "" 
     const S = size;
     const last = { eye: ["", ""], top: ["", ""], bot: ["", ""], pair: "" };
     const apply = (f: Frame) => {
+      if (!pair.current) return; // démonté (ex. écran de chargement) : les refs sont vidées un instant avant la fin de l'abonnement
       for (const i of [0, 1] as const) {
         const e = eyeStyle(f.p, S, i);
         const eye = eyes.current[i]!;
