@@ -98,7 +98,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
 
       {/* Tâches (éléments sans heure) — RÉELLES. En retard, puis aujourd'hui, puis sans date ; 5 visibles, le reste se déplie. */}
       <Card>
-        <Label>Tâches</Label>
+        <Label>Pense-bêtes</Label>
         {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
         {!api.loaded && <SkeletonRows />}
         {api.loaded && list.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Rien à faire. Profites-en.</p>}
@@ -124,7 +124,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
             setNewTitle("");
           }}
         >
-          <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nouvelle tâche…" aria-label="Nouvelle tâche" className="h-11 min-w-0 flex-1 rounded-full bg-raised px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50" />
+          <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nouveau pense-bête…" aria-label="Nouveau pense-bête" className="h-11 min-w-0 flex-1 rounded-full bg-raised px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50" />
         </form>
       </Card>
       {opened && <TaskSheet key={opened.id} t={opened} api={api} onClose={() => setOpenId(null)} />}
