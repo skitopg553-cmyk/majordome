@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "captures": "node scripts/captures.mjs",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "eval:ia": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
