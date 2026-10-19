@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { checkCron } from "@/lib/cron-auth";
-import { dueReminders, reminderPayload, type ReminderTask } from "@/lib/reminders";
+import { dueOccurrenceReminders, dueReminders, reminderPayload, type ReminderTask } from "@/lib/reminders";
+import { listRules } from "@/lib/recurring-store";
+import type { SlotException } from "@/lib/slots";
 import { isMissingTable, supabaseAdmin } from "@/lib/supabase";
 
 // Envoi des rappels : appelé chaque minute par pg_cron (Supabase), avec l'en-tête x-cron-secret.
@@ -18,9 +20,11 @@ export async function POST(req: Request) {
   // Pré-filtre large en SQL, filtre exact en code (testé).
   const since = new Date(now.getTime() - 2 * 3600_000).toISOString();
   const until = new Date(now.getTime() + 10 * 60_000).toISOString();
-  const [tasks, subs] = await Promise.all([
+  const [tasks, subs, rules, exc] = await Promise.all([
     db.from("tasks").select("id,title,due_at,status,reminded_at").eq("status", "todo").is("reminded_at", null).gte("due_at", since).lte("due_at", until),
     db.from("push_subscriptions").select("endpoint,p256dh,auth"),
+    listRules(db),
+    db.from("recurring_exceptions").select("rule_id,day,action,new_day,new_start,new_end"),
   ]);
   const error = tasks.error ?? subs.error;
   // 42703 = colonne reminded_at absente : migration pas appliquée.
@@ -28,13 +32,12 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const due = dueReminders((tasks.data ?? []) as ReminderTask[], now);
-  if (!due.length || !subs.data?.length) return NextResponse.json({ sent: 0 });
-
-  let sent = 0;
-  for (const t of due) {
-    const payload = JSON.stringify(reminderPayload(t, now));
+  // Créneaux qui reviennent (cours, boxe…) : calculés comme dans le Planning, rappelés une seule fois (voir reminders.ts).
+  const slots = dueOccurrenceReminders(rules ?? [], exc.error ? [] : ((exc.data ?? []) as SlotException[]), now);
+  if ((!due.length && !slots.length) || !subs.data?.length) return NextResponse.json({ sent: 0 });
+  const send = async (payload: string) => {
     let delivered = 0;
-    for (const s of subs.data) {
+    for (const s of subs.data!) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
         delivered++;
@@ -45,9 +48,16 @@ export async function POST(req: Request) {
         else console.error("Envoi push échoué :", status ?? err);
       }
     }
+    return delivered;
+  };
+
+  let sent = 0;
+  for (const t of due) {
+    const delivered = await send(JSON.stringify(reminderPayload(t, now)));
     // Marquée « rappelée » seulement si au moins un téléphone l'a reçue : sinon on réessaie au prochain passage (fenêtre d'1 h).
     if (delivered > 0) await db.from("tasks").update({ reminded_at: now.toISOString() }).eq("id", t.id);
     sent += delivered;
   }
-  return NextResponse.json({ sent, tasks: due.length });
+  for (const p of slots) sent += await send(JSON.stringify(p));
+  return NextResponse.json({ sent, tasks: due.length, slots: slots.length });
 }

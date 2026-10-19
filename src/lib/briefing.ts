@@ -48,8 +48,10 @@ export function briefing(input: {
   const todo = homeTasks(tasks.map((t) => ({ ...t })), now);
   const late = todo.filter((t) => t.due_at && parisDay(new Date(t.due_at)) < today).length;
   const dueToday = todo.filter((t) => t.due_at && parisDay(new Date(t.due_at)) === today).length;
-  if (dueToday + late === 0) lines.push("Aucune tâche urgente.");
-  else lines.push(`${plural(dueToday, "tâche")} aujourd'hui${late ? `, ${late} en retard` : ""}`);
+  // Jamais « 0 pense-bête aujourd'hui » : on ne dit que ce qui existe.
+  if (dueToday + late === 0) lines.push("Aucun pense-bête urgent.");
+  else if (!dueToday) lines.push(`${plural(late, "pense-bête")} en retard`);
+  else lines.push(`${plural(dueToday, "pense-bête")} aujourd'hui${late ? `, ${late} en retard` : ""}`);
 
   // Mails importants (si Google est connecté et qu'il y en a) : le nombre, puis 3 objets au plus.
   if (input.mails && input.mails.count > 0) {
