@@ -43,7 +43,7 @@ function PlanRow({ t, done, time, onToggle, onOpen }: { t: Task; done: boolean; 
       </button>
       <button onClick={onOpen} disabled={t.id < 0} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug transition-opacity duration-300 ${done ? "text-faint line-through opacity-60" : ""}`}>
         {t.priority === 1 && !done && <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Priorité haute" />}
-        <span className={`min-w-0 flex-1 ${t.priority === 3 && !done ? "text-muted" : ""}`}>{t.title}</span>
+        <span className={`line-clamp-2 min-w-0 flex-1 break-words ${t.priority === 3 && !done ? "text-muted" : ""}`}>{t.title}</span>
         {time ? <span className="shrink-0 text-xs tabular-nums text-faint">{time}</span> : null}
       </button>
     </li>

@@ -5,7 +5,8 @@ import { goalProgress, monthTotals, spendingByCategory, type Budget, type Tx } f
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
 import { briefing } from "@/lib/briefing";
 import { homeTasks } from "@/lib/planning";
-import { parisDay } from "@/lib/task-groups";
+import { occurrencesOn } from "@/lib/slots";
+import { addDays, parisDay } from "@/lib/task-groups";
 import Majordome from "./majordome";
 import HabitCheck from "./habit-check";
 import TaskRow from "./task-row";
@@ -58,10 +59,12 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
 
   // Briefing du jour : 3 lignes calculées en code (pas par l'IA), à partir des vraies données.
   const over = fin?.ready ? spendingByCategory(fin.transactions, parisDay(now).slice(0, 7), fin.budgets ?? []).find((r) => r.over && r.limit !== null) : undefined;
+  // Les créneaux qui reviennent (travail, salle…) comptent dans « Prochain » et « Demain » : on les calcule pour la semaine à venir.
+  const slotEvents = Array.from({ length: 8 }, (_, i) => occurrencesOn(slots.rules, slots.exceptions, addDays(parisDay(now), i))).flat().map((o) => ({ title: o.title, start: o.start, allDay: false }));
   const lines = api.loaded
     ? briefing({
         tasks: api.tasks,
-        events: gOk ? google.events : [],
+        events: [...(gOk ? google.events : []), ...slotEvents],
         mails: gOk ? google.mails : null,
         now,
         free: fin?.ready && fin.savings && fin.savings.capacity.months > 0 ? fin.savings.capacity.free : null,

@@ -9,6 +9,7 @@
     "test": "vitest run",
     "captures": "node scripts/captures.mjs",
     "e2e": "node scripts/e2e.mjs",
+    "qa": "node scripts/qa.mjs",
     "eval:ia": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {

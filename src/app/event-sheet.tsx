@@ -21,7 +21,7 @@ export default function EventSheet({ e, onClose }: { e: AgendaEvent; onClose: ()
         <h2 className="text-[22px] font-semibold leading-snug tracking-tight">{e.title}</h2>
         <div>
           <p className="text-[13px] text-muted">Quand</p>
-          <p className="text-[16px] capitalize">{day}</p>
+          <p className="text-[16px] first-letter:uppercase">{day}</p>
           <p className="text-[16px] tabular-nums">{hours}</p>
         </div>
         {e.place && (

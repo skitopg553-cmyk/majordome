@@ -53,7 +53,7 @@ export default function SlotSheet({ o, slots, accessCode, onUnauthorized, onClos
         <h2 className="break-words text-[22px] font-semibold leading-snug tracking-tight">{o.title}</h2>
         <div>
           <p className="text-[13px] text-muted">Cette fois</p>
-          <p className="text-[16px] capitalize">{when}</p>
+          <p className="text-[16px] first-letter:uppercase">{when}</p>
           <p className="text-[16px] tabular-nums">{hours}</p>
           {o.moved && <p className="mt-1 text-[13px] text-muted">Déplacé (la série n&apos;a pas changé).</p>}
         </div>
