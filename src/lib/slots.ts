@@ -126,10 +126,11 @@ export const sameSlot = (a: { title: string; days: string | null; at_time: strin
 /** Le dimanche de la semaine du jour donné (ou le jour même si c'est dimanche). */
 export const endOfWeek = (day: string) => addDays(day, 7 - (((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7) + 1));
 
-/** Récapitulatif final (écrit par le code, lu à voix haute) quand plusieurs éléments viennent d'être créés d'un coup ; vide pour moins de deux. */
+/** Message final écrit par le CODE (lu à voix haute) : ce que les outils ont réellement fait. Vide si rien. */
 export function recapText(lines: string[]) {
   const uniq = [...new Set(lines)];
-  return uniq.length >= 2 ? `Noté :\n${uniq.map((l) => `- ${l}`).join("\n")}` : "";
+  if (!uniq.length) return "";
+  return uniq.length === 1 ? `Fait : ${uniq[0]}` : `Fait :\n${uniq.map((l) => `- ${l}`).join("\n")}`;
 }
 
 // ---------- Actions de l'écran (supprimer / déplacer une occurrence, répondre au bilan d'une habitude) ----------

@@ -10,6 +10,7 @@ import { detectAlarmIntent } from "@/lib/alarm-intent";
 import { CARDS_MARK, extractCard, type Card } from "@/lib/alarm";
 import { moodPrefix, MoodStripper, stripMood } from "@/lib/mascot";
 import { ACTIONS_MARK, extractSetting, extractUndo, SETTINGS_MARK, type DeviceSetting, type Undo } from "@/lib/undo";
+import { IdScrubber, scrubIds } from "@/lib/id-scrub";
 import { recapText } from "@/lib/slots";
 import { TOOLS, executeTool, buildContext } from "@/lib/tools";
 
@@ -38,12 +39,15 @@ export async function POST(req: Request) {
   // et on l'envoie à l'écran après le texte, qui affiche un bouton « Annuler » quelques secondes.
   const actions: Undo[] = [];
   const cards: Card[] = []; // réveils / minuteurs préparés : l'écran affiche un bouton qui ouvre l'app Horloge
-  const recaps: string[] = []; // une ligne par élément créé (écrite par l'outil, donc par le code) : récapitulatif exact en fin de réponse
+  const recaps: string[] = [];
+  let successes = 0; // outils qui ont VRAIMENT écrit quelque chose (ok + phrase ou annulation)
+  const failures: string[] = []; // erreurs renvoyées par les outils // une ligne par élément créé (écrite par l'outil, donc par le code) : récapitulatif exact en fin de réponse
   const settings: DeviceSetting[] = []; // réglages de l'appareil demandés (lecture à voix haute) : appliqués par l'écran
 
   // Humeur de la mascotte : le modèle commence sa réponse par « @mood:happy » ; on retire la balise du flux (affichage, lecture vocale, historique)
   // et on envoie l'humeur en tête du flux (voir src/lib/mascot.ts). Une humeur trouvée après le début du texte est ignorée.
   const stripper = new MoodStripper();
+  const scrubber = new IdScrubber(); // jamais d'identifiant interne dans la réponse
   let moodSent = false;
   let bytesSent = false;
   const emit = (r: { text: string; moods: ReturnType<MoodStripper["feed"]>["moods"] }) => {
@@ -51,8 +55,9 @@ export async function POST(req: Request) {
       ctrl.enqueue(enc.encode(moodPrefix(r.moods[0])));
       bytesSent = moodSent = true;
     }
-    if (r.text) {
-      ctrl.enqueue(enc.encode(r.text));
+    const text = scrubber.feed(r.text);
+    if (text) {
+      ctrl.enqueue(enc.encode(text));
       bytesSent = true;
     }
   };
@@ -67,8 +72,11 @@ export async function POST(req: Request) {
     const { result: clean, card } = extractCard(result);
     if (card) cards.push(card);
     try {
-      const recap = (JSON.parse(clean) as { recap?: unknown }).recap;
-      if (typeof recap === "string") recaps.push(recap);
+      const r = JSON.parse(clean) as { ok?: boolean; recap?: unknown; error?: unknown };
+      const lines = Array.isArray(r.recap) ? r.recap.filter((x): x is string => typeof x === "string") : typeof r.recap === "string" ? [r.recap] : [];
+      recaps.push(...lines);
+      if (r.ok && (lines.length || undo)) successes++;
+      if (r.ok === false && typeof r.error === "string") failures.push(r.error);
     } catch {
       /* résultat non JSON : pas de récapitulatif */
     }
@@ -120,12 +128,20 @@ export async function POST(req: Request) {
       report();
       // Faux « c'est noté » : on le dit tout de suite, et on le garde dans l'historique pour que le modèle ne le croie pas la fois suivante.
       emit(stripper.finish()); // texte éventuellement retenu à la fin du flux
-      reply = stripMood(reply).text; // l'historique ne garde jamais la balise
+      const tail = scrubber.finish();
+      if (tail) ctrl.enqueue(enc.encode(tail));
+      reply = scrubIds(stripMood(reply).text); // l'historique ne garde jamais la balise ni d'identifiant
       persisted = reply;
       const recap = recapText(recaps); // plusieurs éléments d'un coup : la liste exacte de ce qui a été créé
       if (recap) {
         ctrl.enqueue(enc.encode(`\n\n${recap}`));
         persisted = reply = `${reply}\n\n${recap}`;
+      } else if (failures.length && !successes && !/\?/.test(reply)) {
+        // Un outil a échoué et rien n'a été fait : le code le dit, quoi qu'ait écrit l'IA.
+        const why = failures[0].split(/\. (?=Dis|Pose|Utilise|Précise|N'invente)/)[0].replace(/\.$/, "");
+        const warn = `\n\n⚠️ Rien n'a été fait : ${why}.`;
+        ctrl.enqueue(enc.encode(warn));
+        persisted = reply = `${reply}${warn}`;
       }
       // Jamais de promesse d'un bouton absent : la phrase parle d'un bouton mais aucune carte n'est envoyée.
       if (!cards.length && /\bbouton\b/i.test(reply)) {
@@ -133,7 +149,7 @@ export async function POST(req: Request) {
         ctrl.enqueue(enc.encode(warn));
         reply += warn;
       }
-      if (claimsActionWithoutTool(reply, toolCalls)) {
+      if (claimsActionWithoutTool(reply, successes)) {
         console.warn("[faux-enregistrement] la réponse affirme avoir noté quelque chose sans appeler d'outil");
         ctrl.enqueue(enc.encode(FALSE_CLAIM_WARNING));
         persisted = reply + FALSE_CLAIM_WARNING;

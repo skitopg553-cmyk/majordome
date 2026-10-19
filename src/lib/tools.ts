@@ -1,6 +1,8 @@
 import { LIFE_TOOLS, executeLifeTool, lifeContext } from "./life-tools";
 import { hasTime } from "./planning";
-import { oneOffRecap } from "./slots";
+import { agendaText, CALENDAR_TOOLS, executeCalendarTool, type Backend } from "./calendar-tools";
+import { applyOps, loadState } from "./calendar-store";
+import { addDays, parisDay } from "./task-groups";
 import { clampText, MAX_MEMORY, taskFields } from "./limits";
 import { executeMoreTool, MORE_TOOLS, moreContext } from "./more-tools";
 import { supabaseAdmin } from "./supabase";
@@ -12,35 +14,26 @@ export type ToolDef = { name: string; description: string; parameters: Record<st
 
 const DUE_AT = {
   type: "string",
-  description:
-    "Échéance ISO 8601 avec fuseau. AVEC heure précise (« demain 10h ») : ex. 2026-10-16T10:00:00+02:00 = élément d'AGENDA (Planning). SANS heure (« demain », « vendredi ») : minuit, ex. 2026-10-16T00:00:00+02:00 = TÂCHE (Accueil). Pas de date du tout : n'envoie pas ce champ.",
+  description: "Jour du pense-bête, à MINUIT avec fuseau (ex. 2026-10-16T00:00:00+02:00). Pas de jour : n'envoie pas ce champ. Jamais d'heure : un pense-bête avec heure est un événement (add_event).",
 };
-const END_AT = { type: "string", description: "Heure de FIN d'un créneau ponctuel (même format que due_at, même jour, après le début). Seulement si Ruben donne une fin (« de 20h à 22h »). Jamais sans due_at." };
 const PRIORITY = { type: "integer", enum: [1, 2, 3], description: "1 = haute, 2 = normale, 3 = basse" };
+const WHICH = { type: "string", description: "Titre du pense-bête tel que Ruben le dit (le code le retrouve)" };
 
 const TASK_TOOLS: ToolDef[] = [
   {
     name: "add_task",
-    description: "Créer UN élément ponctuel (une seule fois) : PENSE-BÊTE = simple tâche sans horaire (« ranger ma chambre ») → sans heure (due_at à minuit, ou aucune date), il se coche et n'apparaît jamais dans le Planning ; CRÉNEAU ponctuel avec heure = élément d'agenda, affiché dans le Planning (« dîner avec Arthur lundi 20h », « de 20h à 22h ») → due_at avec l'heure de début et end_at si une fin est dite. Ce qui REVIENT (travail, salle…) n'est PAS pour cet outil (→ add_slot). N'invente jamais une heure.",
-    parameters: {
-      type: "object",
-      properties: { title: { type: "string" }, due_at: DUE_AT, end_at: END_AT, priority: PRIORITY, notes: { type: "string" } },
-      required: ["title"],
-    },
+    description: "Créer un PENSE-BÊTE : une chose à faire SANS horaire (« ranger ma chambre », « penser à sortir les poubelles »). Il se coche et n'apparaît jamais dans la grille du calendrier. Avec une heure, c'est un événement : add_event.",
+    parameters: { type: "object", properties: { title: { type: "string" }, due_at: DUE_AT, priority: PRIORITY, notes: { type: "string" } }, required: ["title"] },
   },
   {
     name: "update_task",
-    description: "Modifier une tâche existante (titre, échéance, priorité, notes).",
-    parameters: {
-      type: "object",
-      properties: { id: { type: "integer" }, title: { type: "string" }, due_at: DUE_AT, priority: PRIORITY, notes: { type: "string" } },
-      required: ["id"],
-    },
+    description: "Modifier un pense-bête retrouvé par son titre : nouveau titre, jour, priorité, notes.",
+    parameters: { type: "object", properties: { title: WHICH, new_title: { type: "string" }, due_at: DUE_AT, priority: PRIORITY, notes: { type: "string" } }, required: ["title"] },
   },
   {
     name: "complete_task",
-    description: "Marquer une tâche comme faite.",
-    parameters: { type: "object", properties: { id: { type: "integer" } }, required: ["id"] },
+    description: "Cocher un pense-bête (c'est fait), retrouvé par son titre.",
+    parameters: { type: "object", properties: { title: WHICH }, required: ["title"] },
   },
   {
     name: "remember",
@@ -63,7 +56,21 @@ const TASK_TOOLS: ToolDef[] = [
 ];
 
 // Tâches + mémoire + vie (Forme, budgets, dépenses) : tout ce que l'agent peut écrire.
-export const TOOLS: ToolDef[] = [...TASK_TOOLS, ...LIFE_TOOLS, ...MORE_TOOLS];
+export const TOOLS: ToolDef[] = [...TASK_TOOLS, ...CALENDAR_TOOLS, ...LIFE_TOOLS, ...MORE_TOOLS];
+
+/** Le calendrier lit et écrit dans la vraie base. */
+const dbBackend = (db: ReturnType<typeof supabaseAdmin>): Backend => ({ load: () => loadState(db), apply: (ops, label) => applyOps(db, ops, label) });
+
+/** Un pense-bête (à faire, sans heure) retrouvé par son titre : jamais par un identifiant que Ruben devrait donner. */
+async function findReminder(db: ReturnType<typeof supabaseAdmin>, title: unknown): Promise<{ ok: true; id: number; title: string } | { ok: false; error: string }> {
+  if (typeof title !== "string" || !title.trim()) return { ok: false, error: "title requis : le titre du pense-bête" };
+  const open = await db.from("tasks").select("id,title,due_at").eq("status", "todo");
+  if (open.error) return { ok: false, error: open.error.message };
+  const hits = (open.data ?? []).filter((t) => !(t.due_at && hasTime(t.due_at)) && isSimilar(t.title, title));
+  if (!hits.length) return { ok: false, error: `aucun pense-bête « ${title} ». Dis-le à Ruben, n'invente rien.` };
+  if (hits.length > 1) return { ok: false, error: `plusieurs pense-bêtes possibles : ${hits.map((h) => `« ${h.title} »`).join(", ")}. Pose UNE question à Ruben.` };
+  return { ok: true, id: hits[0].id, title: hits[0].title };
+}
 
 // Comparaison sans accents, casse ni ponctuation : "Appeler le médecin !" == "appeler le medecin".
 const norm = (s: string) =>
@@ -93,34 +100,44 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     case "add_task": {
       const f = taskFields(args, { requireTitle: true }); // titre borné, échéance ISO AVEC fuseau : sinon le modèle reçoit l'erreur et corrige
       if (!f.ok) return JSON.stringify({ ok: false, error: f.error });
+      if (f.fields.due_at && hasTime(f.fields.due_at)) return JSON.stringify({ ok: false, error: "un pense-bête n'a pas d'heure : avec une heure, c'est un événement → add_event (avec une heure de fin)." });
+      delete f.fields.end_at;
       const open = await db.from("tasks").select("id,title").eq("status", "todo");
       if (open.error) return JSON.stringify({ ok: false, error: open.error.message });
       const dup = (open.data ?? []).find((t) => isSimilar(t.title, f.fields.title!));
       if (dup) {
         return JSON.stringify({
           ok: false,
-          error: `tâche similaire déjà existante : #${dup.id} « ${dup.title} ». Utilise update_task si besoin, sinon n'en crée pas une autre.`,
+          error: `pense-bête similaire déjà existant : « ${dup.title} ». Utilise update_task si besoin, sinon n'en crée pas un autre.`,
         });
       }
       res = await db.from("tasks").insert(f.fields).select("id").single();
       if (!res.error) {
         undo = { label: `Tâche « ${f.fields.title} »`, steps: [{ op: "delete", table: "tasks", id: idOf(res.data) }] };
-        const due = f.fields.due_at;
-        recap = due && hasTime(due) ? oneOffRecap(f.fields.title!, due, f.fields.end_at ?? null) : `Pense-bête : ${f.fields.title}`;
+        recap = `Pense-bête : ${f.fields.title}`;
       }
       break;
     }
     case "update_task": {
+      const which = await findReminder(db, args.title);
+      if (!which.ok) return JSON.stringify(which);
+      args = { ...args, id: which.id, title: args.new_title };
       const f = taskFields(args, { requireTitle: false });
+      if (f.ok && f.fields.due_at && hasTime(f.fields.due_at)) return JSON.stringify({ ok: false, error: "un pense-bête n'a pas d'heure" });
       if (!f.ok) return JSON.stringify({ ok: false, error: f.error });
       const patch = f.fields;
       const keys = Object.keys(patch);
       const before = keys.length ? await db.from("tasks").select(keys.join(",")).eq("id", Number(args.id)).maybeSingle() : null;
       res = await db.from("tasks").update(patch).eq("id", Number(args.id)).select("id");
+      if (!res.error) recap = `Pense-bête modifié : ${f.fields.title ?? which.title}`;
       if (!res.error && before?.data) undo = { label: "Modification de tâche", steps: [{ op: "restore", table: "tasks", id: Number(args.id), values: before.data as unknown as Record<string, string | number | null> }] };
       break;
     }
     case "complete_task": {
+      const which = await findReminder(db, args.title);
+      if (!which.ok) return JSON.stringify(which);
+      args = { ...args, id: which.id };
+      recap = `Coché : ${which.title}`;
       const before = await db.from("tasks").select("status,done_at").eq("id", Number(args.id)).maybeSingle();
       res = await db.from("tasks").update({ status: "done", done_at: new Date().toISOString() }).eq("id", Number(args.id)).select("id");
       if (!res.error && before.data) undo = { label: "Tâche terminée", steps: [{ op: "restore", table: "tasks", id: Number(args.id), values: before.data as Record<string, string | null> }] };
@@ -144,6 +161,8 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       break;
     }
     default: {
+      const cal = await executeCalendarTool(name, args, dbBackend(db));
+      if (cal) return cal;
       const life = await executeLifeTool(name, args);
       return life ?? (await executeMoreTool(name, args)) ?? JSON.stringify({ ok: false, error: `outil inconnu : ${name}` });
     }
@@ -158,10 +177,11 @@ const TZ = "Europe/Paris";
 /** Contexte injecté à chaque message : date, mémoires, tâches en cours. Calculé en code. */
 export async function buildContext(): Promise<string> {
   const db = supabaseAdmin();
-  const [tasks, memories] = await Promise.all([
-    db.from("tasks").select("id,title,due_at,priority,notes").eq("status", "todo")
+  const [tasks, memories, cal] = await Promise.all([
+    db.from("tasks").select("title,due_at,priority,notes").eq("status", "todo")
       .order("due_at", { ascending: true, nullsFirst: false }).limit(50),
     db.from("memories").select("id,content,category").order("created_at").limit(200),
+    loadState(db),
   ]);
 
   const now = new Date();
@@ -173,17 +193,22 @@ export async function buildContext(): Promise<string> {
   const prio = ["", "haute", "normale", "basse"];
 
   const memLines = (memories.data ?? []).map((m) => `- [#${m.id}] (${m.category}) ${m.content}`);
-  const taskLines = (tasks.data ?? []).map(
-    (t) => `- [#${t.id}] ${t.title}${t.due_at ? ` — ${hasTime(t.due_at) ? "agenda" : "tâche"} pour le ${fmt(t.due_at)}` : ""} — priorité ${prio[t.priority] ?? t.priority}${t.notes ? ` — ${t.notes}` : ""}`,
+  // Sans identifiant : l'IA désigne les choses par leur titre (et ne peut donc pas en afficher).
+  const taskLines = (tasks.data ?? []).filter((t) => !(t.due_at && hasTime(t.due_at))).map(
+    (t) => `- ${t.title}${t.due_at ? ` — pour le ${fmt(t.due_at)}` : ""} — priorité ${prio[t.priority] ?? t.priority}${t.notes ? ` — ${t.notes}` : ""}`,
   );
+  const today = parisDay(now);
 
   return `Maintenant : ${nowText} (fuseau Europe/Paris, UTC${offset}).
 
 ## Ce que tu sais de Ruben
 ${memLines.join("\n") || "(rien pour l'instant)"}
 
-## Tâches en cours
-${taskLines.join("\n") || "(aucune)"}
+## Pense-bêtes à faire (sans heure)
+${taskLines.join("\n") || "(aucun)"}
+
+## Calendrier des 7 prochains jours (déjà enregistré : ne le recrée pas)
+${cal ? agendaText(cal, today, addDays(today, 6), today) : "(indisponible)"}
 
 ## Vie de Ruben (déjà noté dans l'app)
 ${await lifeContext(now)}

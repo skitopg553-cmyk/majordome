@@ -28,7 +28,7 @@ describe("parseUndoSteps (ce que le navigateur peut demander)", () => {
     expect(parseUndoSteps([{ op: "delete", table: "tasks", id: 1 }, { op: "delete", table: "secrets", id: 2 }])).toBeNull();
   });
   it("plafonne le nombre de pas", () => {
-    expect(parseUndoSteps(Array.from({ length: 21 }, () => ({ op: "delete", table: "tasks", id: 1 })))).toBeNull();
+    expect(parseUndoSteps(Array.from({ length: 301 }, () => ({ op: "delete", table: "tasks", id: 1 })))).toBeNull();
   });
 });
 

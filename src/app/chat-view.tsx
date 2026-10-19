@@ -106,6 +106,27 @@ export default function ChatView({
     cardsRef.current = left.length > 0;
     if (!left.length && viaVoiceRef.current) closeSoon(); // la conversation vocale se referme une fois la carte traitée
   }
+  // « Supprime tout » : la carte demande confirmation avec le nombre exact ; la suppression n'a lieu qu'au toucher, puis « Annuler » pendant 10 s.
+  const [confirming, setConfirming] = useState(false);
+  async function confirmBulk(i: number, c: Card) {
+    if (confirming || !c.bulk) return;
+    setConfirming(true);
+    cancelClose();
+    try {
+      const res = await fetch("/api/calendar", { method: "POST", headers: { "Content-Type": "application/json", "x-access-code": accessCode }, body: JSON.stringify({ action: "bulk", ...c.bulk }) });
+      if (res.status === 401) return onUnauthorized();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `Erreur serveur (${res.status})`);
+      dismissCard(i);
+      setMessages((m) => [...m, { role: "assistant", content: d.done }]); // phrase écrite par le code, d'après ce qui a VRAIMENT été supprimé
+      if (viaVoiceRef.current) say(d.done);
+      if (d.undo) showUndo([d.undo]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Suppression impossible");
+    } finally {
+      setConfirming(false);
+    }
+  }
   const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [undo, setUndo] = useState<{ actions: Undo[]; state: "ready" | "busy" | "done" | "error"; error?: string } | null>(null);
 
@@ -230,8 +251,9 @@ export default function ChatView({
           const failed = results.filter((r) => !r.ok);
           reply = results.map((r) => r.text).join(" "); // phrase du code (heure réellement envoyée) à la place de celle du serveur
           setMessages([...next, { role: "assistant", content: reply }]);
-          if (failed.length) {
-            setCards(got); // repli : le bouton reste là, comme sur le web
+          const keep = failed.length ? got : got.filter((c) => c.kind === "confirm"); // repli : le bouton reste là, comme sur le web ; une confirmation reste toujours
+          if (keep.length) {
+            setCards(keep);
             cardsRef.current = true;
             cancelClose();
           }
@@ -411,7 +433,20 @@ export default function ChatView({
               )}
             </div>
           )}
-          {cards.map((c, i) => (
+          {cards.map((c, i) =>
+            c.kind === "confirm" ? (
+              <div key={i} className="rise rounded-2xl bg-surface p-3" aria-live="polite">
+                <p className="text-[15px] font-semibold leading-snug text-fg">{c.detail}</p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => void confirmBulk(i, c)} disabled={confirming} className="min-h-11 rounded-full bg-neg px-5 text-[14px] font-semibold text-ink active:scale-95 disabled:opacity-60">
+                    {confirming ? "Suppression…" : c.title}
+                  </button>
+                  <button onClick={() => dismissCard(i)} disabled={confirming} className="min-h-11 rounded-full px-4 text-[14px] font-medium text-muted ring-1 ring-line active:bg-raised">
+                    Garder
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div key={i} className="rise flex items-center gap-3 rounded-2xl bg-surface p-3" aria-live="polite">
               <div className="min-w-0 flex-1">
                 <p className="whitespace-pre-line text-[14px] leading-snug text-fg">{c.detail}</p>
@@ -426,7 +461,8 @@ export default function ChatView({
                 </svg>
               </button>
             </div>
-          ))}
+            ),
+          )}
           {waiting && (
             <p className="flex items-center gap-2 text-sm text-faint" aria-live="polite">
               Majordome écrit
