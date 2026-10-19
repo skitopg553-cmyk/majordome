@@ -27,7 +27,7 @@ export default function WeekSheet({ accessCode, onClose, onUnauthorized }: { acc
   const m = data?.mirror;
   const tiles: [string, string, string][] = m
     ? [
-        ["Tâches faites", String(m.tasksDone), m.tasksLate ? `${m.tasksLate} en retard` : "aucune en retard"],
+        ["Pense-bêtes faits", String(m.tasksDone), m.tasksLate ? `${m.tasksLate} en retard` : "aucun en retard"],
         ["Dépensé", euro(m.spent, false), m.spentDeltaPct === null ? (m.topCategory ? `surtout ${m.topCategory.category.toLowerCase()}` : "—") : `${m.spentDeltaPct > 0 ? "+" : "−"}${Math.abs(m.spentDeltaPct)} % vs semaine passée`],
         ["Sport", String(m.sessions), `séance${m.sessions > 1 ? "s" : ""} · ${m.activeDays} jour${m.activeDays > 1 ? "s" : ""}`],
         ...(m.sleepAvg !== null ? ([["Sommeil", hours(m.sleepAvg), `par nuit · ${m.nights} notée${m.nights > 1 ? "s" : ""}`]] as [string, string, string][]) : []),

@@ -8,13 +8,13 @@ const base = { now, free: 180, overBudget: null };
 describe("briefing du jour", () => {
   it("3 lignes : prochain agenda, tâches, Libre", () => {
     const tasks = [t("Dentiste", "2026-10-16T14:30:00+02:00"), t("Appel passé", "2026-10-16T08:00:00+02:00"), t("Acheter du pain", "2026-10-16T00:00:00+02:00"), t("Payer", "2026-10-14T00:00:00+02:00"), t("Trier", null)];
-    expect(briefing({ ...base, tasks })).toEqual(["Prochain : Dentiste, 14:30", "1 tâche aujourd'hui, 1 en retard", "Libre ce mois : 180 €"]);
+    expect(briefing({ ...base, tasks })).toEqual(["Prochain : Dentiste, 14:30", "1 pense-bête aujourd'hui, 1 en retard", "Libre ce mois : 180 €"]);
   });
   it("agenda d'un autre jour : date réelle, jamais « demain »", () => {
     expect(briefing({ ...base, tasks: [t("Point projet", "2026-10-17T10:00:00+02:00")] })[0]).toBe("Prochain : Point projet, sam. 17 oct. 10:00");
   });
   it("vide : phrases calmes ; une tâche faite ou sans heure ne compte pas comme agenda", () => {
-    expect(briefing({ ...base, tasks: [t("Fait", "2026-10-16T15:00:00+02:00", "done"), t("Sans heure", "2026-10-17T00:00:00+02:00")], free: null })).toEqual(["Rien à l'agenda pour le moment.", "Aucune tâche urgente."]);
+    expect(briefing({ ...base, tasks: [t("Fait", "2026-10-16T15:00:00+02:00", "done"), t("Sans heure", "2026-10-17T00:00:00+02:00")], free: null })).toEqual(["Rien à l'agenda pour le moment.", "Aucun pense-bête urgent."]);
   });
   it("le soir (après 18 h), la 1re ligne annonce demain", () => {
     const evening = new Date("2026-10-16T21:30:00+02:00");
@@ -49,5 +49,10 @@ describe("briefing avec Google (agenda + mails)", () => {
   });
   it("quatre lignes au plus : agenda, tâches, mails, argent", () => {
     expect(briefing({ ...base, tasks: [], mails: { count: 2, subjects: ["A"] } })).toHaveLength(4);
+  });
+  it("rien aujourd'hui mais du retard : pas de « 0 pense-bête aujourd'hui »", () => {
+    const lines = briefing({ ...base, tasks: [t("Vieux", "2026-10-14T00:00:00+02:00")], free: null });
+    expect(lines).toContain("1 pense-bête en retard");
+    expect(lines.join(" ")).not.toMatch(/\b0 pense-bête/);
   });
 });

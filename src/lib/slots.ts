@@ -167,3 +167,15 @@ export function parseSlotAction(b: Record<string, unknown>, today: string): Res<
   }
   return fail("action inconnue : skip, move ou habit");
 }
+
+/**
+ * Affichage d'une réponse : le « OK » de l'IA devant « Fait : … » n'apporte rien (la phrase du code dit tout), et une heure ne doit pas être
+ * coupée en fin de ligne (« 20 h » puis « 30 ») : espaces et tiret insécables autour des heures. La lecture vocale n'est pas touchée.
+ */
+export function displayReply(text: string) {
+  return text
+    .replace(/^\s*(?:ok|d'accord|c'est fait|très bien)[ .!]*\n+(?=Fait\s?:)/i, "")
+    .replace(/(\d) h\b/g, "$1\u00a0h")
+    .replace(/\bh (\d{2})\b/g, "h\u00a0$1")
+    .replace(/(\d|h)-(\d)/g, "$1\u2011$2");
+}

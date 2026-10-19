@@ -1,5 +1,6 @@
 "use client";
 
+import { displayReply } from "@/lib/slots";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { splitCards, type Card } from "@/lib/alarm";
@@ -23,7 +24,7 @@ const CLEARED_KEY = "majordome-cleared-at";
 
 const SUGGESTIONS = [
   "Qu'est-ce que j'ai à faire aujourd'hui ?",
-  "Ajoute une tâche : ",
+  "Ajoute un pense-bête : ",
   "Aide-moi à planifier ma semaine",
   "Que sais-tu de mes objectifs ?",
 ];
@@ -404,7 +405,7 @@ export default function ChatView({
                 {/* Avatar : seulement sur la dernière réponse (la place reste réservée aux autres : rien ne bouge) */}
                 <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">{i === messages.length - 1 && <Majordome size={10} />}</span>
                 <div className="md min-w-0 text-[15.5px] leading-relaxed text-fg/95">
-                  <Markdown>{m.content}</Markdown>
+                  <Markdown>{displayReply(m.content)}</Markdown>
                 </div>
               </div>
             ),

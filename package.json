@@ -11,6 +11,7 @@
     "e2e": "node scripts/e2e.mjs",
     "qa": "node scripts/qa.mjs",
     "qa:calendrier": "node scripts/qa-calendrier.mjs",
+    "tour": "node scripts/tour.mjs",
     "eval:ia": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {

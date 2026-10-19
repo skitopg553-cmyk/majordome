@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoredRule } from "./recurrence";
-import { parseSlotAction, recapText, daysLabel, endOfWeek, occurrencesOn, oneOffRecap, parseDays, parseHour, parseSlot, sameSlot, slotRecap, type SlotException } from "./slots";
+import { displayReply, parseSlotAction, recapText, daysLabel, endOfWeek, occurrencesOn, oneOffRecap, parseDays, parseHour, parseSlot, sameSlot, slotRecap, type SlotException } from "./slots";
 
 describe("parseDays : les jours sont validés en code", () => {
   it.each([
@@ -121,5 +121,17 @@ describe("parseSlotAction", () => {
       { action: "supprimer", rule_id: 3, day: "2026-10-21" },
       { action: "habit", rule_id: 3, day: "2026-10-18", status: "peut-être" },
     ]) expect(parseSlotAction(bad as never, today).ok).toBe(false);
+  });
+});
+
+describe("displayReply", () => {
+  it("retire le « OK » devant « Fait : », garde le reste", () => {
+    expect(displayReply("OK\n\nFait : Cours lundi 9 h-12 h")).toBe("Fait : Cours lundi 9\u00a0h\u201112\u00a0h");
+    expect(displayReply("OK, je regarde.")).toBe("OK, je regarde.");
+    expect(displayReply("D'accord.\nFait :\n- Boxe")).toBe("Fait :\n- Boxe");
+  });
+  it("une heure ne se coupe plus : « 19 h-20 h 30 » reste d'un bloc", () => {
+    expect(displayReply("Boxe 19 h-20 h 30")).toBe("Boxe 19\u00a0h\u201120\u00a0h\u00a030");
+    expect(displayReply("lundi-vendredi")).toBe("lundi-vendredi");
   });
 });

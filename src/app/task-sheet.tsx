@@ -1,22 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { parisDay, parisIso } from "@/lib/task-groups";
 import type { Task, TasksApi } from "./use-tasks";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-/** ISO → valeur d'un champ datetime-local (heure de l'appareil, comme à l'ajout). */
-const toInput = (iso: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
+/** ISO → valeur d'un champ date (jour de Paris). Un pense-bête n'a qu'un JOUR : avec une heure, ce serait un événement du calendrier. */
+const toInput = (iso: string | null) => (iso ? parisDay(new Date(iso)) : "");
 const PRIORITIES = [
   [1, "Haute"],
   [2, "Normale"],
   [3, "Basse"],
 ] as const;
 
-/** Fiche d'une tâche : modifier, terminer, reporter, supprimer. Toutes les zones tactiles font au moins 44 px. */
+/** Fiche d'un pense-bête : modifier, terminer, reporter, supprimer. Toutes les zones tactiles font au moins 44 px. */
 export default function TaskSheet({ t, api, onClose }: { t: Task; api: TasksApi; onClose: () => void }) {
   const [title, setTitle] = useState(t.title);
   const [due, setDue] = useState(toInput(t.due_at));
@@ -26,7 +22,7 @@ export default function TaskSheet({ t, api, onClose }: { t: Task; api: TasksApi;
 
   const fields = {
     ...(title.trim() && title.trim() !== t.title ? { title: title.trim() } : {}),
-    ...(due !== toInput(t.due_at) ? { due_at: due ? new Date(due).toISOString() : null } : {}),
+    ...(due !== toInput(t.due_at) ? { due_at: due ? parisIso(due, 0, 0) : null } : {}), // minuit à Paris = sans heure
     ...(priority !== t.priority ? { priority } : {}),
     ...(notes.trim() !== (t.notes ?? "") ? { notes: notes.trim() } : {}),
   };
@@ -34,7 +30,7 @@ export default function TaskSheet({ t, api, onClose }: { t: Task; api: TasksApi;
   const input = "w-full rounded-2xl bg-surface px-4 text-[15px] outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/50";
 
   return (
-    <section role="dialog" aria-label="Détail de la tâche" className="sheet-up fixed inset-0 z-50 mx-auto flex max-w-2xl flex-col bg-ink pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <section role="dialog" aria-label="Détail du pense-bête" className="sheet-up fixed inset-0 z-50 mx-auto flex max-w-2xl flex-col bg-ink pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <header className="flex h-16 items-center px-3">
         <button onClick={onClose} aria-label="Fermer" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
           <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
@@ -48,9 +44,9 @@ export default function TaskSheet({ t, api, onClose }: { t: Task; api: TasksApi;
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className={`${input} h-12`} />
         </label>
         <div>
-          <span className="mb-1 block text-[13px] text-muted">Échéance</span>
+          <span className="mb-1 block text-[13px] text-muted">Jour</span>
           <div className="flex gap-2">
-            <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Échéance" className={`${input} h-12 min-w-0 flex-1 text-muted [color-scheme:dark]`} />
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Jour" className={`${input} h-12 min-w-0 flex-1 text-muted [color-scheme:dark]`} />
             {due && (
               <button onClick={() => setDue("")} className="min-h-12 shrink-0 rounded-2xl bg-surface px-4 text-[13px] font-medium text-muted active:bg-raised">
                 Retirer

@@ -4,6 +4,7 @@
 
 ## Ce qui marche (dans le code, fusionné dans main)
 - **Calendrier** : grille Jour (0 h-24 h, défile vers l'heure actuelle, pavés de la hauteur de leur durée, côte à côte s'ils se chevauchent, ligne de l'heure) et Semaine (7 colonnes, lisible en 360 px). Toucher un vide = créer à cette heure ; toucher un pavé = fiche : titre, jour, début, fin, répétition (jours à cocher), « cette fois seulement » ou « toute la série », supprimer. Bouton +. Rendez-vous Google en lecture seule.
+- **Corrigé le 20/10** : rappels aussi pour les cours/boxe (quand les rappels seront activés), fiche d'un pense-bête sans heure, chat sans « OK » ni heure coupée, Accueil sans « 0 tâche », mot « pense-bête » partout.
 - **Pense-bêtes** à part : sous la grille (« À faire aujourd'hui ») et sur l'Accueil, jamais dans la grille.
 - **IA** : créer, modifier, supprimer (une fois, la série, une période, tout), lister, par titre et jour, sans jamais afficher d'identifiant. La phrase « Fait : … » est écrite par le code d'après ce qui a vraiment été fait ; un échec est dit (« ⚠️ Rien n'a été fait »). « Supprime tout » : carte avec le nombre exact, puis Annuler 10 s. Fin manquante : « Jusqu'à quelle heure ? ». Titres courts (« Cours »), « Fin de cours » = heure de fin, pause ≠ événement, anti-doublon.
 - **Évaluation** : `npm run eval:ia` (39 phrases dont ta semaine réelle, envoyée deux fois, supprime tout, décaler la boxe, supprimer le cours de mardi après-midi une fois, boxe sans fin, dentiste, poubelles), sur le vrai planificateur, base en mémoire.
