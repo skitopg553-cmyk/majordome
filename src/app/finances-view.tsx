@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DEMO_FINANCES as F, DEMO_PHASE } from "@/lib/demo-data";
 import { goalProgress, monthTotals, spendingByCategory, unusualExpenses, type Budget, type Tx } from "@/lib/finance/stats";
 import { parseFrenchAmount } from "@/lib/finance/csv";
 import { xlsxFileToCsv } from "@/lib/finance/xlsx";
@@ -9,7 +8,7 @@ import { callApi } from "./api-client";
 import { mascotApi } from "./mascot-engine";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 import BankCard, { type BankInfo } from "./bank-card";
-import { Bar, Card, DemoBanner, euro, Header, Label } from "./ui";
+import { Bar, Card, euro, Header, Label } from "./ui";
 
 type Goal = { id?: number; label: string; target: number; saved: number; due_label?: string | null; image_url: string | null };
 type Data = { ready: false } | { ready: true; transactions: Tx[]; budgets: Budget[]; goals: Goal[]; bank?: BankInfo; snapshot?: { balance: number; asOf: string } | null; savings?: Savings };
@@ -243,7 +242,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
     fetch("/api/finances", { headers: { "x-access-code": accessCode } })
       .then(async (r) => {
         if (r.status === 401) return onUnauthorized();
-        // Toute erreur (base indisponible…) → aperçu fictif plutôt qu'un écran cassé.
+        // Toute erreur (base indisponible…) → message honnête plutôt qu'un écran cassé.
         setData(r.ok ? await r.json() : { ready: false });
       })
       .catch(() => setData({ ready: false }));
@@ -433,49 +432,16 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
     );
   }
 
-  /* ---------- Aperçu FICTIF (phase 4 : tables pas encore créées) ---------- */
-  const [int, dec] = euro(F.balance).split(",");
+  /* ---------- Base pas prête ou indisponible : aucun chiffre inventé ---------- */
   return (
     <div className="space-y-3 px-4 pb-6">
       <Header title="Finances" onAvatar={onAvatar} />
-      <div className="px-1">
-        <DemoBanner phase={DEMO_PHASE.finances} />
-      </div>
-
-      {/* Solde en grand, façon app bancaire */}
-      <div className="px-1 pb-3 pt-4 text-center">
-        <p className="text-sm text-muted">Solde total</p>
-        <p className="mt-1 text-[44px] font-semibold leading-none tracking-tight tabular-nums">
-          {int}
-          <span className="text-2xl text-muted">,{dec}</span>
-        </p>
-      </div>
-
       <Card>
-        <div className="flex items-baseline justify-between">
-          <Label>Dépensé ce mois-ci</Label>
-          <p className="text-xs text-faint">sur {euro(F.monthBudget, false)}</p>
-        </div>
-        <p className="mb-3 mt-1 text-2xl font-semibold tabular-nums">{euro(F.monthSpent)}</p>
-        <Bar value={F.monthSpent} max={F.monthBudget} />
-      </Card>
-
-      <Card>
-        <div className="mb-3">
-          <Label>Budgets</Label>
-        </div>
-        <BudgetList rows={F.budgets.map((b) => ({ category: b.label, spent: b.spent, limit: b.limit, over: b.spent > b.limit }))} />
-      </Card>
-
-      {F.goals.map((g) => (
-        <GoalCard key={g.label} g={{ label: g.label, target: g.target, saved: g.saved, due_label: g.due, image_url: g.image_url }} />
-      ))}
-
-      {importButton}
-
-      <Card>
-        <Label>Dernières opérations</Label>
-        <TxList items={F.transactions.map((t) => ({ key: t.label + t.when, label: t.label, sub: `${t.category} · ${t.when}`, amount: t.amount }))} />
+        <p className="text-[17px] font-semibold tracking-tight">Finances indisponibles pour l&apos;instant</p>
+        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire tes données. Vérifie ta connexion puis rouvre l&apos;onglet.</p>
+        <button onClick={load} className="mt-3 min-h-11 rounded-full bg-raised px-4 text-[13px] font-medium ring-1 ring-line active:scale-95">
+          Réessayer
+        </button>
       </Card>
     </div>
   );

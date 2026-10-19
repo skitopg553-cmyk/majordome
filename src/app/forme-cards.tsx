@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { barPercent, dayTotals } from "@/lib/nutrition/food";
-import { DEMO_FORME, DEMO_PHASE } from "@/lib/demo-data";
-import { Bar, Card, DemoBanner, Label } from "./ui";
+import { openUsageSettings, usageAvailable, usageDays, usageGranted } from "@/lib/native-usage";
+import { minutesLabel, screenTrend, type ScreenRow } from "@/lib/screen-time";
+import { parisDay } from "@/lib/task-groups";
+import { Bar, Card, Label } from "./ui";
 
 export type Meal = { id: number; label: string; grams: number; kcal: number; protein: number; carbs: number; fat: number; estimated: number };
 export type NutritionData = { meals: Meal[]; goals: { kcal: number | null; protein: number | null; carbs: number | null; fat: number | null } | null };
@@ -75,16 +78,56 @@ export function NutritionCard({ data, onDelete }: { data: NutritionData; onDelet
   );
 }
 
-/** Temps d'écran : APERÇU fictif (une PWA ne peut pas le lire ; la vraie saisie viendra plus tard, voir docs/temps-ecran.md). */
-export function ScreenDemoCard() {
+/**
+ * Temps d'écran RÉEL. Une PWA ne peut pas le lire : dans la coque Android, le plugin Usage le lit (après ton autorisation, une seule fois)
+ * et on l'envoie à /api/screen-time. Sur le web : message honnête, aucun chiffre inventé.
+ */
+export function ScreenCard({ rows, accessCode, onSynced }: { rows: ScreenRow[]; accessCode: string; onSynced: () => void }) {
+  const [mode, setMode] = useState<"web" | "needs" | "ok">("web");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!usageAvailable()) return;
+    let alive = true;
+    (async () => {
+      if (!(await usageGranted())) return alive && setMode("needs");
+      setMode("ok");
+      for (const d of (await usageDays(14)).filter((x) => x.minutes > 0)) {
+        const r = await fetch("/api/screen-time", { method: "POST", headers: { "Content-Type": "application/json", "x-access-code": accessCode }, body: JSON.stringify({ date: d.date, minutes: d.minutes }) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `Erreur ${r.status}`);
+      }
+      if (alive) onSynced();
+    })().catch((e) => alive && setError(e instanceof Error ? e.message : "Lecture impossible"));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule synchro à l'ouverture de l'écran
+  }, [accessCode]);
+
+  const today = parisDay(new Date());
+  const todayRow = rows.find((r) => r.date === today);
+  const trend = screenTrend(rows, today);
   return (
     <Card>
       <Label>Temps d&apos;écran</Label>
-      <p className="mt-1 text-[28px] font-semibold tabular-nums tracking-tight">{DEMO_FORME.screenTime.today}</p>
-      <p className="text-[13px] text-muted">{DEMO_FORME.screenTime.trend}</p>
-      <div className="mt-3">
-        <DemoBanner phase={DEMO_PHASE.forme} what="temps d'écran fictif" />
-      </div>
+      {todayRow ? (
+        <>
+          <p className="mt-1 text-[28px] font-semibold tabular-nums tracking-tight">{minutesLabel(todayRow.minutes)}</p>
+          <p className="text-[13px] text-muted">{trend ? trend.label : "aujourd'hui"}</p>
+        </>
+      ) : mode === "needs" ? (
+        <>
+          <p className="mt-1 text-[15px] text-muted">Autorise Majordome à lire ton temps d&apos;écran : une seule fois, dans les réglages d&apos;Android.</p>
+          <button onClick={() => void openUsageSettings()} className="mt-3 min-h-11 rounded-full bg-accent px-4 text-[13px] font-semibold text-ink active:scale-95">
+            Autoriser l&apos;accès
+          </button>
+        </>
+      ) : mode === "ok" ? (
+        <p className="mt-1 text-[15px] text-muted">Lecture en cours…</p>
+      ) : (
+        <p className="mt-1 text-[15px] text-muted">Le temps d&apos;écran réel est lu par l&apos;appli Android de Majordome (le navigateur n&apos;y a pas accès).</p>
+      )}
+      {error && <p className="mt-2 text-[12px] text-neg">{error}</p>}
     </Card>
   );
 }

@@ -1,15 +1,5 @@
 // Petits éléments d'interface partagés par toutes les sections.
 
-/** Bandeau obligatoire sur tout bloc qui affiche des données fictives. */
-export function DemoBanner({ phase, what = "données fictives" }: { phase: number; what?: string }) {
-  return (
-    <p className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.12em] text-faint">
-      <span className="size-1 rounded-full bg-faint" aria-hidden />
-      Aperçu — {what} · phase {phase}
-    </p>
-  );
-}
-
 /** Carte arrondie façon app bancaire. Cliquable si onClick est fourni. */
 export function Card({ children, onClick, className = "" }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
   const cls = `block w-full rounded-[22px] bg-surface p-4 text-left ${onClick ? "transition-transform active:scale-[0.985]" : ""} ${className}`;

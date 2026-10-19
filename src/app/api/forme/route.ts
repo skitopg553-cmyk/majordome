@@ -4,24 +4,25 @@ import { isRealDay as isDay } from "@/lib/life";
 import { isMissingTable, supabaseAdmin } from "@/lib/supabase";
 import { parisDay } from "@/lib/task-groups";
 
-// Sommeil et séances des 28 derniers jours. Sans la migration 0005 : { ready: false } → aperçu fictif.
+// Sommeil et séances des 28 derniers jours. Sans la migration 0005 : { ready: false } (l'écran affiche un message, rien d'inventé).
 export async function GET(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   const db = supabaseAdmin();
   const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
   const today = parisDay(new Date());
-  const [sleeps, workouts, steps, food, goals] = await Promise.all([
+  const [sleeps, workouts, steps, food, goals, screen] = await Promise.all([
     db.from("sleep_logs").select("date,hours").gte("date", since).order("date"),
     db.from("workouts").select("id,date,kind,minutes").gte("date", since).order("date"),
     db.from("steps_logs").select("date,steps").gte("date", since).order("date"),
     db.from("food_logs").select("id,label,grams,kcal,protein,carbs,fat,estimated").eq("date", today).order("id"),
     db.from("nutrition_goals").select("kcal,protein,carbs,fat").eq("id", 1).maybeSingle(),
+    db.from("screen_time_logs").select("date,minutes").gte("date", since).order("date"),
   ]);
   const error = sleeps.error ?? workouts.error;
   if (isMissingTable(error)) return NextResponse.json({ ready: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // Les pas sont facultatifs : sans leur table (migration 0008), le reste de l'écran marche quand même.
-  return NextResponse.json({ ready: true, sleeps: (sleeps.data ?? []).map((s) => ({ ...s, hours: Number(s.hours) })), workouts: workouts.data ?? [], steps: steps.error ? [] : steps.data ?? [],
+  return NextResponse.json({ ready: true, sleeps: (sleeps.data ?? []).map((s) => ({ ...s, hours: Number(s.hours) })), workouts: workouts.data ?? [], steps: steps.error ? [] : steps.data ?? [], screen: screen.error ? [] : screen.data ?? [], // temps d'écran réel (coque Android) : facultatif
     // Nutrition (migration 0011) : facultatifs, l'écran marche sans. numeric arrive en texte → converti ici.
     nutrition: food.error ? null : { meals: (food.data ?? []).map((m) => ({ id: m.id, label: m.label, grams: Number(m.grams), kcal: Number(m.kcal), protein: Number(m.protein), carbs: Number(m.carbs), fat: Number(m.fat), estimated: Number(m.estimated) })), goals: goals.error ? null : goals.data },
   });

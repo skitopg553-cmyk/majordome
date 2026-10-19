@@ -56,6 +56,9 @@
 ### 8. Si ça marche
 Dis simplement « mets un réveil à 7 h demain » ou « minuteur de 5 minutes » : l'appli règle l'Horloge toute seule et le dit à voix haute.
 
+## Temps d'écran réel (plugin Usage, ajouté le 19/10)
+Après avoir reconstruit et réinstallé l'APK (étapes 4 et 6) : ouvre l'onglet **Forme** → carte « Temps d'écran » → **Autoriser l'accès** → dans la liste d'Android, choisis **majordome** → active « Autoriser l'accès aux données d'utilisation » → reviens dans l'appli et rouvre Forme : le chiffre du jour apparaît. **Non compilé ici** (pas d'Android Studio) : si la compilation échoue, copie-moi l'erreur.
+
 ## Erreurs fréquentes
 | Message / symptôme | Que faire |
 |---|---|

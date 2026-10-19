@@ -1,32 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DEMO_FORME as S, DEMO_PHASE } from "@/lib/demo-data";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
+import type { ScreenRow } from "@/lib/screen-time";
 import { addDays, parisDay } from "@/lib/task-groups";
 import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry, type DeleteTarget } from "./delete-entry";
-import { NutritionCard, ScreenDemoCard, type NutritionData } from "./forme-cards";
-import { Bar, Card, DemoBanner, Header, Label } from "./ui";
+import { NutritionCard, ScreenCard, type NutritionData } from "./forme-cards";
+import { Bar, Card, Header, Label } from "./ui";
 
 const DAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const KINDS = ["Salle", "Course à pied", "Vélo", "Natation", "Foot", "Yoga"];
-type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: (Workout & { id?: number })[]; steps?: { date: string; steps: number }[]; nutrition?: NutritionData | null };
-
-/** Anneau de progression (pas, score). */
-function Ring({ value, max, children }: { value: number; max: number; children: React.ReactNode }) {
-  const r = 34;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="relative size-24 shrink-0">
-      <svg viewBox="0 0 80 80" className="size-full -rotate-90" aria-hidden>
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-raised)" strokeWidth="6" />
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--color-accent)" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, value / max))} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
-    </div>
-  );
-}
+type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: (Workout & { id?: number })[]; steps?: { date: string; steps: number }[]; nutrition?: NutritionData | null; screen?: ScreenRow[] };
 
 /** Barres de sommeil (une par nuit). */
 function SleepBars({ nights }: { nights: { label: string; hours: number | null; current: boolean }[] }) {
@@ -46,33 +31,6 @@ function SleepBars({ nights }: { nights: { label: string; hours: number | null; 
         </div>
       ))}
     </div>
-  );
-}
-
-/** Cartes encore sans source de données (pas, temps d'écran) : toujours fictives, avec bandeau. */
-function DemoExtras() {
-  return (
-    <>
-      <Card className="flex items-center gap-5">
-        <Ring value={S.steps.count} max={S.steps.goal}>
-          <span className="text-lg font-semibold tabular-nums">{(S.steps.count / 1000).toFixed(1).replace(".", ",")}k</span>
-          <span className="text-[10px] text-faint">/ {S.steps.goal / 1000}k pas</span>
-        </Ring>
-        <dl className="min-w-0 flex-1 space-y-3 text-[15px]">
-          <div>
-            <dt className="text-xs text-faint">Temps d&apos;écran aujourd&apos;hui</dt>
-            <dd>{S.screenTime.today}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-faint">Série en cours</dt>
-            <dd>{S.discipline.streak} jours</dd>
-          </div>
-        </dl>
-      </Card>
-      <div className="px-1">
-        <DemoBanner phase={DEMO_PHASE.forme} what="pas et temps d'écran fictifs" />
-      </div>
-    </>
   );
 }
 
@@ -276,41 +234,22 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
           )}
         </Card>
         {data.nutrition && <NutritionCard data={data.nutrition} onDelete={(m) => remove({ table: "food_logs", id: m.id }, `« ${m.label} » (${m.grams} g)`)} />}
-        <ScreenDemoCard />
+        <ScreenCard rows={data.screen ?? []} accessCode={accessCode} onSynced={load} />
       </div>
     );
   }
 
-  /* ---------- Aperçu FICTIF (phase 5 : tables pas encore créées) ---------- */
+  /* ---------- Base pas prête ou indisponible : aucun chiffre inventé ---------- */
   return (
     <div className="space-y-3 px-4 pb-6">
       <Header title="Forme" subtitle="Santé, sport et productivité" onAvatar={onAvatar} />
-      <div className="px-1">
-        <DemoBanner phase={DEMO_PHASE.forme} />
-      </div>
-
       <Card>
-        <div className="flex items-baseline justify-between">
-          <Label>Sommeil</Label>
-          <p className="text-xs text-faint">Coucher {S.sleep.bedtime}</p>
-        </div>
-        <p className="mt-1 text-3xl font-semibold tabular-nums">{hoursLabel(S.sleep.hours)}</p>
-        <SleepBars nights={S.sleep.week.map((h, i) => ({ label: DAYS[i], hours: h, current: i === S.sleep.week.length - 1 }))} />
+        <p className="text-[17px] font-semibold tracking-tight">Forme indisponible pour l&apos;instant</p>
+        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire tes données. Vérifie ta connexion puis rouvre l&apos;onglet.</p>
+        <button onClick={load} className="mt-3 min-h-11 rounded-full bg-raised px-4 text-[13px] font-medium ring-1 ring-line active:scale-95">
+          Réessayer
+        </button>
       </Card>
-
-      <Card>
-        <Label>Séances</Label>
-        <p className="mt-2 text-3xl font-semibold tabular-nums">
-          {S.workouts.done}
-          <span className="text-base text-faint"> / {S.workouts.goal} cette semaine</span>
-        </p>
-        <div className="mt-3">
-          <Bar value={S.workouts.done} max={S.workouts.goal} />
-        </div>
-        <p className="mt-3 text-xs text-muted">{S.workouts.last}</p>
-      </Card>
-
-      <DemoExtras />
     </div>
   );
 }
