@@ -7,10 +7,12 @@ import { briefing } from "@/lib/briefing";
 import { homeTasks } from "@/lib/planning";
 import { parisDay } from "@/lib/task-groups";
 import Majordome from "./majordome";
+import HabitCheck from "./habit-check";
 import TaskRow from "./task-row";
 import TaskSheet from "./task-sheet";
 import { Avatar, Bar, Card, euro, greeting, Label, SkeletonRows, Wordmark } from "./ui";
 import type { GoogleApi } from "./use-google";
+import type { SlotsApi } from "./use-slots";
 import type { TasksApi } from "./use-tasks";
 
 type Go = (tab: "planning" | "finances" | "forme") => void;
@@ -20,7 +22,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
 type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; budgets?: Budget[]; savings?: { capacity: { months: number; free: number } }; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
 type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[]; nutrition?: { meals: { kcal: number }[] } | null };
 
-export default function HomeView({ accessCode, tasks: api, google, googleNotice, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; google: GoogleApi; googleNotice: string | null; go: Go; onAvatar: () => void; onWeek: () => void }) {
+export default function HomeView({ accessCode, tasks: api, google, slots, googleNotice, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; google: GoogleApi; slots: SlotsApi; googleNotice: string | null; go: Go; onAvatar: () => void; onWeek: () => void }) {
   const gOk = google.state === "ok";
   const now = new Date();
   // Tâches = éléments SANS heure (les éléments avec une heure sont de l'agenda, dans le Planning). Celles qu'on vient de cocher restent le temps de l'animation.
@@ -87,6 +89,9 @@ export default function HomeView({ accessCode, tasks: api, google, googleNotice,
           ))}
         </ul>
       </div>
+
+      {/* Bilan des habitudes : « Tu y es allé ? » pour les créneaux d'habitude terminés (2 au plus) */}
+      <HabitCheck slots={slots} />
 
       {/* Tâches (éléments sans heure) — RÉELLES. En retard, puis aujourd'hui, puis sans date ; 5 visibles, le reste se déplie. */}
       <Card>
