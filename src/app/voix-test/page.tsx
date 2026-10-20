@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { AiMood } from "@/lib/mascot";
+import ConversationProto from "./conversation";
 
 // Page de comparaison des voix : les 3 phrases lues par chaque modèle ElevenLabs (Flash, Multilingual v2, v3), avec le délai avant le premier son (mesuré) et le coût.
 // Curseurs de stabilité et de style, envoyés au serveur à chaque lecture. Protégée par le code d'accès (le même que l'app, lu dans ce navigateur).
 // Rien n'est branché dans le reste de l'app tant que Ruben n'a pas choisi.
 
 const PHRASES = [
-  { id: "courte", label: "Courte", text: "Très bien, Monsieur. C'est noté." },
-  { id: "chiffres", label: "Chiffres", text: "Réveil réglé à sept heures trente, Monsieur. Vous avez 3 tâches aujourd'hui, dont deux avant midi." },
-  { id: "longue", label: "Longue", text: "Bonne nouvelle, Monsieur : votre semaine est bien partie. Vous avez fait quatre séances de sport et dépensé moins que d'habitude. Pour demain, je vous conseille de décaler le rendez-vous de quatorze heures." },
+  { id: "courte", mood: "happy" as AiMood, label: "Courte", text: "Très bien, Monsieur. C'est noté." },
+  { id: "chiffres", mood: "focus" as AiMood, label: "Chiffres", text: "Réveil réglé à sept heures trente, Monsieur. Vous avez 3 tâches aujourd'hui, dont deux avant midi." },
+  { id: "longue", mood: "happy" as AiMood, label: "Longue", text: "Bonne nouvelle, Monsieur : votre semaine est bien partie. Vous avez fait quatre séances de sport et dépensé moins que d'habitude. Pour demain, je vous conseille de décaler le rendez-vous de quatorze heures." },
 ];
 
-type Row = { id: string; label: string; note: string; model?: "flash" | "v2" | "v3"; openai?: boolean };
+type Row = { id: string; label: string; note: string; model?: "flash" | "v2" | "v3"; openai?: boolean; expressive?: boolean };
 const ROWS: Row[] = [
   { id: "phone", label: "Voix du téléphone", note: "Gratuite, dernier repli et point de comparaison." },
   { id: "flash", label: "ElevenLabs · Flash v2.5", note: "Le plus rapide et le moins cher (0,5 crédit par caractère).", model: "flash" },
   { id: "v2", label: "ElevenLabs · Multilingual v2", note: "Plus riche, plus lent (1 crédit par caractère).", model: "v2" },
-  { id: "v3", label: "ElevenLabs · v3", note: "Le plus expressif ; l'audio arrive d'un bloc, donc plus lent (1 crédit par caractère). Stabilité : 0 = créatif, 0,5 = naturel, 1 = stable.", model: "v3" },
+  { id: "v3", label: "ElevenLabs · v3 · sans indications", note: "Le plus expressif ; l'audio arrive d'un bloc, donc plus lent (1 crédit par caractère). Stabilité : 0 = créatif, 0,5 = naturel, 1 = stable.", model: "v3" },
+  { id: "v3x", label: "ElevenLabs · v3 · avec indications", note: "Même modèle, mais l\'humeur de la mascotte devient une indication d\'émotion ([warmly], [thoughtful]…) et les phrases longues respirent (courte interjection, une ligne par phrase). C\'est ce que l\'app enverrait.", model: "v3", expressive: true },
   { id: "openai", label: "OpenAI · coral (repli n° 1)", note: "gpt-4o-mini-tts : utilisé si ElevenLabs tombe.", openai: true },
 ];
 
@@ -76,7 +79,7 @@ export default function VoixTest() {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-access-code": code ?? "" },
         // Pour la ligne OpenAI on n'envoie pas de modèle ElevenLabs : sans clé ElevenLabs côté serveur elle passerait directement par OpenAI ; avec, il faut forcer le repli.
-        body: JSON.stringify({ text: p.text, voice: "coral", nocache: true, model: row.model, stability, style, only: row.openai ? "openai" : undefined }),
+        body: JSON.stringify({ text: p.text, voice: "coral", nocache: true, model: row.model, stability, style, only: row.openai ? "openai" : undefined, mood: p.mood, expressive: row.expressive }),
       });
       const reply = performance.now() - t0; // l'audio commence d'arriver
       if (res.status === 401) throw new Error("Code d'accès refusé : ouvre l'app et entrez votre code.");
@@ -192,6 +195,8 @@ export default function VoixTest() {
           );
         })}
       </ul>
+
+      <ConversationProto accessCode={code} />
 
       <section className="rounded-[22px] bg-surface p-4">
         <h2 className="text-[15px] font-medium">Récapitulatif (premier son · coût)</h2>

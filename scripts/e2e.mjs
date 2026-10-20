@@ -36,6 +36,10 @@ const run = async (name, fn, opts = {}) => {
       const undo = [{ label: "Ajout", steps: [{ op: "delete", table: "tasks", id: 2 }] }];
       return route.fulfill({ status: 200, contentType: "text/plain", body: "C'est noté." + String.fromCharCode(30) + JSON.stringify(undo) });
     }
+    if (p === "/api/realtime") {
+      state.posts.push(body);
+      return json(body.action === "start" ? { secret: "ek_test", model: "gpt-realtime", sessionId: 12, remainingSeconds: 600, usdPerMinute: 0.2 } : { ok: true });
+    }
     if (p === "/api/forme" && m === "POST") {
       state.posts.push(body);
       if (body.type === "sleep") state.sleeps.push({ date: body.date, hours: 7.5 });
@@ -148,7 +152,52 @@ await run("8. Soir : la carte dîner (« Rien » la ferme), jamais plus de 2 car
   await page.getByText("Qu'avez-vous mangé, Monsieur ?").waitFor({ state: "detached" });
 }, { now: new Date("2026-10-20T18:30:00Z") }); // 20 h 30
 
+await run("9. Conversation (prototype) : maintenir pour parler envoie la phrase, la session est journalisée à la fin (service OpenAI simulé)", async (page, s) => {
+  await page.addInitScript(() => {
+    window.__sent = [];
+    class DC { send(m) { window.__sent.push(JSON.parse(m)); } close() {} }
+    class PC {
+      createDataChannel() { return (window.__dc = new DC()); }
+      addTrack() {}
+      async createOffer() { return { type: "offer", sdp: "v=0" }; }
+      async setLocalDescription(d) { this.localDescription = d; }
+      async setRemoteDescription() {}
+      close() {}
+    }
+    window.RTCPeerConnection = PC;
+    const track = { enabled: true, stop() {} };
+    window.__track = track;
+    Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia: async () => ({ getAudioTracks: () => [track], getTracks: () => [track] }) }, configurable: true });
+  });
+  await page.route("https://api.openai.com/**", (route) => route.fulfill({ status: 200, contentType: "application/sdp", body: "v=0 réponse" }));
+  await page.goto(url + "/voix-test");
+  await page.getByRole("button", { name: "Démarrer la conversation" }).click();
+  await page.getByText("Prêt : maintenez le bouton pour parler").waitFor();
+  assert.equal(await page.evaluate(() => window.__track.enabled), false, "le micro doit rester fermé tant que le bouton n'est pas maintenu");
+  const hold = page.getByRole("button", { name: "Maintenir pour parler" });
+  const box = await hold.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.getByText("Je vous écoute…").first().waitFor();
+  assert.equal(await page.evaluate(() => window.__track.enabled), true, "le micro doit s'ouvrir pendant que le bouton est maintenu");
+  await page.mouse.up();
+  await page.getByText("Je réfléchis…").waitFor();
+  const types = await page.evaluate(() => window.__sent.map((m) => m.type));
+  assert.deepEqual(types, ["input_audio_buffer.commit", "response.create"], "la phrase doit être validée puis la réponse demandée");
+  await page.evaluate(() => window.__dc.onmessage({ data: JSON.stringify({ type: "output_audio_buffer.started" }) }));
+  await page.getByText("Majordome parle").waitFor();
+  await page.evaluate(() => window.__dc.onmessage({ data: JSON.stringify({ type: "response.output_audio_transcript.done", transcript: "Très bien, Monsieur." }) }));
+  await page.getByText("Très bien, Monsieur.").waitFor();
+  await page.getByRole("button", { name: "Terminer la conversation" }).click();
+  await page.getByText("Conversation fermée").waitFor().catch(() => {});
+  await page.waitForTimeout(300);
+  const end = s.posts.find((b) => b.action === "end");
+  assert.ok(end, "la fin de session n'a pas été journalisée");
+  assert.equal(end.sessionId, 12);
+  assert.ok(end.seconds >= 0 && end.seconds < 60, "durée de session incohérente");
+});
+
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;
-console.log(failed ? `\n${failed} parcours en échec.` : "\nLes 8 parcours passent.");
+console.log(failed ? `\n${failed} parcours en échec.` : "\nLes 9 parcours passent.");
 process.exit(failed ? 1 : 0);
