@@ -27,9 +27,17 @@ export default function TaskRow({ t, leaving, onToggle, onOpen }: { t: Task; lea
           )}
         </span>
       </button>
-      <button onClick={onOpen} disabled={t.id < 0} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug ${done ? "text-faint line-through" : ""}`}>
+      <button onClick={onOpen} disabled={t.id < 0 || !!t.recurring} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug ${done ? "text-faint line-through" : ""}`}>
         {t.priority === 1 && !done && <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Priorité haute" />}
         <span className={`min-w-0 flex-1 ${t.priority === 3 && !done ? "text-muted" : ""}`}>{t.title}</span>
+        {t.recurring && (
+          <span className="flex shrink-0 items-center gap-1 text-[12px] text-faint" title={`Revient : ${t.recurring.label}`} aria-label={`Revient : ${t.recurring.label}${t.recurring.progress ? `, ${t.recurring.progress.done} sur ${t.recurring.progress.of} cette semaine` : ""}`}>
+            <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3" />
+            </svg>
+            {t.recurring.progress ? `${t.recurring.progress.done}/${t.recurring.progress.of}` : null}
+          </span>
+        )}
       </button>
     </li>
   );

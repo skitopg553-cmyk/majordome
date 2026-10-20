@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
 import { taskFields, taskPatch } from "@/lib/limits";
-import { materializeToday } from "@/lib/recurring-store";
+import { listChecks, listRules, materializeToday } from "@/lib/recurring-store";
+import { dueReminders, virtualId } from "@/lib/recurring-reminders";
+import { dueAtFor } from "@/lib/recurrence";
+import { parisDay } from "@/lib/task-groups";
+import { fold } from "@/lib/text";
 import { isSimilar } from "@/lib/tools";
 
 const COLS = "*"; // « * » : la colonne end_at (migration 0014) apparaît toute seule dès qu'elle existe, et l'app marche sans
@@ -10,14 +14,22 @@ const COLS = "*"; // « * » : la colonne end_at (migration 0014) apparaît tout
 export async function GET(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   const db = supabaseAdmin();
-  await materializeToday(db).catch((e) => console.error("récurrentes :", e)); // les tâches « tous les lundis »… du jour (sans effet si la table n'existe pas)
+  // Pense-bêtes qui reviennent : calculés ici (règle + « faits »), sans rien copier dans tasks. Sans la migration 0016, l'ancienne méthode (une tâche créée par jour).
+  const today = parisDay(new Date());
+  const checks = await listChecks(db, today).catch(() => null);
+  if (!checks) await materializeToday(db).catch((e) => console.error("récurrentes :", e));
   const [todo, done] = await Promise.all([
     db.from("tasks").select(COLS).eq("status", "todo").order("due_at", { ascending: true, nullsFirst: false }),
     db.from("tasks").select(COLS).eq("status", "done").order("done_at", { ascending: false }).limit(10),
   ]);
   const error = todo.error ?? done.error;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ tasks: [...(todo.data ?? []), ...(done.data ?? [])] });
+  const open = new Set((todo.data ?? []).map((t) => fold(t.title)));
+  const rules = checks ? ((await listRules(db).catch(() => null)) ?? []) : [];
+  const recurring = dueReminders(rules, checks ?? [], today)
+    .filter((d) => !open.has(fold(d.title))) // une copie déjà créée aujourd'hui par l'ancienne méthode : pas de doublon
+    .map((d) => ({ id: virtualId(d.ruleId), title: d.title, due_at: dueAtFor(null, today), priority: 2, notes: null, status: "todo", recurring: { ruleId: d.ruleId, label: d.label, progress: d.progress } }));
+  return NextResponse.json({ tasks: [...(todo.data ?? []), ...recurring, ...(done.data ?? [])] });
 }
 
 // Ajout rapide depuis l'app, sans passer par l'IA (gratuit et instantané).

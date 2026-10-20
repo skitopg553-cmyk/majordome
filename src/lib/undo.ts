@@ -17,7 +17,7 @@ export const RESTORABLE: Record<string, string[]> = {
   nutrition_goals: ["kcal", "protein", "carbs", "fat"],
   screen_time_logs: ["date", "minutes"],
   recurring_exceptions: ["rule_id", "day", "action", "new_day", "new_start", "new_end"],
-  recurring_tasks: ["title", "kind", "weekday", "month_day", "at_time", "last_generated", "days", "end_time", "habit"],
+  recurring_tasks: ["title", "kind", "weekday", "month_day", "at_time", "last_generated", "days", "end_time", "habit", "per_week"],
 };
 
 /** Tables dont une ligne peut être supprimée depuis l'app (toujours après confirmation). */
