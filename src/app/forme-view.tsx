@@ -1,16 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { OneOff } from "@/lib/habits";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
+import type { StoredRule } from "@/lib/recurrence";
+import type { SlotException } from "@/lib/slots";
+import { plannedSessions } from "@/lib/sports";
 import type { ScreenRow } from "@/lib/screen-time";
 import { addDays, parisDay } from "@/lib/task-groups";
 import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry, type DeleteTarget } from "./delete-entry";
 import { NutritionCard, ScreenCard, type NutritionData } from "./forme-cards";
+import { SportStats, Upcoming, WeekStrip } from "./forme-sport";
 import { Bar, Card, Header, Label } from "./ui";
 
 const DAYS = ["L", "M", "M", "J", "V", "S", "D"];
-const KINDS = ["Salle", "Course à pied", "Vélo", "Natation", "Foot", "Yoga"];
+const KINDS = ["Musculation", "Boxe anglaise", "Course à pied", "Vélo", "Natation", "Football", "Yoga"];
+type Slots = { rules: StoredRule[]; exceptions: SlotException[]; logs: { rule_id: number; day: string; status: "done" | "missed" }[]; oneoffs: OneOff[] };
 type Data = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: (Workout & { id?: number })[]; steps?: { date: string; steps: number }[]; nutrition?: NutritionData | null; screen?: ScreenRow[] };
 
 /** Barres de sommeil (une par nuit). */
@@ -36,11 +42,13 @@ function SleepBars({ nights }: { nights: { label: string; hours: number | null; 
 
 export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { accessCode: string; onUnauthorized: () => void; onAvatar: () => void }) {
   const [data, setData] = useState<Data | null>(null);
+  const [slots, setSlots] = useState<Slots>({ rules: [], exceptions: [], logs: [], oneoffs: [] }); // créneaux prévus : pour « séances prévues » et la régularité
   const [form, setForm] = useState<"sleep" | "workout" | null>(null);
   const [hours, setHours] = useState(7.5);
   const [kind, setKind] = useState(KINDS[0]);
   const [minutes, setMinutes] = useState(60);
   const [busy, setBusy] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null); // séance dont on règle la durée
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -53,6 +61,12 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
   }, [accessCode, onUnauthorized]);
 
   useEffect(load, [load]);
+  useEffect(() => {
+    fetch("/api/slots", { headers: { "x-access-code": accessCode } })
+      .then(async (r) => (r.ok ? await r.json() : null))
+      .then((d) => d?.ready && setSlots({ rules: d.rules ?? [], exceptions: d.exceptions ?? [], logs: d.logs ?? [], oneoffs: d.oneoffs ?? [] }))
+      .catch(() => {}); // sans créneaux : la semaine montre seulement ce qui est fait
+  }, [accessCode]);
 
   // Suppression définitive (toujours après confirmation), puis rechargement de l'écran.
   async function remove(target: DeleteTarget, what: string) {
@@ -99,6 +113,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
     const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
     const lastNight = data.sleeps.find((s) => s.date === today);
     const todaySteps = data.steps?.find((s) => s.date === today)?.steps;
+    const planned = plannedSessions({ ...slots, workouts: data.workouts, now });
     const weekList = data.workouts.filter((w) => w.id && w.date >= week.days[0] && w.date <= week.days[6]).sort((a, b) => b.date.localeCompare(a.date));
     const chip = (active: boolean) => `min-h-10 rounded-full px-3.5 text-[13px] font-medium transition-colors ${active ? "bg-accent text-ink" : "bg-raised text-muted"}`;
 
@@ -111,31 +126,37 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
           <div className="flex items-center justify-between">
             <Label>Votre semaine de sport</Label>
             <button onClick={() => setForm(form === "workout" ? null : "workout")} className="-my-2 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
-              + Séance
+              J&apos;ai fait une séance
             </button>
           </div>
-          <div className="mt-3 flex justify-between">
-            {week.days.map((d, i) => (
-              <div key={d} className="flex flex-col items-center gap-1.5">
-                <span className={`size-8 rounded-full transition-colors duration-200 ${week.active[i] ? "glow bg-accent" : d === today ? "ring-1 ring-muted" : "bg-raised"}`} />
-                <span className={`text-[11px] ${d === today ? "text-fg" : "text-faint"}`}>{DAYS[i]}</span>
-              </div>
-            ))}
-          </div>
+          <WeekStrip days={week.days} today={today} planned={planned} workouts={data.workouts} />
           <p className="mt-3 text-[14px] text-muted">
             {week.sessions === 0
               ? "Aucune séance cette semaine pour l'instant."
-              : `${week.activeDays} jour${week.activeDays > 1 ? "s" : ""} actif${week.activeDays > 1 ? "s" : ""} · ${week.sessions} séance${week.sessions > 1 ? "s" : ""}`}
+              : `${week.sessions} séance${week.sessions > 1 ? "s" : ""} faite${week.sessions > 1 ? "s" : ""} · ${week.activeDays} jour${week.activeDays > 1 ? "s" : ""} actif${week.activeDays > 1 ? "s" : ""}`}
           </p>
+          <Upcoming planned={planned} week={week.days} />
           {weekList.length > 0 && (
             <ul className="mt-1 divide-y divide-line/60">
               {weekList.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 py-1">
                   <span className="min-w-0 flex-1 truncate text-[14px]">
                     {w.kind}
-                    {w.minutes ? <span className="text-faint"> · {w.minutes} min</span> : null}
+                    <span> </span>
+                    <button onClick={() => setEditId(editId === w.id ? null : w.id!)} aria-label="Modifier la durée" className="-my-3 min-h-11 text-faint active:text-fg">
+                      · {w.minutes ? `${w.minutes} min` : "durée ?"}
+                    </button>
                     <span className="text-faint"> · {new Date(`${w.date}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short" })}</span>
                   </span>
+                  {editId === w.id && (
+                    <span className="flex items-center gap-1">
+                      {[-15, 15].map((delta) => (
+                        <button key={delta} disabled={busy} onClick={() => save({ type: "workout-minutes", id: w.id, minutes: Math.min(600, Math.max(5, (w.minutes ?? 60) + delta)) })} className="min-h-11 rounded-full bg-raised px-3 text-[13px] font-medium tabular-nums active:scale-95 disabled:opacity-50">
+                          {delta > 0 ? "+" : "−"}15
+                        </button>
+                      ))}
+                    </span>
+                  )}
                   <button onClick={() => remove({ table: "workouts", id: w.id! }, `la séance « ${w.kind} » du ${w.date}`)} aria-label={`Supprimer la séance ${w.kind}`} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-raised active:text-neg">
                     <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                       <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" />
@@ -162,11 +183,13 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
                 ))}
               </div>
               <button onClick={() => save({ type: "workout", kind, minutes })} disabled={busy} className="min-h-11 w-full rounded-full bg-accent text-[14px] font-semibold text-ink disabled:opacity-50">
-                Ajouter la séance d&apos;aujourd&apos;hui
+                Noter la séance d&apos;aujourd&apos;hui
               </button>
             </div>
           )}
         </Card>
+
+        <SportStats planned={planned} workouts={data.workouts} since={addDays(today, -27)} />
 
         {/* Sommeil */}
         <Card>

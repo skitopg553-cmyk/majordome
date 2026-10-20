@@ -4,6 +4,7 @@ import { cleanTitle, DEFAULT_MINUTES, dayText, eventsOn, fromMin, hmOf, isoAt, n
 import { hasTime } from "./planning";
 import type { StoredRule } from "./recurrence";
 import { daysLabel, parseDays, parseHour, type SlotException } from "./slots";
+import { classifySport } from "./sports";
 import { addDays, parisDay } from "./task-groups";
 
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -59,9 +60,9 @@ export function planCreate(state: State, a: EventInput, now: Date): Plan {
   const h = hours(a);
   if (!h.ok) return h;
   const { start, end, assumed } = h.value;
-  const tail = assumed ? " (1 h par défaut : dis-moi l'heure de fin pour corriger)" : "";
+  const tail = assumed ? " (1 h par défaut : dites-moi l'heure de fin pour corriger)" : "";
   const n = normTitle(title);
-  const habit = a.habit === true;
+  const habit = a.habit === true || classifySport(title).kind === "sport"; // un titre de sport est toujours une habitude à confirmer : le code décide, pas l'IA
 
   if (hasDays(a.days)) {
     const d = parseDays(a.days);

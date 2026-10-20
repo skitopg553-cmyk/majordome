@@ -135,3 +135,14 @@ describe("displayReply", () => {
     expect(displayReply("lundi-vendredi")).toBe("lundi-vendredi");
   });
 });
+
+describe("bilan d'une séance ponctuelle : validation de l'action", () => {
+  it("task_id accepté avec un jour passé et un statut", () => {
+    expect(parseSlotAction({ action: "habit", task_id: 7, day: "2026-10-20", status: "done" }, "2026-10-20")).toEqual({ ok: true, value: { action: "habit", rule_id: 0, task_id: 7, day: "2026-10-20", status: "done", then: null } });
+  });
+  it("refusé : id absurde, jour à venir, statut inconnu", () => {
+    expect(parseSlotAction({ action: "habit", task_id: -1, day: "2026-10-20", status: "done" }, "2026-10-20").ok).toBe(false);
+    expect(parseSlotAction({ action: "habit", task_id: 7, day: "2026-10-21", status: "done" }, "2026-10-20").ok).toBe(false);
+    expect(parseSlotAction({ action: "habit", task_id: 7, day: "2026-10-20", status: "peut-être" }, "2026-10-20").ok).toBe(false);
+  });
+});

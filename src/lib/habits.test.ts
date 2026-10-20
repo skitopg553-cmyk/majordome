@@ -75,3 +75,18 @@ describe("doneThisWeek : compteur positif seulement", () => {
     expect(doneThisWeek(logs, 1, "2026-10-19")).toBe(2);
   });
 });
+
+describe("séances de sport ponctuelles dans le bilan", () => {
+  const run = { id: 7, title: "Course à pied", due_at: "2026-10-20T05:00:00Z", end_at: "2026-10-20T06:00:00Z", status: "todo" as const, habit_status: null };
+  const q = (now: string, o = {}) => habitQuestions({ rules: [], exceptions: [], logs: [], now: new Date(now), oneoffs: [{ ...run, ...o }] });
+  it("posée une fois la séance finie, avec la clé t7, pas avant", () => {
+    expect(q("2026-10-20T05:30:00Z")).toEqual([]);
+    expect(q("2026-10-20T07:00:00Z").map((x) => [x.key, x.taskId])).toEqual([["t7", 7]]);
+  });
+  it("jamais redemandée une fois répondue, ni après 48 h, ni pour un titre qui n'est pas du sport", () => {
+    expect(q("2026-10-20T07:00:00Z", { habit_status: "done" })).toEqual([]);
+    expect(q("2026-10-20T07:00:00Z", { status: "done" })).toEqual([]);
+    expect(q("2026-10-22T06:01:00Z")).toEqual([]);
+    expect(q("2026-10-20T07:00:00Z", { title: "Dentiste" })).toEqual([]);
+  });
+});

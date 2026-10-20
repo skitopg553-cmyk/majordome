@@ -85,7 +85,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
       </div>
 
       <div className="px-1 pb-2 pt-1">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight">{greeting(now)} Ruben</h1>
+        <h1 className="text-[28px] font-semibold leading-tight tracking-tight">{greeting(now)}, Monsieur</h1>
         <ul className="mt-1 min-h-[4.5rem] space-y-0.5 text-[15px] leading-snug text-muted">
           {lines.map((l) => (
             <li key={l}>{l}</li>
@@ -101,7 +101,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
         <Label>Pense-bêtes</Label>
         {api.error && <p className="mt-2 text-sm text-neg">{api.error}</p>}
         {!api.loaded && <SkeletonRows />}
-        {api.loaded && list.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Rien à faire. Profites-en.</p>}
+        {api.loaded && list.length === 0 && !api.error && <p className="mt-1 text-[15px] text-muted">Rien à faire, Monsieur. Profitez-en.</p>}
         {shown.length > 0 && (
           <ul className="mt-1">
             {shown.map((t) => (

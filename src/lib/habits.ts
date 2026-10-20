@@ -1,6 +1,7 @@
 // Bilan des habitudes : « Tu y es allé ? » pour les créneaux d'habitude terminés. Tout est calculé ici, en code (heure de Paris), l'IA n'intervient pas.
 import type { StoredRule } from "./recurrence";
 import { occurrencesOn, type SlotException } from "./slots";
+import { classifySport } from "./sports";
 import { addDays, parisDay } from "./task-groups";
 
 export const MAX_QUESTIONS = 2; // jamais plus de 2 questions à la fois
@@ -8,16 +9,18 @@ export const MAX_AGE_MS = 48 * 3_600_000; // un créneau terminé depuis plus de
 const DEFAULT_LENGTH_MS = 3_600_000; // sans heure de fin : le créneau est considéré fini 1 h après son début
 
 export type HabitLog = { rule_id: number; day: string; status: "done" | "missed" };
-export type Question = { key: string; ruleId: number; day: string; title: string; start: string; end: string };
+/** Question posée : une occurrence d'habitude (ruleId) ou une séance de sport ponctuelle (taskId, ruleId = 0, clé « t12 »). */
+export type Question = { key: string; ruleId: number; taskId?: number; day: string; title: string; start: string; end: string };
+/** Créneau ponctuel (table tasks) : seuls ceux au titre sportif, avec une heure, sont bilanés (« Demain je vais courir à 7 h »). */
+export type OneOff = { id: number; title: string; due_at: string | null; end_at?: string | null; status: "todo" | "done"; habit_status?: "done" | "missed" | null };
 
 /**
  * Les questions à poser MAINTENANT : créneaux d'habitude terminés (et pas depuis plus de 48 h), pas encore répondus, pas repoussés par « Plus tard »
  * (`snoozed` = clés repoussées pendant cette ouverture de l'appli : « Plus tard » revient à la prochaine ouverture). Les plus récents d'abord, 2 au plus.
  * Une occurrence déplacée est demandée sous son jour d'origine : une seule question par occurrence, même déplacée.
  */
-export function habitQuestions(o: { rules: StoredRule[]; exceptions: SlotException[]; logs: HabitLog[]; now: Date; snoozed?: Set<string> }): Question[] {
+export function habitQuestions(o: { rules: StoredRule[]; exceptions: SlotException[]; logs: HabitLog[]; now: Date; snoozed?: Set<string>; oneoffs?: OneOff[] }): Question[] {
   const habits = o.rules.filter((r) => r.habit && r.at_time);
-  if (!habits.length) return [];
   const answered = new Set(o.logs.map((l) => `${l.rule_id}:${l.day}`));
   const t = o.now.getTime();
   const createdAt = new Map(habits.map((r) => [r.id, r.created_at ? Date.parse(r.created_at) : 0]));
@@ -31,6 +34,13 @@ export function habitQuestions(o: { rules: StoredRule[]; exceptions: SlotExcepti
       if (end < createdAt.get(occ.ruleId)!) continue; // fini avant que la règle existe : on ne demande pas
       if (!out.some((q) => q.key === occ.key)) out.push({ key: occ.key, ruleId: occ.ruleId, day: occ.originDay, title: occ.title, start: occ.start, end: new Date(end).toISOString() });
     }
+  }
+  for (const task of o.oneoffs ?? []) {
+    if (task.status !== "todo" || task.habit_status || !task.due_at || classifySport(task.title).kind !== "sport") continue;
+    const end = task.end_at ? Date.parse(task.end_at) : Date.parse(task.due_at) + DEFAULT_LENGTH_MS;
+    const key = `t${task.id}`;
+    if (end > t || end < t - MAX_AGE_MS || o.snoozed?.has(key)) continue;
+    out.push({ key, ruleId: 0, taskId: task.id, day: parisDay(new Date(task.due_at)), title: task.title, start: task.due_at, end: new Date(end).toISOString() });
   }
   return out.sort((a, b) => b.end.localeCompare(a.end)).slice(0, MAX_QUESTIONS);
 }
