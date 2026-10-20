@@ -3,16 +3,29 @@
 import { fold } from "./text";
 import { parisIso } from "./task-groups";
 
-export type Rule = { kind: "daily" | "weekly" | "monthly"; weekday: number | null; month_day: number | null; days?: string | null }; // weekday : 1 = lundi … 7 = dimanche ; days : « 1,2,3,4,5 » (plusieurs jours, migration 0014)
+export type Rule = { kind: "daily" | "weekly" | "monthly"; weekday: number | null; month_day: number | null; days?: string | null; per_week?: number | null }; // weekday : 1 = lundi … 7 = dimanche ; days : « 1,2,3,4,5 » (plusieurs jours, migration 0014) ; per_week : « X fois par semaine » (pense-bête sans jour fixe, migration 0016)
 export type StoredRule = Rule & { id: number; title: string; at_time: string | null; last_generated: string | null; end_time?: string | null; habit?: boolean | number; created_at?: string };
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };
 
 const WEEKDAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
+const COUNTS: Record<string, number> = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7 };
+
 export function parseRecurrence(text: unknown): Res<Rule> {
   const t = typeof text === "string" ? fold(text).replace(/[’']/g, " ") : "";
-  const day = WEEKDAYS.findIndex((d) => new RegExp(`\\b${d}s?\\b`).test(t));
+  const days = WEEKDAYS.map((d, i) => (new RegExp(`\\b${d}s?\\b`).test(t) ? i + 1 : 0)).filter(Boolean);
+  const day = days.length ? days[0] - 1 : -1;
+  // « deux fois par semaine » : un pense-bête sans jour fixe, visible jusqu'à ce que le compte de la semaine soit atteint
+  const perWeek = t.match(/\b(\d+|un|une|deux|trois|quatre|cinq|six|sept)\s*fois\s*(?:par|chaque|la|\/)\s*semaine\b/);
+  if (perWeek) {
+    const n = COUNTS[perWeek[1]] ?? Number(perWeek[1]);
+    if (!(n >= 1 && n <= 7)) return { ok: false, error: "le nombre de fois par semaine doit être entre 1 et 7" };
+    return { ok: true, value: { kind: "daily", weekday: null, month_day: null, per_week: n } };
+  }
   if (/\b(tous les jours|chaque jour|quotidien|tous les matins|tous les soirs|chaque matin|chaque soir)\b/.test(t)) return { ok: true, value: { kind: "daily", weekday: null, month_day: null } };
+  if (/\b(en semaine|du lundi au vendredi)\b/.test(t)) return { ok: true, value: { kind: "weekly", weekday: 1, month_day: null, days: "1,2,3,4,5" } };
+  if (/\bweek[ -]?ends?\b/.test(t)) return { ok: true, value: { kind: "weekly", weekday: 6, month_day: null, days: "6,7" } };
+  if (days.length > 1 && /\b(tous les|chaque|toutes les|les)\b/.test(t)) return { ok: true, value: { kind: "weekly", weekday: days[0], month_day: null, days: days.join(",") } };
   if (day >= 0 && /\b(tous les|chaque|toutes les)\b/.test(t)) return { ok: true, value: { kind: "weekly", weekday: day + 1, month_day: null } };
   if (/\b(tous les mois|chaque mois|mensuel)/.test(t)) {
     const n = t.match(/\ble\s+(\d{1,2})/)?.[1];
@@ -52,9 +65,11 @@ export function dueAtFor(atTime: string | null, day: string) {
  * Règles à matérialiser aujourd'hui : elles tombent aujourd'hui et n'ont pas déjà créé leur tâche. Seulement les règles SANS heure (pense-bêtes qui reviennent) :
  * une règle avec heure est un créneau, calculé à l'affichage (src/lib/slots.ts), jamais copié dans tasks.
  */
-export const dueToday = (rules: StoredRule[], today: string) => rules.filter((r) => !r.at_time && r.last_generated !== today && occursOn(r, today));
+export const dueToday = (rules: StoredRule[], today: string) => rules.filter((r) => !r.at_time && !r.per_week && r.last_generated !== today && occursOn(r, today));
 
 export function ruleLabel(r: Rule & { at_time?: string | null }) {
   const at = r.at_time ? ` à ${r.at_time}` : "";
+  if (r.per_week) return `${r.per_week} fois par semaine`;
+  if (r.days && r.days.includes(",")) return `${r.days === "1,2,3,4,5" ? "en semaine" : r.days === "6,7" ? "le week-end" : `chaque ${r.days.split(",").map((d) => WEEKDAYS[Number(d) - 1]).join(" et ")}`}${at}`;
   return (r.kind === "daily" ? "chaque jour" : r.kind === "weekly" ? `chaque ${WEEKDAYS[(r.weekday ?? 1) - 1]}` : `le ${r.month_day} de chaque mois`) + at;
 }

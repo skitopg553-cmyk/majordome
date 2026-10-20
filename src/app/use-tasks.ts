@@ -7,7 +7,8 @@ import { callApi } from "./api-client";
 import { mascotApi } from "./mascot-engine";
 import { confirmDelete, deleteEntry } from "./delete-entry";
 
-export type Task = { id: number; title: string; due_at: string | null; end_at?: string | null; priority: number; notes: string | null; status: "todo" | "done" };
+/** `recurring` : pense-bête qui revient (calculé par le serveur, id « virtuel »). Coché = fait pour aujourd'hui ; il revient au prochain jour prévu. */
+export type Task = { id: number; title: string; due_at: string | null; end_at?: string | null; priority: number; notes: string | null; status: "todo" | "done"; recurring?: { ruleId: number; label: string; progress: { done: number; of: number } | null } };
 
 /** Tâches réelles (table tasks), partagées par l'Accueil et le Planning. Mises à jour optimistes. */
 export function useTasks(accessCode: string, onUnauthorized: () => void) {
@@ -50,7 +51,8 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
         stopLeaving();
       }, 450);
     } else apply("todo");
-    api("PATCH", { id: t.id, done }).catch((e) => {
+    const send = t.recurring ? callApi(accessCode, "/api/reminders", { method: "POST", body: { rule_id: t.recurring.ruleId, done }, onUnauthorized }) : api("PATCH", { id: t.id, done });
+    send.catch((e) => {
       clearTimeout(timer); // sinon le minuteur remettrait « faite » après l'annulation
       stopLeaving();
       apply(t.status);

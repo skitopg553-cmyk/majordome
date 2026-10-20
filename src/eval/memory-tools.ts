@@ -100,7 +100,7 @@ export function memoryTools(now: Date, initial?: State) {
       if (at.value) return JSON.stringify({ ok: false, error: "avec une heure, c'est un événement : utilise add_event (days + start + end)." });
       const title = String(args.title ?? "").trim();
       if (!title) return JSON.stringify({ ok: false, error: "title requis" });
-      state = applyMemory(state, [{ op: "insert", table: "recurring_tasks", values: { title, kind: rule.value.kind, weekday: rule.value.weekday, month_day: rule.value.month_day, at_time: null } }]);
+      state = applyMemory(state, [{ op: "insert", table: "recurring_tasks", values: { title, kind: rule.value.kind, weekday: rule.value.weekday, month_day: rule.value.month_day, at_time: null, days: rule.value.days ?? null, per_week: rule.value.per_week ?? null } }]);
       return JSON.stringify({ ok: true, recap: `${title} (revient)` });
     }
     if (typeof args.due_at === "string" && !parseDueAt(args.due_at)) return JSON.stringify({ ok: false, error: "due_at invalide" });

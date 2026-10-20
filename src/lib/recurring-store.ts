@@ -1,19 +1,34 @@
 // Lecture / matérialisation des tâches récurrentes (migration 0012). Sans la table : on ne fait rien, sans erreur.
 import { dueAtFor, dueToday, type StoredRule } from "./recurrence";
 import { isMissingTable, supabaseAdmin } from "./supabase";
-import { parisDay } from "./task-groups";
+import type { RecurringCheck } from "./recurring-reminders";
+import { addDays, parisDay } from "./task-groups";
 
 type Db = ReturnType<typeof supabaseAdmin>;
 
 export async function listRules(db: Db): Promise<StoredRule[] | null> {
   // Colonnes de la migration 0014 (jours multiples, fin, habitude) : si elle n'est pas appliquée, on retombe sur les anciennes colonnes.
-  let r: { data: unknown[] | null; error: { code?: string; message: string } | null } = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated,days,end_time,habit").order("id");
+  // « per_week » (X fois par semaine) vient de la migration 0016.
+  let r: { data: unknown[] | null; error: { code?: string; message: string } | null } = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated,days,end_time,habit,per_week").order("id");
+  if (r.error && isMissingTable(r.error)) r = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated,days,end_time,habit").order("id");
   if (r.error && isMissingTable(r.error)) r = await db.from("recurring_tasks").select("id,created_at,title,kind,weekday,month_day,at_time,last_generated").order("id");
   if (r.error) {
     if (!isMissingTable(r.error)) console.error("recurring_tasks :", r.error.message);
     return null; // table absente ou illisible : pas de récurrence
   }
   return (r.data ?? []) as StoredRule[];
+}
+
+/** Les « faits » de la semaine en cours (lundi → aujourd'hui). Null si la table n'existe pas encore (migration 0016) : on retombe sur l'ancienne méthode. */
+export async function listChecks(db: Db, today: string): Promise<RecurringCheck[] | null> {
+  const dow = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const monday = addDays(today, -dow);
+  const r = await db.from("recurring_checks").select("rule_id,day").gte("day", monday);
+  if (r.error) {
+    if (!isMissingTable(r.error)) console.error("recurring_checks :", r.error.message);
+    return null;
+  }
+  return (r.data ?? []) as RecurringCheck[];
 }
 
 /**

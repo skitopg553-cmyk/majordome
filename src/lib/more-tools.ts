@@ -79,8 +79,13 @@ export const MORE_TOOLS: ToolDef[] = [
   {
     name: "add_recurring_task",
     description:
-      "Créer un PENSE-BÊTE qui REVIENT, SANS heure : « tous les lundis sortir les poubelles », « le 5 de chaque mois payer le loyer ». Transmets la phrase de récurrence dans every (le code la comprend). Avec une heure, c'est un événement : add_event.",
+      "Créer un PENSE-BÊTE qui REVIENT, SANS heure : « tous les jours je prends ma créatine » (every: « tous les jours »), « tous les lundis sortir les poubelles », « lundi et jeudi », « en semaine », « l'aspirateur deux fois par semaine » (every: « deux fois par semaine »), « le 5 de chaque mois payer le loyer ». Transmets la phrase de récurrence dans every (le code la comprend). Coché = fait pour aujourd'hui, il revient au prochain jour prévu. Avec une heure, c'est un événement : add_event.",
     parameters: { type: "object", properties: { title: { type: "string" }, every: { type: "string", description: "ex. « tous les lundis »" }, time: { type: "string", description: "HH:MM, facultatif" } }, required: ["title", "every"] },
+  },
+  {
+    name: "stop_recurring_task",
+    description: "ARRÊTER un pense-bête qui revient (« arrête de me rappeler la créatine », « plus besoin du rappel des poubelles »). Donne son titre tel que Ruben le dit ; le code retrouve le pense-bête. Un bouton Annuler s'affiche juste après. N'utilise PAS delete_entry pour ça.",
+    parameters: { type: "object", properties: { title: { type: "string", description: "Titre (approximatif) du pense-bête" } }, required: ["title"] },
   },
   {
     name: "delete_entry",
@@ -202,12 +207,24 @@ export async function executeMoreTool(name: string, args: Record<string, unknown
       if (!at.ok) return out(at);
       if (at.value) return out({ ok: false, error: "avec une heure, c'est un événement : utilise add_event (days + start + end)." });
       const known = await listRules(db);
-      const same = (k: { title: string; kind: string; weekday: number | null; month_day: number | null; at_time: string | null }) => k.title.trim().toLowerCase() === title.toLowerCase() && k.kind === rule.value.kind && k.weekday === rule.value.weekday && k.month_day === rule.value.month_day && k.at_time === at.value;
+      const same = (k: { title: string; kind: string; weekday: number | null; month_day: number | null; at_time: string | null; days?: string | null; per_week?: number | null }) => k.title.trim().toLowerCase() === title.toLowerCase() && k.kind === rule.value.kind && k.weekday === rule.value.weekday && k.month_day === rule.value.month_day && k.at_time === at.value && (k.days ?? null) === (rule.value.days ?? null) && (k.per_week ?? null) === (rule.value.per_week ?? null);
       const dup = (known ?? []).find(same);
       if (dup) return out({ ok: false, error: `cette récurrence existe déjà (#${dup.id} « ${dup.title} »). Ne la crée pas deux fois.` });
-      const r = await db.from("recurring_tasks").insert({ title, ...rule.value, at_time: at.value }).select("id").single();
+      const r = await db.from("recurring_tasks").insert({ title, ...rule.value, at_time: at.value }).select("id").single(); // days et per_week : seulement quand la règle en a (migrations 0014 et 0016)
       const quand = ruleLabel({ ...rule.value, at_time: at.value });
       return finish(r.error, "Récurrence", { saved: { title, quand }, recap: `${title} ${quand}` }, r.data ? undoFor(`Récurrence « ${title} »`, "recurring_tasks", r.data.id as number, null) : undefined);
+    }
+    case "stop_recurring_task": {
+      const wanted = fold(String(args.title ?? "")).replace(/[’']/g, " ").trim();
+      if (!wanted) return out({ ok: false, error: "title requis : le pense-bête à arrêter" });
+      const mine = ((await listRules(db)) ?? []).filter((r) => !r.at_time);
+      const hits = mine.filter((r) => { const t = fold(r.title).replace(/[’']/g, " "); return t === wanted || (wanted.length >= 3 && (t.includes(wanted) || wanted.includes(t))); });
+      if (!hits.length) return out({ ok: false, error: `aucun pense-bête qui revient ne correspond à « ${String(args.title)} ». ${mine.length ? `Ceux qui existent : ${mine.map((r) => r.title).join(", ")}.` : "Il n'y en a aucun."} Dis-le à Ruben, n'invente rien.` });
+      if (hits.length > 1) return out({ ok: false, error: `plusieurs correspondent : ${hits.map((r) => `« ${r.title} » (${ruleLabel(r)})`).join(", ")}. Pose UNE question à Ruben pour savoir lequel.` });
+      const row = await db.from("recurring_tasks").select("*").eq("id", hits[0].id).maybeSingle();
+      if (row.error || !row.data) return out({ ok: false, error: row.error?.message ?? "pense-bête introuvable" });
+      const del = await db.from("recurring_tasks").delete().eq("id", hits[0].id);
+      return finish(del.error, "Récurrence", { recap: `Je ne vous rappellerai plus « ${hits[0].title} »` }, { label: `Pense-bête « ${hits[0].title} » arrêté`, steps: [{ op: "insert", table: "recurring_tasks", values: restorable("recurring_tasks", row.data as Row) }] });
     }
     case "delete_entry": {
       const kind = String(args.kind ?? "");

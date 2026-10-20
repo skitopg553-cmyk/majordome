@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 
 const url = process.argv[2] ?? "http://localhost:3000";
 const OUT = "captures/tour";
+fs.rmSync(OUT, { recursive: true, force: true }); // pas de captures périmées d'un tour précédent
 fs.mkdirSync(OUT, { recursive: true });
 const NOW = new Date("2026-10-20T16:30:00Z"); // mardi 20 octobre 2026, 18 h 30 à Paris
 const iso = (day, hm) => new Date(`${day}T${hm}:00+02:00`).toISOString();
@@ -17,6 +18,9 @@ const full = () => ({
     { id: 2, title: "Appeler la banque", due_at: iso("2026-10-19", "00:00"), status: "todo", priority: 1, notes: null },
     { id: 3, title: "Dentiste", due_at: iso("2026-10-22", "15:00"), end_at: iso("2026-10-22", "16:00"), status: "todo", priority: 2, notes: null },
     { id: 4, title: "Acheter du pain", due_at: null, status: "done", priority: 2, notes: null, done_at: iso("2026-10-20", "09:00") },
+    // pense-bêtes qui reviennent (calculés par le serveur, id virtuel) : icône de répétition, progression « X fois par semaine »
+    { id: 1000000007, title: "Prendre ma créatine", due_at: iso("2026-10-20", "00:00"), status: "todo", priority: 2, notes: null, recurring: { ruleId: 7, label: "chaque jour", progress: null } },
+    { id: 1000000008, title: "Passer l'aspirateur", due_at: iso("2026-10-20", "00:00"), status: "todo", priority: 2, notes: null, recurring: { ruleId: 8, label: "2 fois par semaine", progress: { done: 1, of: 2 } } },
   ],
   rules: [rule(1, "Cours", "1,2,3,4,5", "09:00", "12:00"), rule(2, "Boxe anglaise", "2", "18:30", "20:00", 1), rule(3, "Muscu", "1,3,5", "12:00", "13:30", 1), rule(4, "Travail O'Tacos", "5,7", "18:30", "23:00")],
   exceptions: [],
