@@ -74,7 +74,7 @@ describe("créer : la semaine réelle", () => {
     expect(p.ok).toBe(false);
     expect((p as { error: string }).error).toMatch(/Jusqu'à quelle heure/);
     const q = planCreate(empty(), { title: "Boxe", days: ["mardi"], start: "18:30", assume_one_hour: true }, NOW);
-    expect(q.ok && q.done[0]).toBe("Boxe mardi 18 h 30-19 h 30 (1 h par défaut : dis-moi l'heure de fin pour corriger)");
+    expect(q.ok && q.done[0]).toBe("Boxe mardi 18 h 30-19 h 30 (habitude à confirmer) (1 h par défaut : dites-moi l'heure de fin pour corriger)");
   });
   it("« Fin de cours », « Pause », « Reprise » ne sont jamais créés ; fin avant début refusée", () => {
     for (const title of ["Fin de cours le lundi", "Pause", "Reprise le jeudi"]) expect(planCreate(empty(), { title, days: ["lundi"], start: "18:00", end: "18:30" }, NOW).ok).toBe(false);

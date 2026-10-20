@@ -25,15 +25,15 @@ export default function HabitCheck({ slots }: { slots: SlotsApi }) {
   const today = parisDay(new Date());
 
   const questions = useMemo(
-    () => habitQuestions({ rules: slots.rules, exceptions: slots.exceptions, logs: slots.logs, now: new Date(), snoozed: hidden }),
-    [slots.rules, slots.exceptions, slots.logs, hidden],
+    () => habitQuestions({ rules: slots.rules, exceptions: slots.exceptions, logs: slots.logs, oneoffs: slots.oneoffs, now: new Date(), snoozed: hidden }),
+    [slots.rules, slots.exceptions, slots.logs, slots.oneoffs, hidden],
   );
   const hide = (key: string) => setHidden((h) => new Set(h).add(key));
 
   async function answer(q: Question, status: "done" | "missed", then?: "tomorrow" | "week") {
     setError(null);
     try {
-      await slots.act({ action: "habit", rule_id: q.ruleId, day: q.day, status, then });
+      await slots.act(q.taskId ? { action: "habit", task_id: q.taskId, day: q.day, status, then } : { action: "habit", rule_id: q.ruleId, day: q.day, status, then });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Impossible d'enregistrer pour le moment");
     }
@@ -41,7 +41,7 @@ export default function HabitCheck({ slots }: { slots: SlotsApi }) {
 
   function yes(q: Question) {
     hide(q.key);
-    const n = doneThisWeek(slots.logs, q.ruleId, today) + 1;
+    const n = q.taskId ? 1 : doneThisWeek(slots.logs, q.ruleId, today) + 1;
     setCelebrate(n > 1 ? `${n}ᵉ fois cette semaine` : "");
     void answer(q, "done");
   }

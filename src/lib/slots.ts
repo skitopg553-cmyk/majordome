@@ -138,12 +138,21 @@ export function recapText(lines: string[]) {
 export type SlotAction =
   | { action: "skip"; rule_id: number; day: string }
   | { action: "move"; rule_id: number; day: string; new_day: string; new_start: string; new_end: string | null }
-  | { action: "habit"; rule_id: number; day: string; status: "done" | "missed"; then: "tomorrow" | "week" | null };
+  | { action: "habit"; rule_id: number; task_id?: number; day: string; status: "done" | "missed"; then: "tomorrow" | "week" | null }; // task_id : séance ponctuelle (rule_id = 0)
 
 const isDay = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(`${s}T12:00:00Z`).toISOString().slice(0, 10) === s;
 
 /** Valide ce que l'écran envoie. Un bilan ne peut concerner qu'un jour passé ou le jour même. */
 export function parseSlotAction(b: Record<string, unknown>, today: string): Res<SlotAction> {
+  if (b.action === "habit" && b.task_id !== undefined) {
+    const task_id = b.task_id;
+    if (typeof task_id !== "number" || !Number.isSafeInteger(task_id) || task_id < 1) return fail("task_id invalide");
+    if (!isDay(b.day)) return fail("day invalide (AAAA-MM-JJ)");
+    if (b.status !== "done" && b.status !== "missed") return fail("status doit être done ou missed");
+    if (b.day > today) return fail("on ne répond pas pour un jour à venir");
+    const then = b.then === "tomorrow" || b.then === "week" ? b.then : null;
+    return { ok: true, value: { action: "habit", rule_id: 0, task_id, day: b.day, status: b.status, then: b.status === "missed" ? then : null } };
+  }
   const rule_id = b.rule_id;
   if (typeof rule_id !== "number" || !Number.isSafeInteger(rule_id) || rule_id < 1) return fail("rule_id invalide");
   if (!isDay(b.day)) return fail("day invalide (AAAA-MM-JJ)");

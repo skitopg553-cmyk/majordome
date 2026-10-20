@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 // Saisie manuelle : { type: "sleep", date, hours } (remplace la nuit si déjà notée) ou { type: "workout", date, kind, minutes? }.
 export async function POST(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  const b = (await req.json().catch(() => ({}))) as { type?: string; date?: unknown; hours?: unknown; kind?: unknown; minutes?: unknown };
+  const b = (await req.json().catch(() => ({}))) as { type?: string; date?: unknown; hours?: unknown; kind?: unknown; minutes?: unknown; id?: unknown };
   if (!isDay(b.date)) return NextResponse.json({ error: "Date invalide" }, { status: 400 });
   const db = supabaseAdmin();
 
@@ -39,12 +39,17 @@ export async function POST(req: Request) {
   if (b.type === "sleep") {
     if (typeof b.hours !== "number" || b.hours <= 0 || b.hours > 16) return NextResponse.json({ error: "Durée de sommeil invalide" }, { status: 400 });
     res = await db.from("sleep_logs").upsert({ date: b.date, hours: Math.round(b.hours * 100) / 100 }, { onConflict: "date" });
+  } else if (b.type === "workout-minutes") {
+    // Corriger la durée d'une séance (celle du créneau reprise au « oui » n'est pas toujours la bonne).
+    if (typeof b.id !== "number" || !Number.isSafeInteger(b.id) || b.id < 1) return NextResponse.json({ error: "id invalide" }, { status: 400 });
+    if (typeof b.minutes !== "number" || b.minutes < 1 || b.minutes > 600) return NextResponse.json({ error: "Durée invalide" }, { status: 400 });
+    res = await db.from("workouts").update({ minutes: Math.round(b.minutes) }).eq("id", b.id);
   } else if (b.type === "workout") {
     const kind = typeof b.kind === "string" ? b.kind.trim().slice(0, 60) : "";
     if (!kind) return NextResponse.json({ error: "Type de séance requis" }, { status: 400 });
     if (b.minutes != null && (typeof b.minutes !== "number" || b.minutes <= 0 || b.minutes > 600)) return NextResponse.json({ error: "Durée invalide" }, { status: 400 });
     res = await db.from("workouts").insert({ date: b.date, kind, minutes: b.minutes ?? null });
-  } else return NextResponse.json({ error: "type doit être sleep ou workout" }, { status: 400 });
+  } else return NextResponse.json({ error: "type doit être sleep, workout ou workout-minutes" }, { status: 400 });
 
   if (isMissingTable(res.error)) return NextResponse.json({ error: "Les tables Forme ne sont pas encore créées (migration 0005 à valider)." }, { status: 503 });
   if (res.error) return NextResponse.json({ error: res.error.message }, { status: 500 });
