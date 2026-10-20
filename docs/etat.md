@@ -15,7 +15,7 @@
 ## Étapes manuelles (une par une)
 1. ~~Nettoyage et semaine~~ **Fait le 19/10** : 36 règles et 6 copies supprimées, ta semaine réelle enregistrée (12 créneaux avec fin, O'Tacos jusqu'à 23 h ; boxe et muscu = habitudes). Vérifie-la dans le Planning.
 2. **Évaluation de l'IA** : mets ta clé IA dans `.env.local` (jamais dans le chat), puis `npm run eval:ia` ; donne-moi le score et les phrases ratées.
-3. En attente : voix (`/voix-test`), APK Android, rappels (`docs/rappels-setup.md`), Google (`docs/google-setup.md`).
+3. **Voix (20/10)** : ElevenLabs branché (Flash / Multilingual v2 / v3, stabilité et style réglables) sur `/api/tts` et `/voix-test`, repli OpenAI puis téléphone, plafond partagé. À toi : écouter sur `/voix-test` en ligne et choisir ; ensuite je branche la voix dans tout le chat. Mode vocal : réponses de 1 à 2 phrases. Jamais testé contre ElevenLabs en local (clés seulement dans Vercel). En attente : APK Android, rappels (`docs/rappels-setup.md`), Google (`docs/google-setup.md`).
 
 ## À tester sur téléphone
 Vue Jour et Semaine (lisibilité, défilement, glisser pour changer de jour) · toucher un vide pour créer · modifier « cette fois » / « toute la série » · supprimer · dicter ta semaine (récap lu à voix haute) · « décale la boxe à 19 h » · « supprime tout » (carte, puis Annuler) · « j'ai boxe à 18 h 30 » (question) · pense-bêtes sous la grille.
@@ -27,4 +27,4 @@ Vue Jour et Semaine (lisibilité, défilement, glisser pour changer de jour) · 
 - Coque Android non touchée.
 
 ## Décisions à prendre (Ruben)
-défauts restants de qa.md · voix · modèle par défaut.
+défauts restants de qa.md · choix du modèle de voix (après écoute) · modèle par défaut.

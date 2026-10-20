@@ -104,10 +104,12 @@ export async function POST(req: Request) {
     time("contexte", Date.now() - t0);
     // Ordres explicites (« retiens que… », « objectif 3000 € pour… ») : exécutés par le code, avant le modèle (voir src/lib/intents.ts).
     const done = last?.role === "user" && typeof last.content === "string" ? await applyIntents(last.content, executeAndCollect) : [];
+    // Mode vocal : la réponse sera LUE à voix haute, donc 1 à 2 phrases courtes, sans liste ni mise en forme (l'écran garde les détails dans les cartes et les récapitulatifs).
+    const voiceNote = body?.voice === true ? "\n\n## Mode vocal\nTa réponse sera lue à voix haute : 1 à 2 phrases courtes, naturelles, sans liste, sans titre ni mise en forme. Les chiffres importants seulement." : "";
     const doneNote = done.length ? `\n\n## Déjà fait pour Ruben dans ce message (par le système)\n${done.map((n) => `- ${n}`).join("\n")}` : "";
     return runAgent({
       tier: "sonnet",
-      system: `${INSTRUCTIONS}\n\n${context}${doneNote}`,
+      system: `${INSTRUCTIONS}\n\n${context}${doneNote}${voiceNote}`,
       messages, // déjà limité aux 20 derniers messages (maîtrise des coûts)
       purpose: "chat",
       tools: TOOLS,

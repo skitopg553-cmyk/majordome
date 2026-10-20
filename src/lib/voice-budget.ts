@@ -20,6 +20,26 @@ export const audioSeconds = (chars: number) => chars / CHARS_PER_SECOND;
 /** Coût estimé en dollars de la lecture de `chars` caractères (estimation : la facture réelle est celle d'OpenAI). */
 export const ttsCostUsd = (chars: number) => (audioSeconds(chars) / 60) * USD_PER_AUDIO_MINUTE + ((chars / CHARS_PER_TOKEN) * USD_PER_M_TEXT_TOKENS) / 1_000_000;
 
+/**
+ * ElevenLabs : on paie en « crédits » par caractère (Flash = 0,5 ; Multilingual v2 et v3 = 1). Le prix du crédit dépend de ton abonnement :
+ * ELEVENLABS_USD_PER_1K_CREDITS (défaut 0,20 $ les 1 000 crédits, ordre de grandeur des offres Creator/Pro, À RE-VÉRIFIER sur ton compte).
+ * v3 : pas de mode flux (l'audio arrive d'un bloc) ; Flash et v3 acceptent la langue (« fr »), Multilingual v2 la devine.
+ */
+export const EL_MODELS = {
+  flash: { id: "eleven_flash_v2_5", label: "Flash v2.5", credits: 0.5, stream: true, lang: true },
+  v2: { id: "eleven_multilingual_v2", label: "Multilingual v2", credits: 1, stream: true, lang: false },
+  v3: { id: "eleven_v3", label: "v3", credits: 1, stream: false, lang: true },
+} as const;
+export type ElModel = keyof typeof EL_MODELS;
+export const isElModel = (v: unknown): v is ElModel => typeof v === "string" && Object.hasOwn(EL_MODELS, v);
+
+export function elevenCostUsd(chars: number, model: ElModel, usdPer1kCredits: number = Number(process.env.ELEVENLABS_USD_PER_1K_CREDITS) || 0.2): number {
+  return (chars * EL_MODELS[model].credits * usdPer1kCredits) / 1000;
+}
+
+/** Réglage de voix entre 0 et 1 ; tout le reste (absent, texte, NaN) → valeur par défaut. */
+export const unit01 = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback);
+
 export type SpeakDecision = { mode: "cloud" | "phone"; reason: "ok" | "disabled" | "cap" | "empty" };
 
 /**

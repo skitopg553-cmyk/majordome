@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { audioSeconds, decideSpeak, DEFAULT_MAX_CHARS_PER_DAY, maxCharsPerDay, speakWithFallback, ttsCostUsd } from "./voice-budget";
+import { audioSeconds, decideSpeak, DEFAULT_MAX_CHARS_PER_DAY, elevenCostUsd, isElModel, maxCharsPerDay, speakWithFallback, ttsCostUsd, unit01 } from "./voice-budget";
 
 describe("plafond du jour (VOICE_MAX_CHARS_PER_DAY)", () => {
   it("valeur par défaut raisonnable, valeur valide acceptée, valeur absurde ignorée", () => {
@@ -20,6 +20,25 @@ describe("coût estimé", () => {
     expect(ttsCostUsd(150)).toBeCloseTo(0.0025, 3); // ~10 s d'audio
     expect(ttsCostUsd(8000)).toBeCloseTo(0.1348, 3); // le plafond du jour par défaut
     expect(ttsCostUsd(300)).toBeCloseTo(2 * ttsCostUsd(150), 8);
+  });
+});
+
+describe("ElevenLabs : modèles, coût, réglages", () => {
+  it("Flash coûte moitié moins que Multilingual v2 et v3 (crédits par caractère)", () => {
+    expect(elevenCostUsd(1000, "flash", 0.2)).toBeCloseTo(0.1, 8);
+    expect(elevenCostUsd(1000, "v2", 0.2)).toBeCloseTo(0.2, 8);
+    expect(elevenCostUsd(1000, "v3", 0.2)).toBeCloseTo(0.2, 8);
+    expect(elevenCostUsd(0, "v3", 0.2)).toBe(0);
+  });
+  it("modèle inconnu refusé, réglages bornés entre 0 et 1", () => {
+    expect(isElModel("flash")).toBe(true);
+    expect(isElModel("toString")).toBe(false);
+    expect(isElModel(undefined)).toBe(false);
+    expect(unit01(0.3, 0.5)).toBe(0.3);
+    expect(unit01(7, 0.5)).toBe(1);
+    expect(unit01(-2, 0.5)).toBe(0);
+    expect(unit01("x", 0.5)).toBe(0.5);
+    expect(unit01(NaN, 0.5)).toBe(0.5);
   });
 });
 

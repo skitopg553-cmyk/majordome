@@ -221,7 +221,7 @@ export default function ChatView({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-access-code": accessCode },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, voice: viaVoice }),
       });
       if (res.status === 401) return onUnauthorized();
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Erreur inconnue");
