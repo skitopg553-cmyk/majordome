@@ -70,6 +70,16 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     });
   }
 
+  // Arrêter un pense-bête qui revient (après confirmation) : il disparaît tout de suite, et revient si le serveur refuse.
+  function stopRecurring(t: Task) {
+    if (!t.recurring || !window.confirm(`Arrêter ce pense-bête qui revient ?\n\n« ${t.title} » (${t.recurring.label}) ne reviendra plus.`)) return;
+    setTasks((cur) => cur.filter((x) => x.id !== t.id));
+    callApi(accessCode, "/api/reminders", { method: "DELETE", body: { rule_id: t.recurring.ruleId }, onUnauthorized }).catch((e) => {
+      setTasks((cur) => (cur.some((x) => x.id === t.id) ? cur : [...cur, t]));
+      setError(friendlyError(e));
+    });
+  }
+
   // Modification depuis la fiche (titre, échéance, priorité, notes) : l'écran change tout de suite, et revient en arrière si le serveur refuse.
   function update(t: Task, fields: Partial<Pick<Task, "title" | "due_at" | "priority" | "notes">>) {
     setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, ...fields, notes: "notes" in fields ? fields.notes || null : x.notes } : x)));
@@ -130,7 +140,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
     return () => window.removeEventListener("online", replay);
   }, [accessCode, load]);
 
-  return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove, update };
+  return { tasks, loaded, error, leaving, load, toggle, add, postpone, remove, update, stopRecurring };
 }
 
 export type TasksApi = ReturnType<typeof useTasks>;

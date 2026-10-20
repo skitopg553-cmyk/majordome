@@ -147,7 +147,7 @@ function SleepCard({ accessCode, onUnauthorized, forme, today, onSaved, onSkip, 
   return (
     <Card>
       <Label>Sommeil</Label>
-      <p className="mt-1 text-[17px] font-semibold leading-snug tracking-tight">Bonjour, Monsieur. Comment avez-vous dormi ?</p>
+      <p className="mt-1 text-[17px] font-semibold leading-snug tracking-tight">Comment avez-vous dormi, Monsieur ?</p>
       <p className="mt-0.5 text-[13px] text-muted">
         Couché à {hm(bed)}, levé à {hm(wake)}
         {hours !== null && ` · ${Math.floor(hours)} h ${String(Math.round((hours % 1) * 60)).padStart(2, "0")}`}{" "}

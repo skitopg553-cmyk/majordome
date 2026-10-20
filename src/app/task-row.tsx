@@ -27,7 +27,7 @@ export default function TaskRow({ t, leaving, onToggle, onOpen }: { t: Task; lea
           )}
         </span>
       </button>
-      <button onClick={onOpen} disabled={t.id < 0 || !!t.recurring} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug ${done ? "text-faint line-through" : ""}`}>
+      <button onClick={onOpen} disabled={t.id < 0} className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 pr-1 text-left text-[15px] leading-snug ${done ? "text-faint line-through" : ""}`}>
         {t.priority === 1 && !done && <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Priorité haute" />}
         <span className={`min-w-0 flex-1 ${t.priority === 3 && !done ? "text-muted" : ""}`}>{t.title}</span>
         {t.recurring && (

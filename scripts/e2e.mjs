@@ -126,10 +126,10 @@ await run("5. Changer de jour dans le Planning (flèche et glissement)", async (
 });
 
 await run("6. Matin : la carte sommeil, un tap sur « Bien » enregistre la nuit, puis elle disparaît", async (page, s) => {
-  await page.getByText("Comment avez-vous dormi ?").waitFor();
+  await page.getByText("Comment avez-vous dormi, Monsieur ?").waitFor();
   assert.equal(await page.getByText("Qu'avez-vous mangé").count(), 1, "le plafond : la carte repas doit venir en plus, mais le sommeil d'abord");
   await page.getByRole("button", { name: "Bien", exact: true }).click();
-  await page.getByText("Comment avez-vous dormi ?").waitFor({ state: "detached" });
+  await page.getByText("Comment avez-vous dormi, Monsieur ?").waitFor({ state: "detached" });
   const post = s.posts.find((b) => b.type === "sleep");
   assert.ok(post, "la nuit n'a pas été envoyée");
   assert.equal(post.quality, 3);
@@ -138,9 +138,9 @@ await run("6. Matin : la carte sommeil, un tap sur « Bien » enregistre la nuit
 }, { now: new Date("2026-10-20T06:00:00Z") }); // 8 h à Paris
 
 await run("7. Matin : « Plus tard » repousse la carte sommeil, le briefing n'apparaît pas avant elle", async (page) => {
-  await page.getByText("Comment avez-vous dormi ?").waitFor();
+  await page.getByText("Comment avez-vous dormi, Monsieur ?").waitFor();
   await page.getByRole("button", { name: "Plus tard" }).first().click();
-  await page.getByText("Comment avez-vous dormi ?").waitFor({ state: "detached" });
+  await page.getByText("Comment avez-vous dormi, Monsieur ?").waitFor({ state: "detached" });
   assert.equal(await page.getByText("Votre journée, Monsieur").count(), 0, "le briefing ne doit venir qu'après le sommeil");
 }, { now: new Date("2026-10-20T06:00:00Z") });
 

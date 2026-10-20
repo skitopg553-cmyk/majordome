@@ -126,7 +126,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
         {shown.length > 0 && (
           <ul className="mt-1">
             {shown.map((t) => (
-              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => setOpenId(t.id)} />
+              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => (t.recurring ? api.stopRecurring(t) : setOpenId(t.id))} />
             ))}
           </ul>
         )}

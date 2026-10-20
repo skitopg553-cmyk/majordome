@@ -48,3 +48,26 @@ Playwright, 390×844 et 360×800, semaine réelle chargée (12 pavés), chevauch
 | 8 | Fiche | Pas de bouton « Annuler » après une modification à la main (seulement une confirmation avant de supprimer) | basse | non corrigé |
 
 **Ce que ces tests ne couvrent PAS** : la vraie IA (`npm run eval:ia` n'a pas pu tourner : clés vides dans .env.local) ; l'écriture dans la vraie base (`applyOps` n'a tourné que contre la simulation) ; les gestes sur un vrai téléphone (glisser pour changer de jour pendant qu'on fait défiler la grille) ; les rendez-vous Google dans la grille (Google pas connecté) ; la lecture vocale du récapitulatif.
+
+## Passage de la nuit du 20 au 21/10 (390×844, API simulée, heure figée : matin 8 h, briefing 9 h 30, soir 20 h 30, dîner 20 h 30)
+
+Parcours : Accueil, Planning (jour, semaine), Forme, Finances, Profil, chat, `/voix-test`, états pleins et vides ; captures regardées une par une, console et zones tactiles contrôlées par `npm run tour` (0 constat).
+
+| # | Écran | Défaut ou manque | État |
+|---|---|---|---|
+| 1 | Accueil | Tutoiement résiduel (« Profites-en », « Ruben » dans le titre) | **corrigé** (« Rien à faire, Monsieur. Profitez-en. ») |
+| 2 | Accueil | La carte sommeil répétait « Bonjour, Monsieur » juste sous le titre « Bonjour, Monsieur » | **corrigé** (« Comment avez-vous dormi, Monsieur ? ») |
+| 3 | Accueil | Un pense-bête qui revient n'avait aucun moyen d'être arrêté depuis l'écran | **corrigé** (toucher son titre → confirmation → arrêté) |
+| 4 | Accueil | Le plafond de cartes : jusqu'à 2 bilans + ritual possibles | **corrigé** (2 cartes au total, e2e 8) |
+| 5 | Page Google | Messages de retour de connexion encore au tutoiement (« Relance… ») | **corrigé** |
+| 6 | Forme | Aucune séance ne venait des habitudes ; pas de régularité | **corrigé** (lot 2) |
+| 7 | Forme | Saisie manuelle du sommeil : durée seule (pas de coucher/lever) | non fait : la carte du matin les prend, l'écran Forme non |
+| 8 | Planning | Vue Jour : la liste « À faire aujourd'hui » est cachée sous la barre du bas tant qu'on ne défile pas | non corrigé (hauteur de la grille à revoir) |
+| 9 | Planning | Pas de pense-bête récurrent visible les autres jours que « aujourd'hui » | non fait : seul le jour en cours montre les pense-bêtes qui reviennent |
+| 10 | Chat | La voix du chat lit toujours avec le téléphone ; ElevenLabs/OpenAI ne sont pas encore branchés (en attente de votre choix) | en attente |
+| 11 | Chat | Le bouton « Nouvelle conversation » chevauche presque la signature quand le titre est long | basse, non corrigé |
+| 12 | Finances | « Connecter ma banque » reste le premier bloc même quand le relevé importé est la vraie source | basse, non corrigé |
+| 13 | Pense-bêtes | On ne peut pas décocher un pense-bête qui revient une fois la case cochée (il revient demain) | non fait |
+| 14 | Carte repas | La dictée du micro n'est pas testable en automatique | non testé |
+| 15 | Temps d'écran | Dépend de l'APK Android (plugin `Usage`) : rien à coder ici. **À faire** : reconstruire l'APK (branche `apk-github`), autoriser « Accès aux données d'utilisation » une fois, puis vérifier à l'ouverture de Forme | note seulement (voir `docs/temps-ecran.md`) |
+| 16 | IA | `npm run eval:ia` n'a pas pu tourner (clé OpenAI vide en local) : le ton « majordome », les pense-bêtes qui reviennent et les séances ponctuelles ne sont pas mesurés sur le vrai modèle | à faire |
