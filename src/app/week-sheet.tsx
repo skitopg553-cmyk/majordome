@@ -35,7 +35,7 @@ export default function WeekSheet({ accessCode, onClose, onUnauthorized }: { acc
       ]
     : [];
   return (
-    <section role="dialog" aria-label="Ta semaine" className="sheet-up fixed inset-0 z-50 mx-auto flex max-w-2xl flex-col bg-ink pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <section role="dialog" aria-label="Votre semaine" className="sheet-up fixed inset-0 z-50 mx-auto flex max-w-2xl flex-col bg-ink pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <header className="flex h-16 items-center px-3">
         <button onClick={onClose} aria-label="Fermer" className="flex size-11 items-center justify-center rounded-full text-muted active:bg-raised">
           <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
@@ -45,7 +45,7 @@ export default function WeekSheet({ accessCode, onClose, onUnauthorized }: { acc
       </header>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-8">
         <div>
-          <h1 className="text-[28px] font-semibold tracking-tight">Ta semaine</h1>
+          <h1 className="text-[28px] font-semibold tracking-tight">Votre semaine</h1>
           {m && (
             <p className="text-[14px] text-muted">
               Du {fmt(m.from)} au {fmt(m.to)}

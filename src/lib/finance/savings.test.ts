@@ -90,7 +90,7 @@ describe("goalAdvice : une phrase simple", () => {
     // Reste 2000 €, jusqu'à décembre = 2 mois → 1000 €/mois ; 800 dispo → 3 mois au lieu de 2 → décale de 1 mois, ou réduis de 200 €.
     const a = goalAdvice(goal("Voiture", { target: 2500, saved: 500, due_label: "Décembre" }), 800, today);
     expect(a.needed).toBe(1000);
-    expect(a.text).toBe("Voiture : 1000 €/mois nécessaires, 800 € dispo → décale de 1 mois ou réduis tes sorties de 200 €.");
+    expect(a.text).toBe("Voiture : 1000 €/mois nécessaires, 800 € dispo → décalez de 1 mois ou réduisez vos sorties de 200 €.");
   });
   it("tenable, atteint, sans date, date passée, rien de libre", () => {
     expect(goalAdvice(goal("Moto", { target: 1000, due_label: "Juin 2027" }), 500, today).text).toContain("tenable");

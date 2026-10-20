@@ -9,7 +9,7 @@ describe("dans le navigateur (hors coque) : rien ne change", () => {
   it("pas de Capacitor → pas natif, et setNative échoue proprement (la carte reste le repli)", async () => {
     setCap(undefined);
     expect(isNative()).toBe(false);
-    expect(await setNative({ kind: "alarm", hour: 7, minutes: 0, label: "", when: "demain" })).toMatchObject({ ok: false, text: "Je n'ai pas réussi à régler le réveil." });
+    expect(await setNative({ kind: "alarm", hour: 7, minutes: 0, label: "", when: "demain" })).toMatchObject({ ok: false, text: "Je n'ai pas réussi à régler le réveil, Monsieur." });
   });
   it("plateforme web de Capacitor → pas natif", () => {
     setCap({ isNativePlatform: () => false, Plugins: {} });
@@ -27,7 +27,7 @@ describe("dans la coque Android", () => {
     alarm.mockResolvedValue({ ok: true });
     const r = await setNative({ kind: "alarm", hour: 7, minutes: 30, label: "Salle", when: "demain" });
     expect(alarm).toHaveBeenCalledWith({ hour: 7, minutes: 30, message: "Salle" });
-    expect(r).toEqual({ ok: true, text: "Ok, réveil réglé à sept heures trente." });
+    expect(r).toEqual({ ok: true, text: "Très bien, Monsieur. Réveil réglé à sept heures trente." });
   });
   it("minuteur", async () => {
     native();
@@ -39,9 +39,9 @@ describe("dans la coque Android", () => {
     native();
     alarm.mockRejectedValue(new Error("Aucune application Horloge ne peut régler ça"));
     const r = await setNative({ kind: "alarm", hour: 7, minutes: 0, label: "", when: "demain" });
-    expect(r).toMatchObject({ ok: false, text: "Je n'ai pas réussi à régler le réveil.", reason: "Aucune application Horloge ne peut régler ça" });
+    expect(r).toMatchObject({ ok: false, text: "Je n'ai pas réussi à régler le réveil, Monsieur.", reason: "Aucune application Horloge ne peut régler ça" });
     timer.mockResolvedValue({ ok: false });
-    expect(await setNative({ kind: "timer", seconds: 60, label: "" })).toMatchObject({ ok: false, text: "Je n'ai pas réussi à lancer le minuteur." });
+    expect(await setNative({ kind: "timer", seconds: 60, label: "" })).toMatchObject({ ok: false, text: "Je n'ai pas réussi à lancer le minuteur, Monsieur." });
   });
   it("plugin absent de la coque → échec propre", async () => {
     setCap({ isNativePlatform: () => true, Plugins: {} });

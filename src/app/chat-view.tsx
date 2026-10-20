@@ -23,10 +23,10 @@ export type ChatHandle = { listen: () => void; focusInput: () => void; newConver
 const CLEARED_KEY = "majordome-cleared-at";
 
 const SUGGESTIONS = [
-  "Qu'est-ce que j'ai à faire aujourd'hui ?",
-  "Ajoute un pense-bête : ",
-  "Aide-moi à planifier ma semaine",
-  "Que sais-tu de mes objectifs ?",
+  "Que dois-je faire aujourd'hui ?",
+  "Ajoutez un pense-bête : ",
+  "Aidez-moi à planifier ma semaine",
+  "Que savez-vous de mes objectifs ?",
 ];
 
 // API de dictée du navigateur (Chrome Android : webkitSpeechRecognition). Pas de types officiels.
@@ -295,7 +295,7 @@ export default function ChatView({
     cancelClose();
     const SR = speechRecognition();
     if (!SR) {
-      setError("La dictée n'est pas disponible sur ce navigateur : écris ton message.");
+      setError("La dictée n'est pas disponible sur ce navigateur : écrivez votre message.");
       inputRef.current?.focus();
       return;
     }
@@ -315,7 +315,7 @@ export default function ChatView({
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (e: any) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Micro refusé. Autorise-le dans les réglages du navigateur, ou écris ton message.");
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Micro refusé. Autorisez-le dans les réglages du navigateur, ou écrivez votre message.");
       else if (e.error !== "no-speech" && e.error !== "aborted") setError(`Dictée interrompue (${e.error}).`);
     };
     rec.onend = () => {
@@ -369,7 +369,7 @@ export default function ChatView({
         </span>
         <div className="min-w-0 flex-1">
           <Wordmark className="text-[17px] leading-none" />
-          <p className="mt-1 text-xs text-faint">{state === "idle" ? "À ton service" : orbLabel(state)}</p>
+          <p className="mt-1 text-xs text-faint">{state === "idle" ? "À votre service" : orbLabel(state)}</p>
         </div>
         {messages.length > 0 && (
           <button onClick={newConversation} className="min-h-11 px-2 text-xs text-faint active:text-fg">
@@ -381,7 +381,7 @@ export default function ChatView({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {empty && (
           <div className="flex min-h-full flex-col justify-end gap-2">
-            <p className="mb-4 text-[24px] font-semibold leading-snug tracking-tight">{greeting()} Ruben.<br />Qu&apos;est-ce que je peux faire pour toi ?</p>
+            <p className="mb-4 text-[24px] font-semibold leading-snug tracking-tight">{greeting()}, Monsieur.<br />Que puis-je faire pour vous ?</p>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}

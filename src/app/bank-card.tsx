@@ -23,8 +23,8 @@ export function ago(iso: string | null, now = new Date()) {
 export function expiryMessage(validUntil: string | null, now = new Date()) {
   const d = daysLeft(validUntil, now);
   if (d === null || d > EXPIRY_WARNING_DAYS) return null;
-  if (d <= 0) return "Ton accord de lecture a expiré : reconnecte ta banque pour continuer à voir tes opérations.";
-  return `Ton accord de lecture se termine dans ${d} jour${d > 1 ? "s" : ""}. Reconnecte ta banque avant pour ne rien perdre.`;
+  if (d <= 0) return "Votre accord de lecture a expiré : reconnectez votre banque pour continuer à voir vos opérations.";
+  return `Votre accord de lecture se termine dans ${d} jour${d > 1 ? "s" : ""}. Reconnectez votre banque avant, pour ne rien perdre.`;
 }
 
 /** Connexion bancaire (Revolut, lecture seule) : « Connecter », « Actualiser », vrai solde, avertissement d'expiration. */
@@ -53,7 +53,7 @@ export default function BankCard({ bank, accessCode, onUnauthorized, onChanged, 
   if (!bank || !bank.ready) {
     return (
       <Card>
-        <Label>Ta banque</Label>
+        <Label>Votre banque</Label>
         <p className="mt-1 text-[14px] leading-snug text-muted">La connexion bancaire n&apos;est pas encore activée sur la base de données.</p>
         {note}
       </Card>
@@ -64,9 +64,9 @@ export default function BankCard({ bank, accessCode, onUnauthorized, onChanged, 
   if (!c) {
     return (
       <Card>
-        <Label>Ta banque</Label>
-        <p className="mt-1 text-[17px] font-semibold tracking-tight">Connecte ton Revolut</p>
-        <p className="mt-0.5 text-[14px] leading-snug text-muted">Lecture seule : Majordome voit ton solde et tes opérations, il ne peut rien payer ni virer.</p>
+        <Label>Votre banque</Label>
+        <p className="mt-1 text-[17px] font-semibold tracking-tight">Connectez votre Revolut</p>
+        <p className="mt-0.5 text-[14px] leading-snug text-muted">Lecture seule : Majordome voit votre solde et vos opérations, il ne peut rien payer ni virer.</p>
         <button onClick={() => call("/api/bank/connect", "connect")} disabled={!!busy} className={`${btn} mt-3 bg-accent text-ink`}>
           {busy === "connect" ? "Ouverture…" : "Connecter ma banque"}
         </button>
@@ -83,7 +83,7 @@ export default function BankCard({ bank, accessCode, onUnauthorized, onChanged, 
         <span className="text-[12px] text-faint">{ago(c.syncedAt)}</span>
       </div>
       <p className="mt-1 text-[34px] font-semibold leading-none tracking-tight tabular-nums">{c.balance !== null ? euro(c.balance) : "—"}</p>
-      {c.balance === null && <p className="mt-1 text-[13px] text-muted">Touche « Actualiser » pour lire ton solde.</p>}
+      {c.balance === null && <p className="mt-1 text-[13px] text-muted">Touchez « Actualiser » pour lire votre solde.</p>}
       {warn && <p className="mt-3 rounded-2xl bg-raised px-3 py-2.5 text-[13px] leading-snug text-fg/90">{warn}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <button onClick={() => call("/api/bank/sync", "sync")} disabled={!!busy} className={`${btn} bg-accent text-ink`}>

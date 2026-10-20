@@ -130,7 +130,7 @@ export const endOfWeek = (day: string) => addDays(day, 7 - (((new Date(`${day}T1
 export function recapText(lines: string[]) {
   const uniq = [...new Set(lines)];
   if (!uniq.length) return "";
-  return uniq.length === 1 ? `Fait : ${uniq[0]}` : `Fait :\n${uniq.map((l) => `- ${l}`).join("\n")}`;
+  return uniq.length === 1 ? `C'est noté, Monsieur. ${uniq[0]}` : `C'est noté, Monsieur :\n${uniq.map((l) => `- ${l}`).join("\n")}`;
 }
 
 // ---------- Actions de l'écran (supprimer / déplacer une occurrence, répondre au bilan d'une habitude) ----------
@@ -169,12 +169,12 @@ export function parseSlotAction(b: Record<string, unknown>, today: string): Res<
 }
 
 /**
- * Affichage d'une réponse : le « OK » de l'IA devant « Fait : … » n'apporte rien (la phrase du code dit tout), et une heure ne doit pas être
+ * Affichage d'une réponse : le « OK » de l'IA devant « C'est noté, Monsieur… » n'apporte rien (la phrase du code dit tout), et une heure ne doit pas être
  * coupée en fin de ligne (« 20 h » puis « 30 ») : espaces et tiret insécables autour des heures. La lecture vocale n'est pas touchée.
  */
 export function displayReply(text: string) {
   return text
-    .replace(/^\s*(?:ok|d'accord|c'est fait|très bien)[ .!]*\n+(?=Fait\s?:)/i, "")
+    .replace(/^\s*(?:ok|d'accord|c'est fait|très bien)[ .!]*\n+(?=C'est noté, Monsieur)/i, "")
     .replace(/(\d) h\b/g, "$1\u00a0h")
     .replace(/\bh (\d{2})\b/g, "h\u00a0$1")
     .replace(/(\d|h)-(\d)/g, "$1\u2011$2");

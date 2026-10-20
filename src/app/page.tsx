@@ -145,7 +145,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     const bank = q.get("bank");
     if (!bank) return;
     setTab("finances");
-    setBankNotice(bank === "ok" ? { ok: true, text: "Banque connectée. Touche « Actualiser » pour lire ton solde et tes opérations." } : { ok: false, text: bank === "refuse" ? "Connexion refusée côté banque." + (q.get("msg") ? ` ${q.get("msg")}` : "") : (q.get("msg") ?? "La connexion a échoué.") });
+    setBankNotice(bank === "ok" ? { ok: true, text: "Banque connectée. Touchez « Actualiser » pour lire votre solde et vos opérations." } : { ok: false, text: bank === "refuse" ? "Connexion refusée côté banque." + (q.get("msg") ? ` ${q.get("msg")}` : "") : (q.get("msg") ?? "La connexion a échoué.") });
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
   const [version, setVersion] = useState(0); // +1 à chaque fermeture du chat : Majordome a pu écrire (Forme, Finances…), les écrans se rechargent
@@ -166,13 +166,13 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     if (!g) return;
     window.history.replaceState(null, "", window.location.pathname);
     const texts: Record<string, string> = {
-      ok: "Google est connecté. Ton agenda et tes mails vont apparaître.",
-      refuse: "Connexion Google refusée de ton côté. Tu peux réessayer quand tu veux.",
+      ok: "Google est connecté. Votre agenda et vos mails vont apparaître.",
+      refuse: "Connexion Google refusée de votre côté. Vous pouvez réessayer quand vous le souhaitez.",
       "lien-expire": "Le lien de connexion a expiré (10 minutes). Relance la connexion.",
       "table-manquante": "Connexion faite, mais la base n'est pas prête (migration 0006 à appliquer).",
       "sans-acces-hors-ligne": "Google n'a pas donné l'accès durable. Relance la connexion et accepte tout.",
     };
-    setGoogleNotice(texts[g] ?? "La connexion Google a échoué. Réessaie.");
+    setGoogleNotice(texts[g] ?? "La connexion Google a échoué. Veuillez réessayer.");
     if (g === "ok") google.refresh();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { load } = tasks;

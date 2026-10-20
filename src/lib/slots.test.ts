@@ -98,8 +98,8 @@ describe("endOfWeek", () => {
 
 describe("recapText", () => {
   it("liste exacte à partir de deux éléments, sans doublon ; rien pour un seul", () => {
-    expect(recapText(["Travail lundi-vendredi 9 h-17 h", "Salle lundi, mercredi, vendredi 18 h-20 h", "Travail lundi-vendredi 9 h-17 h"])).toBe("Fait :\n- Travail lundi-vendredi 9 h-17 h\n- Salle lundi, mercredi, vendredi 18 h-20 h");
-    expect(recapText(["Seul"])).toBe("Fait : Seul");
+    expect(recapText(["Travail lundi-vendredi 9 h-17 h", "Salle lundi, mercredi, vendredi 18 h-20 h", "Travail lundi-vendredi 9 h-17 h"])).toBe("C'est noté, Monsieur :\n- Travail lundi-vendredi 9 h-17 h\n- Salle lundi, mercredi, vendredi 18 h-20 h");
+    expect(recapText(["Seul"])).toBe("C'est noté, Monsieur. Seul");
     expect(recapText([])).toBe("");
   });
 });
@@ -125,10 +125,10 @@ describe("parseSlotAction", () => {
 });
 
 describe("displayReply", () => {
-  it("retire le « OK » devant « Fait : », garde le reste", () => {
-    expect(displayReply("OK\n\nFait : Cours lundi 9 h-12 h")).toBe("Fait : Cours lundi 9\u00a0h\u201112\u00a0h");
+  it("retire le « OK » devant « C'est noté, Monsieur », garde le reste", () => {
+    expect(displayReply("OK\n\nC'est noté, Monsieur. Cours lundi 9 h-12 h")).toBe("C'est noté, Monsieur. Cours lundi 9\u00a0h\u201112\u00a0h");
     expect(displayReply("OK, je regarde.")).toBe("OK, je regarde.");
-    expect(displayReply("D'accord.\nFait :\n- Boxe")).toBe("Fait :\n- Boxe");
+    expect(displayReply("D'accord.\nC'est noté, Monsieur :\n- Boxe")).toBe("C'est noté, Monsieur :\n- Boxe");
   });
   it("une heure ne se coupe plus : « 19 h-20 h 30 » reste d'un bloc", () => {
     expect(displayReply("Boxe 19 h-20 h 30")).toBe("Boxe 19\u00a0h\u201120\u00a0h\u00a030");

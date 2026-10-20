@@ -4,11 +4,11 @@
 export const isNetworkError = (e: unknown) => e instanceof TypeError || (typeof navigator !== "undefined" && navigator.onLine === false);
 
 /** Message lisible pour Ruben, jamais un texte technique brut. */
-export function friendlyError(e: unknown, fallback = "Quelque chose n'a pas marché. Réessaie dans un instant.") {
-  if (isNetworkError(e)) return "Pas de réseau. Ton message est gardé et part dès que la connexion revient.";
+export function friendlyError(e: unknown, fallback = "Un contretemps, Monsieur. Veuillez réessayer dans un instant.") {
+  if (isNetworkError(e)) return "Pas de réseau, Monsieur. Votre message est gardé et partira dès le retour de la connexion.";
   const msg = e instanceof Error ? e.message : "";
   if (/\b(429|529|overloaded|rate.?limit)\b/i.test(msg)) return "L'IA est très sollicitée, réessaie dans une minute.";
-  if (/\b(500|502|503|504)\b/.test(msg) || /^Erreur serveur/.test(msg)) return "Le serveur ne répond pas bien pour l'instant. Réessaie dans un instant.";
+  if (/\b(500|502|503|504)\b/.test(msg) || /^Erreur serveur/.test(msg)) return "Le serveur ne répond pas bien pour l'instant, Monsieur. Veuillez réessayer dans un instant.";
   return msg && !/^(Failed to fetch|NetworkError|Load failed)/i.test(msg) ? msg : fallback;
 }
 

@@ -47,7 +47,7 @@ export default function ProfileSheet({
           <label className="flex min-h-14 items-center justify-between gap-4">
             <span>
               <span className="block text-[15px]">Lire les réponses à voix haute</span>
-              <span className="block text-xs text-faint">Quand tu parles à Majordome</span>
+              <span className="block text-xs text-faint">Quand Majordome vous répond</span>
             </span>
             {/* Interrupteur : vraie case à cocher (accessible), dessinée en pilule */}
             <input type="checkbox" role="switch" checked={speak} onChange={(e) => onSpeakChange(e.target.checked)} className="peer sr-only" />

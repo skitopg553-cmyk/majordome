@@ -126,7 +126,7 @@ export function goalAdvice(goal: Goal, free: number, today: string): GoalAdvice 
   const needed = Math.ceil(remaining / left);
   const head = `${goal.label} : ${needed} €/mois nécessaires, ${free} € dispo`;
   if (needed <= free) return { label: goal.label, needed, monthsLeft: left, text: `${head} → c'est tenable.` };
-  if (free <= 0) return { label: goal.label, needed, monthsLeft: left, text: `${head} → rien de libre pour l'instant : réduis tes dépenses avant.` };
+  if (free <= 0) return { label: goal.label, needed, monthsLeft: left, text: `${head} → rien de libre pour l'instant : réduisez vos dépenses avant.` };
   const delay = Math.ceil(remaining / free) - left;
-  return { label: goal.label, needed, monthsLeft: left, text: `${head} → décale de ${delay} mois ou réduis tes sorties de ${needed - free} €.` };
+  return { label: goal.label, needed, monthsLeft: left, text: `${head} → décalez de ${delay} mois ou réduisez vos sorties de ${needed - free} €.` };
 }

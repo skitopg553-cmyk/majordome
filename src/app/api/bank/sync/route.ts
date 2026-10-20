@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const conn = latest.connection;
   if (!conn) return NextResponse.json({ error: "Aucune banque connectée : touche « Connecter ma banque »." }, { status: 404 });
   const now = new Date();
-  if ((daysLeft(conn.valid_until, now) ?? 1) <= 0) return NextResponse.json({ error: "Ton accord de lecture a expiré : reconnecte ta banque." }, { status: 409 });
+  if ((daysLeft(conn.valid_until, now) ?? 1) <= 0) return NextResponse.json({ error: "Votre accord de lecture a expiré : reconnectez votre banque." }, { status: 409 });
 
   try {
     const r = await syncAccounts({ eb, accounts: conn.accounts, since: syncSince(conn.last_synced_at, now), now });

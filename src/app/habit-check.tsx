@@ -62,7 +62,7 @@ export default function HabitCheck({ slots }: { slots: SlotsApi }) {
       {missed && (
         <Card>
           <Label>{missed.title}</Label>
-          <p className="mt-1 text-[16px] font-semibold leading-snug tracking-tight">Pas grave. On le reprogramme ?</p>
+          <p className="mt-1 text-[16px] font-semibold leading-snug tracking-tight">Qu&apos;à cela ne tienne. Le reprogrammons-nous ?</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button onClick={() => reprogram(missed, "tomorrow")} className={`${pill} bg-accent text-ink`}>
               Demain
@@ -79,7 +79,7 @@ export default function HabitCheck({ slots }: { slots: SlotsApi }) {
       {questions.map((q) => (
         <Card key={q.key}>
           <Label>Habitude</Label>
-          <p className="mt-1 break-words text-[17px] font-semibold leading-snug tracking-tight">Tu y es allé ? {q.title}</p>
+          <p className="mt-1 break-words text-[17px] font-semibold leading-snug tracking-tight">Y êtes-vous allé, Monsieur ? {q.title}</p>
           <p className="text-[13px] text-muted">
             {when(q.day, today)} · {hhmm(q.start)}–{hhmm(q.end)}
           </p>

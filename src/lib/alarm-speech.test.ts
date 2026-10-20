@@ -7,10 +7,10 @@ describe("hourWords / confirmation de réveil", () => {
     [1, 0, "une heure"], [1, 30, "une heure trente"], [13, 0, "treize heures"], [21, 5, "vingt et une heures cinq"], [23, 59, "vingt-trois heures cinquante-neuf"], [10, 10, "dix heures dix"],
   ])("%i:%i → %s", (h, m, w) => expect(hourWords(h, m)).toBe(w));
   it("phrase complète", () => {
-    expect(alarmConfirmation(7, 0)).toBe("Ok, réveil réglé à sept heures.");
-    expect(alarmConfirmation(0, 0)).toBe("Ok, réveil réglé à minuit.");
-    expect(alarmConfirmation(12, 0)).toBe("Ok, réveil réglé à midi.");
-    expect(alarmFailure).toBe("Je n'ai pas réussi à régler le réveil.");
+    expect(alarmConfirmation(7, 0)).toBe("Très bien, Monsieur. Réveil réglé à sept heures.");
+    expect(alarmConfirmation(0, 0)).toBe("Très bien, Monsieur. Réveil réglé à minuit.");
+    expect(alarmConfirmation(12, 0)).toBe("Très bien, Monsieur. Réveil réglé à midi.");
+    expect(alarmFailure).toBe("Je n'ai pas réussi à régler le réveil, Monsieur.");
   });
 });
 
@@ -29,8 +29,8 @@ describe("durationWords / confirmation de minuteur", () => {
 
 describe("textes du web : la phrase promet un bouton seulement quand la carte est envoyée", () => {
   it("réveil et minuteur", () => {
-    expect(alarmWebText(7, 30, "demain")).toBe("Réveil demain à sept heures trente prêt. Touche le bouton pour le créer.");
-    expect(alarmWebText(16, 51, "aujourd'hui")).toBe("Réveil à seize heures cinquante et un prêt. Touche le bouton pour le créer.");
-    expect(timerWebText(300)).toBe("Minuteur de cinq minutes prêt. Touche le bouton pour le lancer.");
+    expect(alarmWebText(7, 30, "demain")).toBe("Réveil demain à sept heures trente prêt, Monsieur. Touchez le bouton pour le créer.");
+    expect(alarmWebText(16, 51, "aujourd'hui")).toBe("Réveil à seize heures cinquante et un prêt, Monsieur. Touchez le bouton pour le créer.");
+    expect(timerWebText(300)).toBe("Minuteur de cinq minutes prêt, Monsieur. Touchez le bouton pour le lancer.");
   });
 });

@@ -96,4 +96,4 @@ export function claimsActionWithoutTool(reply: string, toolCalls: number): boole
   return /\b(?:j'ai|c'est|je viens d(?:e\s+|'))\s*(?:bien\s+|maintenant\s+)?(?:note|ajout\w*|cree|enregistr\w*|memoris\w*|mis a jour|marque|programme|retenu|supprim\w*|modifi\w*|deplac\w*|efface)\b|\btout est (?:maintenant\s+)?(?:supprim|efface|vide|note|en place|fait)/.test(fold(reply).replace(/[’]/g, "'"));
 }
 
-export const FALSE_CLAIM_WARNING = "\n\n⚠️ Attention : je n'ai en fait rien enregistré cette fois. Redis-le-moi pour que je le note vraiment.";
+export const FALSE_CLAIM_WARNING = "\n\n⚠️ Pardonnez-moi, Monsieur : je n'ai en fait rien enregistré cette fois. Veuillez me le redire pour que je le note vraiment.";

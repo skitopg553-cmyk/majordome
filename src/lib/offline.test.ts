@@ -17,8 +17,8 @@ describe("messages d'erreur lisibles", () => {
     expect(friendlyError(new Error("Anthropic 529 overloaded"))).toContain("très sollicitée");
     expect(friendlyError(new Error("Erreur serveur (502)"))).toContain("serveur");
     expect(friendlyError(new Error("Déjà dans la liste : « Pain »"))).toBe("Déjà dans la liste : « Pain »");
-    expect(friendlyError(new Error("Failed to fetch"))).toMatch(/Réessaie/);
-    expect(friendlyError("bizarre")).toMatch(/Réessaie/);
+    expect(friendlyError(new Error("Failed to fetch"))).toMatch(/réessayer/);
+    expect(friendlyError("bizarre")).toMatch(/réessayer/);
   });
 });
 

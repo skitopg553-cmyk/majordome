@@ -17,7 +17,7 @@ type Voice = (typeof VOICES)[number];
 
 // Consigne de ton OpenAI : la voix doit sonner comme un ami organisé, pas comme un GPS.
 const TONE =
-  "Parle en français de France, d'une voix posée et chaleureuse, comme un ami organisé et bienveillant. Rythme naturel avec de légères variations d'intonation et de vraies pauses entre les phrases ; jamais robotique, jamais monotone, jamais théâtral. Prononce les heures et les nombres naturellement.";
+  "Parle en français de France, comme un grand majordome britannique : voix posée, chaleureuse et distinguée, vouvoiement, une pointe d'humour pince-sans-rire. Rythme naturel avec de légères variations d'intonation et de vraies pauses entre les phrases ; jamais robotique, jamais monotone, jamais théâtral. Prononce les heures et les nombres naturellement.";
 
 // Petites phrases répétées (« Ok, c'est fait. ») : gardées en mémoire de l'instance, pas refacturées.
 const cache = new Map<string, { audio: ArrayBuffer; provider: string }>();

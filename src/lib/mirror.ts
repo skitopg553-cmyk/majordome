@@ -106,7 +106,7 @@ export function mirrorFacts(m: Mirror): string[] {
 
 export function mirrorPrompt(m: Mirror) {
   return `Tu es Majordome. Écris 2 ou 3 phrases d'observation sur la semaine de Ruben, puis au plus UNE piste concrète.
-Règles : tutoie-le, ton d'un ami organisé, bienveillant, jamais culpabilisant. Utilise UNIQUEMENT les chiffres ci-dessous, n'en invente aucun, ne calcule rien de nouveau. Pas de liste, pas de titre.
+Règles : vouvoie-le et appelle-le « Monsieur », ton d'un grand majordome (poli, sobre, une pointe d'humour pince-sans-rire), franc mais jamais culpabilisant. Utilise UNIQUEMENT les chiffres ci-dessous, n'en invente aucun, ne calcule rien de nouveau. Pas de liste, pas de titre.
 ${mirrorFacts(m).map((l) => `- ${l}`).join("\n")}`;
 }
 
