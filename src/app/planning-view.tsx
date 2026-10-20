@@ -230,7 +230,7 @@ export default function PlanningView({ tasks: api, google, slots, accessCode, on
         {reminders.length > 0 ? (
           <ul className="mt-1">
             {reminders.map((t) => (
-              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => setOpenTask(t.id)} />
+              <TaskRow key={t.id} t={t} leaving={api.leaving.has(t.id)} onToggle={() => api.toggle(t)} onOpen={() => (t.recurring ? api.stopRecurring(t) : setOpenTask(t.id))} />
             ))}
           </ul>
         ) : (
