@@ -4,6 +4,7 @@ Assistant personnel IA (secrétaire, coach, conseiller). Utilisateur unique : Ru
 
 ## Contexte développeur
 - Ruben est débutant en dev (bases React, TypeScript, Supabase, Vercel).
+- Dans l'appli, Majordome est un grand majordome britannique en français : il **vouvoie** Ruben et l'appelle « Monsieur » (prompt, phrases du code, écrans, voix). Jamais de tutoiement dans l'appli (ici, avec Ruben, en session, le tutoiement reste libre).
 - Explique brièvement chaque choix technique non évident, en français.
 - Avance par petites étapes testables. Pas de gros refactors non demandés.
 

@@ -55,7 +55,7 @@ export default function RemindersRow({ accessCode }: { accessCode: string }) {
     loading: "…",
     unsupported: "Pas disponible sur ce navigateur",
     "not-configured": "Bientôt disponible",
-    off: "Une notification 5 min avant tes rendez-vous et tes cours",
+    off: "Une notification 5 min avant vos rendez-vous et vos cours",
     on: "Activés sur ce téléphone",
     denied: "Notifications bloquées dans les réglages du téléphone",
   };

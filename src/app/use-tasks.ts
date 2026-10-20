@@ -98,7 +98,7 @@ export function useTasks(accessCode: string, onUnauthorized: () => void) {
           mascotApi.react("sad", 2000);
           // Hors ligne : la tâche reste affichée et part au retour du réseau (file en mémoire du téléphone).
           enqueue(localStorage, { title, due_at, priority });
-          setError("Hors ligne : ta tâche sera ajoutée dès que le réseau revient.");
+          setError("Hors ligne : votre tâche sera ajoutée dès le retour du réseau.");
           return;
         }
         setTasks((cur) => cur.filter((x) => x.id !== tempId));

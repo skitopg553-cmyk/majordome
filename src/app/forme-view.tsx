@@ -109,7 +109,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
         {/* Sport : régularité de la semaine */}
         <Card>
           <div className="flex items-center justify-between">
-            <Label>Ta semaine de sport</Label>
+            <Label>Votre semaine de sport</Label>
             <button onClick={() => setForm(form === "workout" ? null : "workout")} className="-my-2 -mr-2 min-h-11 px-2 text-[13px] font-medium text-accent">
               + Séance
             </button>
@@ -179,7 +179,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
           {lastNight ? (
             <p className="mt-1 text-[28px] font-semibold tabular-nums tracking-tight">{hoursLabel(lastNight.hours)}</p>
           ) : (
-            <p className="mt-1 text-[15px] text-muted">Tu n&apos;as pas encore noté ta nuit.</p>
+            <p className="mt-1 text-[15px] text-muted">Votre nuit n&apos;est pas encore notée, Monsieur.</p>
           )}
           {week.avgSleep !== null && <p className="text-[13px] text-faint">Moyenne de la semaine : {hoursLabel(week.avgSleep)}</p>}
           {form === "sleep" && (
@@ -230,7 +230,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
               <p className="mt-1.5 text-[12px] text-faint">Objectif indicatif : 10 000</p>
             </>
           ) : (
-            <p className="mt-1 text-[15px] text-muted">Pas encore notés. Dis à Majordome combien tu en as faits.</p>
+            <p className="mt-1 text-[15px] text-muted">Pas encore notés. Dites à Majordome combien vous en avez faits.</p>
           )}
         </Card>
         {data.nutrition && <NutritionCard data={data.nutrition} onDelete={(m) => remove({ table: "food_logs", id: m.id }, `« ${m.label} » (${m.grams} g)`)} />}
@@ -245,7 +245,7 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
       <Header title="Forme" subtitle="Santé, sport et productivité" onAvatar={onAvatar} />
       <Card>
         <p className="text-[17px] font-semibold tracking-tight">Forme indisponible pour l&apos;instant</p>
-        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire tes données. Vérifie ta connexion puis rouvre l&apos;onglet.</p>
+        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire vos données. Vérifiez votre connexion puis rouvrez l&apos;onglet.</p>
         <button onClick={load} className="mt-3 min-h-11 rounded-full bg-raised px-4 text-[13px] font-medium ring-1 ring-line active:scale-95">
           Réessayer
         </button>

@@ -141,13 +141,13 @@ export async function POST(req: Request) {
       } else if (failures.length && !successes && !/\?/.test(reply)) {
         // Un outil a échoué et rien n'a été fait : le code le dit, quoi qu'ait écrit l'IA.
         const why = failures[0].split(/\. (?=Dis|Pose|Utilise|Précise|N'invente)/)[0].replace(/\.$/, "");
-        const warn = `\n\n⚠️ Rien n'a été fait : ${why}.`;
+        const warn = `\n\n⚠️ Je crains que rien n'ait été fait, Monsieur : ${why}.`;
         ctrl.enqueue(enc.encode(warn));
         persisted = reply = `${reply}${warn}`;
       }
       // Jamais de promesse d'un bouton absent : la phrase parle d'un bouton mais aucune carte n'est envoyée.
       if (!cards.length && /\bbouton\b/i.test(reply)) {
-        const warn = "\n\n⚠️ Je n'ai pas pu préparer ce réveil ou ce minuteur. Redis-le-moi avec l'heure, par exemple « réveil à 7 h ».";
+        const warn = "\n\n⚠️ Je n'ai pas pu préparer ce réveil ou ce minuteur, Monsieur. Veuillez me le redire avec l'heure, par exemple « réveil à 7 h ».";
         ctrl.enqueue(enc.encode(warn));
         reply += warn;
       }

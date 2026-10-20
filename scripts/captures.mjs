@@ -104,7 +104,7 @@ const tab = (label) => page.locator("nav button", { hasText: label }).click();
 await shot("1-accueil");
 await page.locator("main > div").first().evaluate((el) => el.scrollTo(0, el.scrollHeight));
 await shot("1b-accueil-bas");
-await page.getByRole("button", { name: /Ta semaine/ }).click();
+await page.getByRole("button", { name: /Votre semaine/ }).click();
 await shot("1c-ta-semaine");
 await page.getByLabel("Fermer", { exact: true }).click();
 await tab("Planning");

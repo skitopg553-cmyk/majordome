@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   try {
     const c = await finishConnection({ eb, secret: process.env.MAJORDOME_ACCESS_CODE ?? "", state: url.searchParams.get("state"), code: url.searchParams.get("code") });
     const saved = await saveConnection(supabaseAdmin(), c);
-    if (saved.missingTable) return back("erreur", "La table bank_connections n'existe pas encore : applique la migration 0009 puis reconnecte ta banque.");
+    if (saved.missingTable) return back("erreur", "La table bank_connections n'existe pas encore : appliquez la migration 0009 puis reconnectez votre banque.");
     if (saved.error) return back("erreur", saved.error.message);
     return back("ok");
   } catch (err) {

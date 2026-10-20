@@ -91,7 +91,7 @@ async function tour(browser, run, data) {
     if (p === "/api/forme") return json(data.forme);
     if (p === "/api/week") return json(data.week);
     if (p === "/api/costs") return json(data.costs);
-    if (p === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "OK\n\nFait : Boxe anglaise mardi 19 h-20 h 30 (habitude à confirmer)" });
+    if (p === "/api/chat") return route.fulfill({ status: 200, contentType: "text/plain", body: "OK\n\nC'est noté, Monsieur. Boxe anglaise mardi 19 h-20 h 30 (habitude à confirmer)" });
     return json({ ok: true });
   });
   await page.goto(url);
@@ -123,7 +123,7 @@ async function tour(browser, run, data) {
   });
   await safe("ta-semaine", async () => {
     await page.evaluate(() => document.querySelector(".min-h-0.flex-1.overflow-y-auto")?.scrollTo(0, 0));
-    const b = page.getByText("Ta semaine").first();
+    const b = page.getByText("Votre semaine").first();
     await b.scrollIntoViewIfNeeded();
     await b.click();
     await shot("ta-semaine");
@@ -145,7 +145,7 @@ async function tour(browser, run, data) {
     await shot("chat-vide");
     await page.locator("textarea").fill("décale la boxe à 19h jusqu'à 20h30");
     await page.keyboard.press("Enter");
-    await page.getByText("Fait :").first().waitFor({ timeout: 5000 });
+    await page.getByText("C'est noté, Monsieur").first().waitFor({ timeout: 5000 });
     await shot("chat-reponse");
   });
   await ctx.close();

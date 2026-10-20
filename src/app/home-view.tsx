@@ -134,7 +134,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
         <Card>
           <Label>Google</Label>
           <p className="mt-1 text-[14px] leading-snug text-muted">
-            {googleNotice ?? (google.state === "reconnect" ? "Google n'est plus connecté (la connexion a expiré). Reconnecte-le pour retrouver ton agenda et tes mails." : "Connecte ton agenda et tes mails : majordome les lit sans jamais rien écrire chez Google.")}
+            {googleNotice ?? (google.state === "reconnect" ? "Google n'est plus connecté (la connexion a expiré). Reconnectez-le pour retrouver votre agenda et vos mails." : "Connectez votre agenda et vos mails : Majordome les lit sans jamais rien écrire chez Google.")}
           </p>
           {(google.state === "not-connected" || google.state === "reconnect") && (
             <button onClick={() => void google.connect().catch(() => {})} className="mt-3 min-h-11 rounded-full bg-accent px-5 text-[14px] font-semibold text-ink active:scale-95">
@@ -186,17 +186,17 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
       ) : fin?.ready ? (
         <Card onClick={() => go("finances")}>
           <Label>Argent</Label>
-          <p className="mt-1 text-[17px] font-semibold tracking-tight">Ton solde apparaîtra ici</p>
-          <p className="mt-0.5 text-[13px] leading-snug text-muted">Importe un relevé ou connecte ta banque dans Finances.</p>
+          <p className="mt-1 text-[17px] font-semibold tracking-tight">Votre solde apparaîtra ici</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-muted">Importez un relevé ou connectez votre banque dans Finances.</p>
         </Card>
       ) : null}
 
       {/* Ton objectif : le vrai (dégradé aux couleurs de l'app, sans photo), ou une invitation s'il n'y en a pas */}
       {noGoalYet ? (
         <Card onClick={() => go("finances")}>
-          <Label>Ton objectif</Label>
+          <Label>Votre objectif</Label>
           <p className="mt-1 text-[17px] font-semibold tracking-tight">Pas encore d&apos;objectif</p>
-          <p className="mt-0.5 text-[13px] leading-snug text-muted">Dis à Majordome ce que tu veux mettre de côté, ou crée-le dans Finances.</p>
+          <p className="mt-0.5 text-[13px] leading-snug text-muted">Dites à Majordome ce que vous souhaitez mettre de côté, ou créez-le dans Finances.</p>
         </Card>
       ) : realGoal ? (
         <button onClick={() => go("finances")} className={`relative block h-48 w-full overflow-hidden rounded-[22px] text-left transition-transform active:scale-[0.985] ${realGoal.image_url ? "bg-surface" : "goal-default"}`}>
@@ -206,7 +206,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-transparent" />
           <div className="absolute inset-x-4 bottom-4">
-            <p className="text-[13px] font-medium text-fg/80">Ton objectif</p>
+            <p className="text-[13px] font-medium text-fg/80">Votre objectif</p>
             <p className="truncate text-[19px] font-semibold tracking-tight">{realGoal.label}</p>
             <p className="mt-0.5 text-[13px] tabular-nums text-fg/75">
               {euro(realGoal.saved, false)} / {euro(realGoal.target, false)} · {goalProgress(realGoal.saved, realGoal.target)} %
@@ -221,7 +221,7 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
       {/* Ta forme : 3 chiffres RÉELS (rien tant qu'il n'y a pas de données) */}
       {realForme && (
         <Card onClick={() => go("forme")}>
-          <Label>Ta forme</Label>
+          <Label>Votre forme</Label>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             {[
               ["Nuit", realForme.lastNight !== null ? hoursLabel(realForme.lastNight) : "—"],
@@ -240,8 +240,8 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
       {/* Ta semaine (miroir, phase 6) — APERÇU */}
       <Card onClick={onWeek} className="flex items-center justify-between gap-3">
         <span>
-          <span className="block text-[15px] font-medium">Ta semaine</span>
-          <span className="block text-[13px] text-muted">Tes chiffres et un mot de Majordome</span>
+          <span className="block text-[15px] font-medium">Votre semaine</span>
+          <span className="block text-[13px] text-muted">Vos chiffres et un mot de Majordome</span>
         </span>
         <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
           <path d="M9 6l6 6-6 6" />

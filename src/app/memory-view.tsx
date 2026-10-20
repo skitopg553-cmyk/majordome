@@ -44,7 +44,7 @@ export default function MemoryView({ accessCode, onUnauthorized }: { accessCode:
   return (
     <section>
       <div>
-        <p className="text-sm text-faint">Ce que Majordome sait de toi. Dis-lui en conversation ce qu&apos;il doit retenir.</p>
+        <p className="text-sm text-faint">Ce que Majordome sait de vous. Dites-lui en conversation ce qu&apos;il doit retenir.</p>
         {error && <p className="pt-3 text-sm text-red-300">{error}</p>}
         {CATEGORIES.map(([cat, label]) => {
           const items = (memories ?? []).filter((m) => m.category === cat);

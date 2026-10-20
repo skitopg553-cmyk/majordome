@@ -24,7 +24,7 @@ function SavingsCard({ s }: { s: Savings }) {
     return (
       <Card>
         <Label>Épargne</Label>
-        <p className="mt-1 text-[14px] text-muted">Il faut au moins un mois complet d&apos;opérations pour calculer ce que tu peux mettre de côté.</p>
+        <p className="mt-1 text-[14px] text-muted">Il faut au moins un mois complet d&apos;opérations pour calculer ce que vous pouvez mettre de côté.</p>
       </Card>
     );
   }
@@ -65,7 +65,7 @@ async function fileToCsv(file: File) {
   try {
     return await xlsxFileToCsv(file);
   } catch {
-    throw new Error("Ce fichier Excel n'a pas pu être lu. Essaie l'export CSV de ta banque.");
+    throw new Error("Ce fichier Excel n'a pas pu être lu. Essayez l'export CSV de votre banque.");
   }
 }
 
@@ -140,7 +140,7 @@ function GoalForm({ initial, accessCode, onUnauthorized, onDone, onCancel }: { i
   async function save() {
     const target = parseFrenchAmount(d.target);
     const saved = d.saved.trim() === "" ? null : parseFrenchAmount(d.saved);
-    if (!d.label.trim()) return setError("Donne un nom à ton objectif.");
+    if (!d.label.trim()) return setError("Donnez un nom à votre objectif.");
     if (target === null || target <= 0) return setError("Indique le montant visé, par exemple 3000.");
     if (d.saved.trim() !== "" && (saved === null || saved < 0)) return setError("« Déjà épargné » doit être un montant, ou reste vide.");
     setBusy(true);
@@ -339,14 +339,14 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
           <Card>
             <Label>Solde au {shortDate(data.snapshot.asOf)}</Label>
             <p className="mt-1 text-[34px] font-semibold leading-none tracking-tight tabular-nums">{euro(data.snapshot.balance)}</p>
-            <p className="mt-1.5 text-[13px] text-muted">D&apos;après ton dernier relevé importé.</p>
+            <p className="mt-1.5 text-[13px] text-muted">D&apos;après votre dernier relevé importé.</p>
           </Card>
         )}
         {data.transactions.length === 0 ? (
           <Card>
             <p className="text-[17px] font-semibold tracking-tight">Commence par un relevé</p>
             <p className="mt-1 text-[14px] leading-snug text-muted">
-              Télécharge le relevé de ton compte au format CSV depuis l&apos;appli ou le site de ta banque, puis importe-le ici. Majordome range tout seul chaque dépense.
+              Téléchargez le relevé de votre compte au format CSV depuis l&apos;appli ou le site de votre banque, puis importez-le ici. Majordome range tout seul chaque dépense.
             </p>
           </Card>
         ) : (
@@ -438,7 +438,7 @@ export default function FinancesView({ accessCode, onUnauthorized, onAvatar, ban
       <Header title="Finances" onAvatar={onAvatar} />
       <Card>
         <p className="text-[17px] font-semibold tracking-tight">Finances indisponibles pour l&apos;instant</p>
-        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire tes données. Vérifie ta connexion puis rouvre l&apos;onglet.</p>
+        <p className="mt-1 text-[13px] leading-snug text-muted">Impossible de lire vos données. Vérifiez votre connexion puis rouvrez l&apos;onglet.</p>
         <button onClick={load} className="mt-3 min-h-11 rounded-full bg-raised px-4 text-[13px] font-medium ring-1 ring-line active:scale-95">
           Réessayer
         </button>

@@ -56,7 +56,7 @@ export function NutritionCard({ data, onDelete }: { data: NutritionData; onDelet
         ))}
       </div>
       {data.meals.length === 0 ? (
-        <p className="mt-3 text-[14px] text-muted">Rien noté. Dis par exemple « j&apos;ai mangé 50 g de riz » à Majordome.</p>
+        <p className="mt-3 text-[14px] text-muted">Rien noté. Dites par exemple « j&apos;ai mangé 50 g de riz » à Majordome.</p>
       ) : (
         <ul className="mt-3 divide-y divide-line/60">
           {data.meals.map((m) => (
@@ -117,7 +117,7 @@ export function ScreenCard({ rows, accessCode, onSynced }: { rows: ScreenRow[]; 
         </>
       ) : mode === "needs" ? (
         <>
-          <p className="mt-1 text-[15px] text-muted">Autorise Majordome à lire ton temps d&apos;écran : une seule fois, dans les réglages d&apos;Android.</p>
+          <p className="mt-1 text-[15px] text-muted">Autorisez Majordome à lire votre temps d&apos;écran : une seule fois, dans les réglages d&apos;Android.</p>
           <button onClick={() => void openUsageSettings()} className="mt-3 min-h-11 rounded-full bg-accent px-4 text-[13px] font-semibold text-ink active:scale-95">
             Autoriser l&apos;accès
           </button>

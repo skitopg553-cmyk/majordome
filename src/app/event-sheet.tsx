@@ -35,7 +35,7 @@ export default function EventSheet({ e, onClose }: { e: AgendaEvent; onClose: ()
             Ouvrir dans Google Agenda
           </a>
         )}
-        <p className="text-[13px] leading-snug text-muted">Ce rendez-vous vient de ton Google Agenda. Majordome le lit seulement : pour le modifier ou le supprimer, ouvre-le dans Google Agenda.</p>
+        <p className="text-[13px] leading-snug text-muted">Ce rendez-vous vient de votre Google Agenda. Majordome le lit seulement : pour le modifier ou le supprimer, ouvrez-le dans Google Agenda.</p>
       </div>
     </section>
   );

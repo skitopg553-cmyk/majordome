@@ -7,9 +7,9 @@ import { useEffect, useRef, useState } from "react";
 // Rien n'est branché dans le reste de l'app tant que Ruben n'a pas choisi.
 
 const PHRASES = [
-  { id: "courte", label: "Courte", text: "Ok, c'est fait." },
-  { id: "chiffres", label: "Chiffres", text: "Réveil réglé à sept heures trente. Tu as 3 tâches aujourd'hui, dont deux avant midi." },
-  { id: "longue", label: "Longue", text: "Bonne nouvelle, ta semaine est bien partie. Tu as fait quatre séances de sport et dépensé moins que d'habitude. Pour demain, je te conseille de décaler le rendez-vous de quatorze heures." },
+  { id: "courte", label: "Courte", text: "Très bien, Monsieur. C'est noté." },
+  { id: "chiffres", label: "Chiffres", text: "Réveil réglé à sept heures trente, Monsieur. Vous avez 3 tâches aujourd'hui, dont deux avant midi." },
+  { id: "longue", label: "Longue", text: "Bonne nouvelle, Monsieur : votre semaine est bien partie. Vous avez fait quatre séances de sport et dépensé moins que d'habitude. Pour demain, je vous conseille de décaler le rendez-vous de quatorze heures." },
 ];
 
 type Row = { id: string; label: string; note: string; model?: "flash" | "v2" | "v3"; openai?: boolean };
@@ -79,7 +79,7 @@ export default function VoixTest() {
         body: JSON.stringify({ text: p.text, voice: "coral", nocache: true, model: row.model, stability, style, only: row.openai ? "openai" : undefined }),
       });
       const reply = performance.now() - t0; // l'audio commence d'arriver
-      if (res.status === 401) throw new Error("Code d'accès refusé : ouvre l'app et entre ton code.");
+      if (res.status === 401) throw new Error("Code d'accès refusé : ouvre l'app et entrez votre code.");
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.reason === "cap" ? "Plafond du jour atteint (repli sur la voix du téléphone)." : d.reason === "no-key" ? "Aucune clé de voix sur le serveur." : "Les services de voix ne répondent pas (repli téléphone).");
@@ -124,7 +124,7 @@ export default function VoixTest() {
     return (
       <main className="mx-auto max-w-xl px-5 py-10">
         <h1 className="text-2xl font-semibold">Comparaison des voix</h1>
-        <p className="mt-3 text-muted">Cette page est protégée. Ouvre d&apos;abord l&apos;app, entre ton code d&apos;accès, puis reviens ici (même navigateur).</p>
+        <p className="mt-3 text-muted">Cette page est protégée. Ouvrez d&apos;abord l&apos;app, entrez votre code d&apos;accès, puis revenez ici (même navigateur).</p>
       </main>
     );
   }
@@ -134,7 +134,7 @@ export default function VoixTest() {
   return (
     <main className="mx-auto max-w-xl space-y-4 px-5 pb-16 pt-8">
       <h1 className="text-2xl font-semibold tracking-tight">Comparaison des voix</h1>
-      <p className="text-[14px] leading-snug text-muted">« Premier son » = temps entre ton tap et le début du son : c&apos;est ce que tu ressentiras. « Lecture » joue la phrase choisie ; « Les 3 phrases » les enchaîne. Casque ou haut-parleur, au calme.</p>
+      <p className="text-[14px] leading-snug text-muted">« Premier son » = temps entre votre tap et le début du son : c&apos;est ce que vous ressentirez. « Lecture » joue la phrase choisie ; « Les 3 phrases » les enchaîne. Casque ou haut-parleur, au calme.</p>
 
       <div className="space-y-3 rounded-[22px] bg-surface p-4">
         <label className="block text-[13px] text-muted">

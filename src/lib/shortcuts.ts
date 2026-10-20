@@ -1,7 +1,7 @@
 // Raccourcis Android (manifest « shortcuts ») : /?action=parler | tache | depense. Les valeurs inconnues sont ignorées.
 export type Shortcut = { chat: true; prefill: string };
 
-const ACTIONS: Record<string, string> = { parler: "", tache: "Ajoute une tâche : ", depense: "J'ai dépensé " };
+const ACTIONS: Record<string, string> = { parler: "", tache: "Ajoutez une tâche : ", depense: "J'ai dépensé " };
 
 export function shortcutFromSearch(search: string): Shortcut | null {
   const a = new URLSearchParams(search).get("action");

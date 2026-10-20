@@ -46,7 +46,7 @@ export default function Celebration({ note, onDone }: { note?: string; onDone: (
           <span key={i} className="celebrate-dot" style={{ ["--dx" as string]: `${p.dx}px`, ["--dy" as string]: `${p.dy}px`, animationDelay: `${300 + p.delay}ms` }} />
         ))}
       </div>
-      <p className="celebrate-text text-[17px] font-semibold tracking-tight">Bien joué</p>
+      <p className="celebrate-text text-[17px] font-semibold tracking-tight">Fort bien, Monsieur</p>
       {note && <p className="celebrate-text text-[13px] text-muted">{note}</p>}
     </div>
   );

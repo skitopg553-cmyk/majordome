@@ -74,7 +74,7 @@ export function useGoogle(accessCode: string, onUnauthorized: () => void): Googl
       try {
         await callApi(accessCode, "/api/google/suggestion", { method: "POST", body: { id, action }, onUnauthorized });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Impossible d'enregistrer ta réponse");
+        setError(e instanceof Error ? e.message : "Impossible d'enregistrer votre réponse");
         void load();
       }
     },

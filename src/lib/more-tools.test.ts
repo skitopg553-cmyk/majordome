@@ -265,8 +265,8 @@ describe("phrase → carte → texte : tout le chemin du réveil, sans IA", () =
       const p = r.card.params;
       return p.kind === "alarm" ? alarmWebText(p.hour, p.minutes, p.when) : timerWebText(p.seconds);
     };
-    expect(await run("mets un réveil à 7h demain")).toMatch(/^Réveil (demain )?à sept heures prêt\. Touche le bouton pour le créer\.$/);
+    expect(await run("mets un réveil à 7h demain")).toMatch(/^Réveil (demain )?à sept heures prêt, Monsieur\. Touchez le bouton pour le créer\.$/);
     expect(await run("est-ce que tu peux mettre un réveil pour 7h demain s'il te plaît")).toContain("sept heures");
-    expect(await run("minuteur de 5 minutes")).toBe("Minuteur de cinq minutes prêt. Touche le bouton pour le lancer.");
+    expect(await run("minuteur de 5 minutes")).toBe("Minuteur de cinq minutes prêt, Monsieur. Touchez le bouton pour le lancer.");
   });
 });

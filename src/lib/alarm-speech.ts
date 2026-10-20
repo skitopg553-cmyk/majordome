@@ -31,11 +31,11 @@ export function durationWords(totalSeconds: number): string {
 /** « de cinq minutes », « d'une minute » (élision devant « un / une » seulement). */
 const deOf = (words: string) => (/^une?\b/.test(words) ? `d'${words}` : `de ${words}`);
 
-export const alarmConfirmation = (hour: number, minutes: number) => `Ok, réveil réglé à ${hourWords(hour, minutes)}.`;
+export const alarmConfirmation = (hour: number, minutes: number) => `Très bien, Monsieur. Réveil réglé à ${hourWords(hour, minutes)}.`;
 export const timerConfirmation = (seconds: number) => `Minuteur ${deOf(durationWords(seconds))} lancé.`;
-export const alarmFailure = "Je n'ai pas réussi à régler le réveil.";
-export const timerFailure = "Je n'ai pas réussi à lancer le minuteur.";
+export const alarmFailure = "Je n'ai pas réussi à régler le réveil, Monsieur.";
+export const timerFailure = "Je n'ai pas réussi à lancer le minuteur, Monsieur.";
 
 // Sur le web (hors coque Android) : la carte avec son bouton. Cette phrase n'est écrite QUE quand la carte est réellement envoyée.
-export const alarmWebText = (hour: number, minutes: number, when: string) => `Réveil ${when === "demain" ? "demain " : ""}à ${hourWords(hour, minutes)} prêt. Touche le bouton pour le créer.`;
-export const timerWebText = (seconds: number) => `Minuteur ${deOf(durationWords(seconds))} prêt. Touche le bouton pour le lancer.`;
+export const alarmWebText = (hour: number, minutes: number, when: string) => `Réveil ${when === "demain" ? "demain " : ""}à ${hourWords(hour, minutes)} prêt, Monsieur. Touchez le bouton pour le créer.`;
+export const timerWebText = (seconds: number) => `Minuteur ${deOf(durationWords(seconds))} prêt, Monsieur. Touchez le bouton pour le lancer.`;
