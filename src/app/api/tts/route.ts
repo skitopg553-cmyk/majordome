@@ -3,6 +3,8 @@ import { denied } from "@/lib/access";
 import { toSpokenText } from "@/lib/speech-text";
 import { supabaseAdmin } from "@/lib/supabase";
 import { parisDay, parisIso } from "@/lib/task-groups";
+import { parseMood } from "@/lib/mascot";
+import { forVoice } from "@/lib/voice-style";
 import { decideSpeak, EL_MODELS, elevenCostUsd, isElModel, maxCharsPerDay, ttsCostUsd, unit01, type ElModel } from "@/lib/voice-budget";
 
 export const maxDuration = 30;
@@ -30,11 +32,11 @@ async function usedToday(): Promise<number> {
   return (r.data ?? []).reduce((s, x) => s + (x.input_tokens ?? 0), 0);
 }
 
-type Attempt = { provider: "elevenlabs" | "openai"; model: string; costUsd: number; call: () => Promise<Response> };
+type Attempt = { provider: "elevenlabs" | "openai"; model: string; chars: number; costUsd: number; call: () => Promise<Response> };
 
 export async function POST(req: Request) {
   if (denied(req)) return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
-  const body = (await req.json().catch(() => ({}))) as { text?: unknown; voice?: unknown; nocache?: unknown; model?: unknown; stability?: unknown; style?: unknown; only?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { text?: unknown; voice?: unknown; nocache?: unknown; model?: unknown; stability?: unknown; style?: unknown; only?: unknown; mood?: unknown; expressive?: unknown };
   const spoken = typeof body.text === "string" ? toSpokenText(body.text.slice(0, 4000)) : "";
   const voice: Voice = (VOICES as readonly string[]).includes(body.voice as string) ? (body.voice as Voice) : "coral";
   const elKey = process.env.ELEVENLABS_API_KEY;
@@ -46,7 +48,10 @@ export async function POST(req: Request) {
   // Modèle ElevenLabs : celui demandé par l'écran, sinon ELEVENLABS_MODEL (flash / v2 / v3), sinon Flash (le plus rapide et le moins cher).
   const envModel = process.env.ELEVENLABS_MODEL;
   const model: ElModel = isElModel(body.model) ? body.model : isElModel(envModel) ? envModel : "flash";
-  const stability = unit01(body.stability, 0.5);
+  // Voix expressive : seulement avec v3 (les autres modèles liraient les indications [entre crochets] à voix haute). L'humeur de la mascotte → indication d'émotion, et des phrases qui respirent.
+  const expressive = body.expressive === true && model === "v3";
+  const elText = forVoice(spoken, { mood: parseMood(body.mood), expressive });
+  const stability = model === "v3" ? [0, 0.5, 1].reduce((best, v) => (Math.abs(v - unit01(body.stability, 0.5)) < Math.abs(best - unit01(body.stability, 0.5)) ? v : best)) : unit01(body.stability, 0.5); // v3 : trois crans seulement (créatif 0, naturel 0,5, stable 1)
   const style = unit01(body.style, 0);
 
   const attempts: Attempt[] = [];
@@ -55,12 +60,13 @@ export async function POST(req: Request) {
     attempts.push({
       provider: "elevenlabs",
       model: m.id,
-      costUsd: elevenCostUsd(spoken.length, model),
+      chars: elText.length,
+      costUsd: elevenCostUsd(elText.length, model),
       call: () =>
         fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(elVoice)}${m.stream ? "/stream" : ""}?output_format=mp3_44100_128`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "xi-api-key": elKey },
-          body: JSON.stringify({ text: spoken, model_id: m.id, ...(m.lang ? { language_code: "fr" } : {}), voice_settings: { stability, similarity_boost: 0.75, style } }),
+          body: JSON.stringify({ text: elText, model_id: m.id, ...(m.lang ? { language_code: "fr" } : {}), voice_settings: { stability, similarity_boost: 0.75, style } }),
         }),
     });
   }
@@ -68,6 +74,7 @@ export async function POST(req: Request) {
     attempts.push({ // repli n° 1 si ElevenLabs est absent ou en panne
       provider: "openai",
       model: OPENAI_MODEL,
+      chars: spoken.length,
       costUsd: ttsCostUsd(spoken.length),
       call: () =>
         fetch("https://api.openai.com/v1/audio/speech", {
@@ -90,7 +97,7 @@ export async function POST(req: Request) {
     ...extra,
   });
 
-  const cacheKey = `${attempts[0].provider}|${attempts[0].model}|${voice}|${stability}|${style}|${spoken}`;
+  const cacheKey = `${attempts[0].provider}|${attempts[0].model}|${voice}|${stability}|${style}|${expressive ? `${parseMood(body.mood)}|` : ""}${spoken}`;
   const hit = body.nocache === true ? undefined : cache.get(cacheKey);
   if (hit) return new NextResponse(hit.audio, { headers: headers({ "x-cache": "hit", "x-cost-usd": "0", "x-provider": hit.provider }) });
 
@@ -114,7 +121,7 @@ export async function POST(req: Request) {
 
     // Journalisation : une ligne par génération (comme tous les appels IA).
     const log = () =>
-      void supabaseAdmin().from("ai_calls").insert({ model: `${a.provider}/${a.model}`, purpose: "tts", input_tokens: spoken.length, output_tokens: 0, cost_usd: a.costUsd, duration_ms: Date.now() - t0 }).then(({ error }) => {
+      void supabaseAdmin().from("ai_calls").insert({ model: `${a.provider}/${a.model}`, purpose: "tts", input_tokens: a.chars, output_tokens: 0, cost_usd: a.costUsd, duration_ms: Date.now() - t0 }).then(({ error }) => {
         if (error) console.error("Journalisation ai_calls (tts) échouée :", error.message);
       });
     const meta = { "x-provider": a.provider, "x-model": a.model, "x-cost-usd": a.costUsd.toFixed(5), "x-cache": "miss", ...(failedFirst ? { "x-fallback-from": failedFirst } : {}) };
