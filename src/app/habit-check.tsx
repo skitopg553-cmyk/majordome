@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { doneThisWeek, habitQuestions, type Question } from "@/lib/habits";
+import { useState } from "react";
+import { doneThisWeek, type Question } from "@/lib/habits";
 import { addDays, parisDay } from "@/lib/task-groups";
 import Celebration from "./celebration";
 import { mascotApi } from "./mascot-engine";
@@ -14,21 +14,17 @@ const pill = "min-h-11 rounded-full px-4 text-[14px] font-semibold active:scale-
 
 /**
  * Bilan des habitudes, à l'ouverture de l'Accueil : « Tu y es allé ? » pour les créneaux d'habitude terminés.
- * Au plus 2 questions, jamais une occurrence redemandée une fois répondue (voir src/lib/habits.ts). « Plus tard » : revient à la prochaine ouverture de l'appli.
+ * Les questions sont choisies par le paquet de rituels (rituals-deck.tsx), qui respecte le plafond de 2 cartes ; jamais une occurrence redemandée une fois répondue (voir src/lib/habits.ts).
+ * « Plus tard » : revient à la prochaine ouverture de l'appli.
  * Ton : sans jugement. Aucun compteur d'échecs ; seul un « Xe fois cette semaine » discret apparaît après un oui.
  */
-export default function HabitCheck({ slots }: { slots: SlotsApi }) {
-  const [hidden, setHidden] = useState<Set<string>>(new Set()); // repoussées (« plus tard ») ou déjà répondues pendant cette ouverture
+export default function HabitCheck({ slots, questions, onHide }: { slots: SlotsApi; questions: Question[]; onHide: (key: string) => void }) {
   const [missed, setMissed] = useState<Question | null>(null); // « Non » : on propose de reprogrammer
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const today = parisDay(new Date());
 
-  const questions = useMemo(
-    () => habitQuestions({ rules: slots.rules, exceptions: slots.exceptions, logs: slots.logs, oneoffs: slots.oneoffs, now: new Date(), snoozed: hidden }),
-    [slots.rules, slots.exceptions, slots.logs, slots.oneoffs, hidden],
-  );
-  const hide = (key: string) => setHidden((h) => new Set(h).add(key));
+  const hide = onHide; // repoussée (« plus tard ») ou déjà répondue : le paquet la retire pendant cette ouverture
 
   async function answer(q: Question, status: "done" | "missed", then?: "tomorrow" | "week") {
     setError(null);

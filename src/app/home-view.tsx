@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { goalProgress, monthTotals, spendingByCategory, type Budget, type Tx } from "@/lib/finance/stats";
 import { hoursLabel, weekStats, type Sleep, type Workout } from "@/lib/forme";
+import { dayBriefing } from "@/lib/rituals";
 import { briefing } from "@/lib/briefing";
-import { homeTasks } from "@/lib/planning";
+import { habitQuestions } from "@/lib/habits";
+import { homeTasks, isAgenda } from "@/lib/planning";
 import { occurrencesOn } from "@/lib/slots";
 import { addDays, parisDay } from "@/lib/task-groups";
 import Majordome from "./majordome";
-import HabitCheck from "./habit-check";
+import RitualDeck from "./rituals-deck";
 import TaskRow from "./task-row";
 import TaskSheet from "./task-sheet";
 import { Avatar, Bar, Card, euro, greeting, Label, SkeletonRows, Wordmark } from "./ui";
@@ -21,9 +23,9 @@ type Go = (tab: "planning" | "finances" | "forme") => void;
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
 
 type Fin = { ready: false } | { ready: true; snapshot?: { balance: number; asOf: string } | null; bank?: { ready: boolean; connection?: { bankName: string; balance: number | null } | null }; transactions: Tx[]; budgets?: Budget[]; savings?: { capacity: { months: number; free: number } }; goals: { label: string; target: number; saved: number; image_url: string | null }[] };
-type Forme = { ready: false } | { ready: true; sleeps: Sleep[]; workouts: Workout[]; nutrition?: { meals: { kcal: number }[] } | null };
+type Forme = { ready: false } | { ready: true; sleeps: (Sleep & { bed_time?: string | null; wake_time?: string | null })[]; workouts: Workout[]; nutrition?: { meals: { kcal: number; created_at?: string }[] } | null };
 
-export default function HomeView({ accessCode, tasks: api, google, slots, googleNotice, go, onAvatar, onWeek }: { accessCode: string; tasks: TasksApi; google: GoogleApi; slots: SlotsApi; googleNotice: string | null; go: Go; onAvatar: () => void; onWeek: () => void }) {
+export default function HomeView({ accessCode, tasks: api, google, slots, googleNotice, go, onAsk, onListen, onAvatar, onWeek, onUnauthorized }: { accessCode: string; tasks: TasksApi; google: GoogleApi; slots: SlotsApi; googleNotice: string | null; go: Go; onAsk: (text: string) => void; onListen: (prefix: string) => void; onAvatar: () => void; onWeek: () => void; onUnauthorized: () => void }) {
   const gOk = google.state === "ok";
   const now = new Date();
   // Tâches = éléments SANS heure (les éléments avec une heure sont de l'agenda, dans le Planning). Celles qu'on vient de cocher restent le temps de l'animation.
@@ -37,11 +39,13 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
   // Vraies données Finances / Forme uniquement (rien de fictif).
   const [fin, setFin] = useState<Fin | null>(null);
   const [forme, setForme] = useState<Forme | null>(null);
+  const get = useCallback((url: string) => fetch(url, { headers: { "x-access-code": accessCode } }).then((r) => (r.ok ? r.json() : { ready: false })).catch(() => ({ ready: false })), [accessCode]);
+  const reloadForme = useCallback(() => void get("/api/forme").then(setForme), [get]);
   useEffect(() => {
-    const get = (url: string) => fetch(url, { headers: { "x-access-code": accessCode } }).then((r) => (r.ok ? r.json() : { ready: false })).catch(() => ({ ready: false }));
     get("/api/finances").then(setFin);
-    get("/api/forme").then(setForme);
-  }, [accessCode]);
+    reloadForme();
+  }, [get, reloadForme]);
+  const speakBriefing = useRef<(() => void) | null>(null); // rempli par le paquet de rituels : un tap sur la mascotte lit « Votre journée »
   const realMonth = fin?.ready ? monthTotals(fin.transactions, parisDay(now).slice(0, 7)) : null;
   const realGoal = fin?.ready ? fin.goals[0] : undefined;
   const bankBalance = fin?.ready && fin.bank?.ready ? (fin.bank.connection?.balance ?? null) : null; // vrai solde de la banque connectée, sinon null
@@ -61,6 +65,13 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
   const over = fin?.ready ? spendingByCategory(fin.transactions, parisDay(now).slice(0, 7), fin.budgets ?? []).find((r) => r.over && r.limit !== null) : undefined;
   // Les créneaux qui reviennent (travail, salle…) comptent dans « Prochain » et « Demain » : on les calcule pour la semaine à venir.
   const slotEvents = Array.from({ length: 8 }, (_, i) => occurrencesOn(slots.rules, slots.exceptions, addDays(parisDay(now), i))).flat().map((o) => ({ title: o.title, start: o.start, allDay: false }));
+  // « Votre journée, Monsieur » : créneaux du jour (règles + éléments datés), pense-bêtes, bilans en attente : assemblé en code.
+  const todayIso = parisDay(now);
+  const todaySlots = [
+    ...occurrencesOn(slots.rules, slots.exceptions, todayIso).map((o) => ({ title: o.title, start: o.start, end: o.end })),
+    ...api.tasks.filter((t) => t.status === "todo" && !t.recurring && isAgenda(t) && parisDay(new Date(t.due_at!)) === todayIso).map((t) => ({ title: t.title, start: t.due_at!, end: t.end_at ?? null })),
+  ];
+  const day = dayBriefing({ slots: todaySlots, reminders: list.map((t) => t.title), pendingChecks: habitQuestions({ rules: slots.rules, exceptions: slots.exceptions, logs: slots.logs, oneoffs: slots.oneoffs, now }).length });
   const lines = api.loaded
     ? briefing({
         tasks: api.tasks,
@@ -77,9 +88,9 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
       <div className="flex h-14 items-center justify-between px-1">
         <span className="flex items-center gap-2.5">
           <Wordmark className="text-[19px]" />
-          <span className="flex size-9 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">
+          <button onClick={() => speakBriefing.current?.()} aria-label="Écouter votre journée" className="flex size-11 items-center justify-center rounded-full bg-ink ring-1 ring-line/70 active:scale-95">
             <Majordome size={13} />
-          </span>
+          </button>
         </span>
         <Avatar onClick={onAvatar} />
       </div>
@@ -93,8 +104,18 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
         </ul>
       </div>
 
-      {/* Bilan des habitudes : « Tu y es allé ? » pour les créneaux d'habitude terminés (2 au plus) */}
-      <HabitCheck slots={slots} />
+      {/* Rituels du moment (sommeil, bilans d'habitudes, briefing, repas) : 2 cartes au plus, choisies en code */}
+      <RitualDeck
+        accessCode={accessCode}
+        onUnauthorized={onUnauthorized}
+        slots={slots}
+        forme={forme === null ? "loading" : forme.ready ? { sleeps: forme.sleeps, meals: forme.nutrition?.meals ?? [] } : "off"}
+        onFormeChanged={reloadForme}
+        day={day}
+        onAsk={onAsk}
+        onListen={onListen}
+        speakRef={speakBriefing}
+      />
 
       {/* Tâches (éléments sans heure) — RÉELLES. En retard, puis aujourd'hui, puis sans date ; 5 visibles, le reste se déplie. */}
       <Card>

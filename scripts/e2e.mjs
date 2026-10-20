@@ -10,9 +10,10 @@ const at = (h, m = 0) => new Date(`${today}T${String(h).padStart(2, "0")}:${Stri
 
 const browser = await chromium.launch();
 const results = [];
-const run = async (name, fn) => {
+const run = async (name, fn, opts = {}) => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const state = { tasks: [{ id: 1, title: "Acheter du pain", due_at: null, priority: 2, notes: null, status: "todo" }], meals: [], txs: [], calls: [] };
+  const state = { tasks: [{ id: 1, title: "Acheter du pain", due_at: null, priority: 2, notes: null, status: "todo" }], meals: [], txs: [], sleeps: [], posts: [], calls: [] };
+  if (opts.now) await page.clock.setFixedTime(opts.now); // heure figée (Paris = UTC + 2 en octobre) : les rituels dépendent de l'heure
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -35,7 +36,12 @@ const run = async (name, fn) => {
       const undo = [{ label: "Ajout", steps: [{ op: "delete", table: "tasks", id: 2 }] }];
       return route.fulfill({ status: 200, contentType: "text/plain", body: "C'est noté." + String.fromCharCode(30) + JSON.stringify(undo) });
     }
-    if (p === "/api/forme") return json({ ready: true, sleeps: [], workouts: [], steps: [], nutrition: { meals: state.meals, goals: { kcal: 2200, protein: 140, carbs: 250, fat: 70 } } });
+    if (p === "/api/forme" && m === "POST") {
+      state.posts.push(body);
+      if (body.type === "sleep") state.sleeps.push({ date: body.date, hours: 7.5 });
+      return json({ ok: true });
+    }
+    if (p === "/api/forme") return json({ ready: true, sleeps: state.sleeps, workouts: [], steps: [], nutrition: { meals: state.meals, goals: { kcal: 2200, protein: 140, carbs: 250, fat: 70 } } });
     if (p === "/api/finances") return json({ ready: true, transactions: state.txs, budgets: [], goals: [], bank: { ready: false }, snapshot: null });
     return json({});
   });
@@ -115,7 +121,34 @@ await run("5. Changer de jour dans le Planning (flèche et glissement)", async (
   assert.equal(await page.locator("h2").count(), 0, "le glissement n'a pas changé de jour (le titre « aujourd'hui » est resté)");
 });
 
+await run("6. Matin : la carte sommeil, un tap sur « Bien » enregistre la nuit, puis elle disparaît", async (page, s) => {
+  await page.getByText("Comment avez-vous dormi ?").waitFor();
+  assert.equal(await page.getByText("Qu'avez-vous mangé").count(), 1, "le plafond : la carte repas doit venir en plus, mais le sommeil d'abord");
+  await page.getByRole("button", { name: "Bien", exact: true }).click();
+  await page.getByText("Comment avez-vous dormi ?").waitFor({ state: "detached" });
+  const post = s.posts.find((b) => b.type === "sleep");
+  assert.ok(post, "la nuit n'a pas été envoyée");
+  assert.equal(post.quality, 3);
+  assert.match(post.bed, /^\d\d:\d\d$/);
+  assert.match(post.wake, /^\d\d:\d\d$/);
+}, { now: new Date("2026-10-20T06:00:00Z") }); // 8 h à Paris
+
+await run("7. Matin : « Plus tard » repousse la carte sommeil, le briefing n'apparaît pas avant elle", async (page) => {
+  await page.getByText("Comment avez-vous dormi ?").waitFor();
+  await page.getByRole("button", { name: "Plus tard" }).first().click();
+  await page.getByText("Comment avez-vous dormi ?").waitFor({ state: "detached" });
+  assert.equal(await page.getByText("Votre journée, Monsieur").count(), 0, "le briefing ne doit venir qu'après le sommeil");
+}, { now: new Date("2026-10-20T06:00:00Z") });
+
+await run("8. Soir : la carte dîner (« Rien » la ferme), jamais plus de 2 cartes", async (page) => {
+  await page.getByText("Qu'avez-vous mangé, Monsieur ?").waitFor();
+  const cards = await page.locator("main p:has-text('Monsieur')").count();
+  assert.ok(cards <= 3, "trop de cartes"); // salutation + 2 cartes au plus
+  await page.getByRole("button", { name: "Rien", exact: true }).click();
+  await page.getByText("Qu'avez-vous mangé, Monsieur ?").waitFor({ state: "detached" });
+}, { now: new Date("2026-10-20T18:30:00Z") }); // 20 h 30
+
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;
-console.log(failed ? `\n${failed} parcours en échec.` : "\nLes 5 parcours passent.");
+console.log(failed ? `\n${failed} parcours en échec.` : "\nLes 8 parcours passent.");
 process.exit(failed ? 1 : 0);

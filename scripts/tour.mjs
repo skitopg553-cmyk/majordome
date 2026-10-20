@@ -70,14 +70,14 @@ async function audit(page, run, screen, errors) {
   return r.text;
 }
 
-async function tour(browser, run, data) {
+async function tour(browser, run, data, now = NOW, short = false) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: "Europe/Paris", locale: "fr-FR", deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errors = [];
   page.on("console", (m) => m.type() === "error" && !/favicon|Failed to load resource/.test(m.text()) && errors.push(m.text().slice(0, 200)));
   page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 200)));
   page.on("dialog", (d) => d.accept());
-  await page.clock.setFixedTime(NOW);
+  await page.clock.setFixedTime(now);
   const calls = [];
   await page.route("**/api/**", async (route) => {
     const req = route.request();
@@ -118,6 +118,10 @@ async function tour(browser, run, data) {
   const safe = async (label, fn) => { try { await fn(); } catch (e) { note(run, label, "parcours bloqué", String(e.message).split("\n")[0]); } };
 
   await safe("accueil", async () => { await shot("accueil-haut"); await scroller(); await shot("accueil-bas"); });
+  if (short) {
+    await ctx.close();
+    return { texts, calls: [...new Set(calls)] };
+  }
   await safe("fiche-pense-bete", async () => {
     if (!data.tasks.length) return;
     await page.evaluate(() => document.querySelector(".min-h-0.flex-1.overflow-y-auto")?.scrollTo(0, 0));
@@ -159,8 +163,24 @@ async function tour(browser, run, data) {
 const browser = await chromium.launch();
 const a = await tour(browser, "plein", full());
 const b = await tour(browser, "vide", empty());
+// Rituels de l'ouverture : le matin à 8 h (carte sommeil, plafond de 2 cartes) et le soir à 20 h 30 (bilan de la boxe + dîner).
+const matin = full();
+matin.forme = { ...matin.forme, sleeps: [], nutrition: { meals: [], goals: null } };
+const m = await tour(browser, "matin", matin, new Date("2026-10-20T06:00:00Z"), true);
+const soir = full();
+soir.forme = { ...soir.forme, sleeps: [{ date: "2026-10-20", hours: 7.25 }], nutrition: { meals: [], goals: null } };
+const e = await tour(browser, "soir", soir, new Date("2026-10-20T18:30:00Z"), true);
+// Dîner : sans bilan d'habitude en attente, la carte « Qu'avez-vous mangé ? » apparaît.
+const diner = full();
+diner.rules = [];
+diner.forme = { ...diner.forme, sleeps: [{ date: "2026-10-20", hours: 7.25 }], nutrition: { meals: [], goals: null } };
+const d = await tour(browser, "diner", diner, new Date("2026-10-20T18:30:00Z"), true);
+// Matin, nuit déjà notée : le briefing « Votre journée » vient après le sommeil.
+const briefing = full();
+briefing.forme = { ...briefing.forme, sleeps: [{ date: "2026-10-20", hours: 7.25 }], nutrition: { meals: [{ id: 1, label: "Pain", grams: 50, kcal: 130, protein: 4, carbs: 25, fat: 1, estimated: 0, created_at: "2026-10-20T05:30:00Z" }], goals: null } };
+const br = await tour(browser, "briefing", briefing, new Date("2026-10-20T07:30:00Z"), true);
 await browser.close();
-fs.writeFileSync(`${OUT}/textes.json`, JSON.stringify({ plein: a.texts, vide: b.texts, appels: a.calls }, null, 2));
+fs.writeFileSync(`${OUT}/textes.json`, JSON.stringify({ plein: a.texts, vide: b.texts, matin: m.texts, soir: e.texts, diner: d.texts, briefing: br.texts, appels: a.calls }, null, 2));
 fs.writeFileSync(`${OUT}/findings.json`, JSON.stringify(findings, null, 2));
 console.log(`${findings.length} constat(s) :`);
 for (const f of findings) console.log(`- [${f.run}] ${f.screen} — ${f.kind} : ${f.text}`);

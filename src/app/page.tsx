@@ -168,9 +168,9 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     const texts: Record<string, string> = {
       ok: "Google est connecté. Votre agenda et vos mails vont apparaître.",
       refuse: "Connexion Google refusée de votre côté. Vous pouvez réessayer quand vous le souhaitez.",
-      "lien-expire": "Le lien de connexion a expiré (10 minutes). Relance la connexion.",
+      "lien-expire": "Le lien de connexion a expiré (10 minutes). Veuillez relancer la connexion.",
       "table-manquante": "Connexion faite, mais la base n'est pas prête (migration 0006 à appliquer).",
-      "sans-acces-hors-ligne": "Google n'a pas donné l'accès durable. Relance la connexion et accepte tout.",
+      "sans-acces-hors-ligne": "Google n'a pas donné l'accès durable. Veuillez relancer la connexion et tout accepter.",
     };
     setGoogleNotice(texts[g] ?? "La connexion Google a échoué. Veuillez réessayer.");
     if (g === "ok") google.refresh();
@@ -205,6 +205,16 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     chat.current?.listen();
   }
 
+  // Carte « Qu'avez-vous mangé ? » : le texte ou la dictée passent par le chat (même analyse, même base nutrition).
+  function ask(text: string) {
+    setChatOpen(true);
+    setTimeout(() => chat.current?.ask(text), 150);
+  }
+  function listenWith(prefix: string) {
+    setChatOpen(true);
+    chat.current?.listen(prefix);
+  }
+
   function type() {
     setChatOpen(true);
     chat.current?.focusInput();
@@ -230,7 +240,7 @@ function App({ accessCode, onForget }: { accessCode: string; onForget: (message:
     <main className="mx-auto flex h-dvh max-w-2xl flex-col">
       <Splash show={!tasks.loaded} />
       <div key={version} className="min-h-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)]">
-        {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} google={google} slots={slots} googleNotice={googleNotice} go={setTab} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
+        {tab === "home" && <HomeView accessCode={accessCode} tasks={tasks} google={google} slots={slots} googleNotice={googleNotice} go={setTab} onAsk={ask} onListen={listenWith} onUnauthorized={unauthorized} onAvatar={openProfile} onWeek={() => setWeekOpen(true)} />}
         {tab === "planning" && <PlanningView tasks={tasks} google={google} slots={slots} accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}
         {tab === "finances" && <FinancesView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} bankNotice={bankNotice} sharedFile={sharedFile} onSharedDone={() => setSharedFile(null)} />}
         {tab === "forme" && <FormeView accessCode={accessCode} onUnauthorized={unauthorized} onAvatar={openProfile} />}

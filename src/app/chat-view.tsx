@@ -18,7 +18,7 @@ const Markdown = dynamic(() => import("react-markdown"), { ssr: false }); // cha
 const UNDO_MS = 10_000; // durée d'affichage du bouton « Annuler »
 
 type Message = { role: "user" | "assistant"; content: string };
-export type ChatHandle = { listen: () => void; focusInput: () => void; newConversation: () => void; prefill: (text: string) => void };
+export type ChatHandle = { listen: (prefix?: string) => void; ask: (text: string) => void; focusInput: () => void; newConversation: () => void; prefill: (text: string) => void }; // listen(prefix) : la dictée est précédée de `prefix` (« Au déjeuner, j'ai mangé ») ; ask : envoie un message écrit
 
 const CLEARED_KEY = "majordome-cleared-at";
 
@@ -291,7 +291,7 @@ export default function ChatView({
   sendRef.current = (raw) => void send(raw);
 
   // Dictée : appelée directement dans le clic (le navigateur exige un geste de l'utilisateur).
-  function listen() {
+  function listen(prefix = "") {
     cancelClose();
     const SR = speechRecognition();
     if (!SR) {
@@ -322,7 +322,7 @@ export default function ChatView({
       setListening(false);
       setInterim("");
       recRef.current = null;
-      if (heard.trim()) send(heard, true);
+      if (heard.trim()) send(`${prefix}${heard}`, true);
     };
     recRef.current = rec;
     setError(null);
@@ -340,7 +340,7 @@ export default function ChatView({
     }
   }
 
-  useImperativeHandle(ref, () => ({ listen, focusInput: () => setTimeout(() => inputRef.current?.focus(), 50), newConversation, prefill: (text) => { setInput(text); setTimeout(() => inputRef.current?.focus(), 50); } }));
+  useImperativeHandle(ref, () => ({ listen, ask: (text) => void send(text), focusInput: () => setTimeout(() => inputRef.current?.focus(), 50), newConversation, prefill: (text) => { setInput(text); setTimeout(() => inputRef.current?.focus(), 50); } }));
 
   // Une suggestion qui finit par un espace (« Ajoute une tâche : ») est à compléter : on la met dans le champ.
   function suggest(s: string) {
@@ -412,7 +412,7 @@ export default function ChatView({
           )}
           {listening && (
             <div className="flex flex-col items-center gap-5 py-10" aria-live="polite">
-              <button onClick={listen} aria-label="J'ai fini, envoyer" className="rounded-full active:scale-95">
+              <button onClick={() => listen()} aria-label="J'ai fini, envoyer" className="rounded-full active:scale-95">
                 <span className="flex size-28 items-center justify-center rounded-full bg-ink ring-1 ring-line/70">
                   <Majordome size={44} />
                 </span>
@@ -500,7 +500,7 @@ export default function ChatView({
             className="max-h-40 min-h-12 flex-1 resize-none bg-transparent py-3 text-[15px] leading-snug outline-none [field-sizing:content] placeholder:text-faint"
           />
           {!input.trim() && (
-            <button onClick={listen} aria-label={listening ? "Arrêter la dictée" : "Dicter"} className={`flex size-11 shrink-0 items-center justify-center rounded-full ${listening ? "text-accent" : "text-muted"}`}>
+            <button onClick={() => listen()} aria-label={listening ? "Arrêter la dictée" : "Dicter"} className={`flex size-11 shrink-0 items-center justify-center rounded-full ${listening ? "text-accent" : "text-muted"}`}>
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
                 <rect x="9" y="3" width="6" height="12" rx="3" />
                 <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
