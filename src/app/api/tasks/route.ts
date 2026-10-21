@@ -3,7 +3,7 @@ import { denied } from "@/lib/access";
 import { supabaseAdmin } from "@/lib/supabase";
 import { taskFields, taskPatch } from "@/lib/limits";
 import { listChecks, listRules, materializeToday } from "@/lib/recurring-store";
-import { dueReminders, virtualId } from "@/lib/recurring-reminders";
+import { checkedToday, dueReminders, virtualId } from "@/lib/recurring-reminders";
 import { dueAtFor } from "@/lib/recurrence";
 import { parisDay } from "@/lib/task-groups";
 import { fold } from "@/lib/text";
@@ -29,7 +29,9 @@ export async function GET(req: Request) {
   const recurring = dueReminders(rules, checks ?? [], today)
     .filter((d) => !open.has(fold(d.title))) // une copie déjà créée aujourd'hui par l'ancienne méthode : pas de doublon
     .map((d) => ({ id: virtualId(d.ruleId), title: d.title, due_at: dueAtFor(null, today), priority: 2, notes: null, status: "todo", recurring: { ruleId: d.ruleId, label: d.label, progress: d.progress } }));
-  return NextResponse.json({ tasks: [...(todo.data ?? []), ...recurring, ...(done.data ?? [])] });
+  // Déjà cochés aujourd'hui : renvoyés « faits » pour que l'écran propose de les rouvrir.
+  const finished = checkedToday(rules, checks ?? [], today).map((d) => ({ id: virtualId(d.ruleId), title: d.title, due_at: dueAtFor(null, today), priority: 2, notes: null, status: "done", recurring: { ruleId: d.ruleId, label: d.label, progress: d.progress } }));
+  return NextResponse.json({ tasks: [...(todo.data ?? []), ...recurring, ...finished, ...(done.data ?? [])] });
 }
 
 // Ajout rapide depuis l'app, sans passer par l'IA (gratuit et instantané).

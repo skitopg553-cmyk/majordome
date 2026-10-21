@@ -61,13 +61,13 @@ Parcours : Accueil, Planning (jour, semaine), Forme, Finances, Profil, chat, `/v
 | 4 | Accueil | Le plafond de cartes : jusqu'à 2 bilans + ritual possibles | **corrigé** (2 cartes au total, e2e 8) |
 | 5 | Page Google | Messages de retour de connexion encore au tutoiement (« Relance… ») | **corrigé** |
 | 6 | Forme | Aucune séance ne venait des habitudes ; pas de régularité | **corrigé** (lot 2) |
-| 7 | Forme | Saisie manuelle du sommeil : durée seule (pas de coucher/lever) | non fait : la carte du matin les prend, l'écran Forme non |
-| 8 | Planning | Vue Jour : la liste « À faire aujourd'hui » est cachée sous la barre du bas tant qu'on ne défile pas | non corrigé (hauteur de la grille à revoir) |
+| 7 | Forme | Saisie manuelle du sommeil : durée seule (pas de coucher/lever) | **corrigé le 21/10** (même éditeur coucher/lever/qualité que la carte du matin) |
+| 8 | Planning | Vue Jour : la liste « À faire aujourd'hui » est cachée sous la barre du bas tant qu'on ne défile pas | **corrigé le 21/10** (grille à 48 % de la hauteur : la liste est visible) |
 | 9 | Planning | Pas de pense-bête récurrent visible les autres jours que « aujourd'hui » | non fait : seul le jour en cours montre les pense-bêtes qui reviennent |
 | 10 | Chat | La voix du chat lit toujours avec le téléphone ; ElevenLabs/OpenAI ne sont pas encore branchés (en attente de votre choix) | en attente |
 | 11 | Chat | Le bouton « Nouvelle conversation » chevauche presque la signature quand le titre est long | basse, non corrigé |
 | 12 | Finances | « Connecter ma banque » reste le premier bloc même quand le relevé importé est la vraie source | basse, non corrigé |
-| 13 | Pense-bêtes | On ne peut pas décocher un pense-bête qui revient une fois la case cochée (il revient demain) | non fait |
+| 13 | Pense-bêtes | On ne peut pas décocher un pense-bête qui revient une fois la case cochée (il revient demain) | **corrigé le 21/10** (ligne « Fait aujourd'hui : … » sous la liste, un tap rouvre) |
 | 14 | Carte repas | La dictée du micro n'est pas testable en automatique | non testé |
 | 15 | Temps d'écran | Dépend de l'APK Android (plugin `Usage`) : rien à coder ici. **À faire** : reconstruire l'APK (branche `apk-github`), autoriser « Accès aux données d'utilisation » une fois, puis vérifier à l'ouverture de Forme | note seulement (voir `docs/temps-ecran.md`) |
 | 16 | IA | `npm run eval:ia` n'a pas pu tourner (clé OpenAI vide en local) : le ton « majordome », les pense-bêtes qui reviennent et les séances ponctuelles ne sont pas mesurés sur le vrai modèle | à faire |

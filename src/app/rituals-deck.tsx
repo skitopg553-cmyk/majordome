@@ -110,7 +110,18 @@ export default function RitualDeck({ accessCode, onUnauthorized, slots, forme, o
 
 /** « Bonjour, Monsieur. Comment avez-vous dormi ? » : coucher et lever pré-remplis avec vos habitudes ; la qualité en un tap enregistre la nuit. */
 function SleepCard({ accessCode, onUnauthorized, forme, today, onSaved, onSkip, onLater }: { accessCode: string; onUnauthorized: () => void; forme: NonNullable<FormeLite>; today: string; onSaved: () => void; onSkip: () => void; onLater: () => void }) {
-  const habit = useMemo(() => sleepHabit(forme.sleeps), [forme.sleeps]);
+  return (
+    <Card>
+      <Label>Sommeil</Label>
+      <p className="mt-1 text-[17px] font-semibold leading-snug tracking-tight">Comment avez-vous dormi, Monsieur ?</p>
+      <SleepEditor accessCode={accessCode} onUnauthorized={onUnauthorized} sleeps={forme.sleeps} today={today} onSaved={onSaved} extra={<><button onClick={onLater} className={`${pill} text-muted active:bg-raised`}>Plus tard</button><button onClick={onSkip} className={`${pill} text-muted active:bg-raised`}>Passer</button></>} />
+    </Card>
+  );
+}
+
+/** Coucher et lever (pré-remplis avec vos habitudes) + qualité en un tap : enregistre la nuit. Sert à la carte du matin et à l'écran Forme. */
+export function SleepEditor({ accessCode, onUnauthorized, sleeps, today, onSaved, extra }: { accessCode: string; onUnauthorized: () => void; sleeps: NonNullable<FormeLite>["sleeps"]; today: string; onSaved: () => void; extra?: React.ReactNode }) {
+  const habit = useMemo(() => sleepHabit(sleeps), [sleeps]);
   const [bed, setBed] = useState(habit.bed);
   const [wake, setWake] = useState(habit.wake);
   const [edit, setEdit] = useState(false);
@@ -145,9 +156,7 @@ function SleepCard({ accessCode, onUnauthorized, forme, today, onSaved, onSkip, 
   );
 
   return (
-    <Card>
-      <Label>Sommeil</Label>
-      <p className="mt-1 text-[17px] font-semibold leading-snug tracking-tight">Comment avez-vous dormi, Monsieur ?</p>
+    <>
       <p className="mt-0.5 text-[13px] text-muted">
         Couché à {hm(bed)}, levé à {hm(wake)}
         {hours !== null && ` · ${Math.floor(hours)} h ${String(Math.round((hours % 1) * 60)).padStart(2, "0")}`}{" "}
@@ -165,11 +174,10 @@ function SleepCard({ accessCode, onUnauthorized, forme, today, onSaved, onSkip, 
             {q.label}
           </button>
         ))}
-        <button onClick={onLater} className={`${pill} text-muted active:bg-raised`}>Plus tard</button>
-        <button onClick={onSkip} className={`${pill} text-muted active:bg-raised`}>Passer</button>
+        {extra}
       </div>
       {error && <p className="mt-2 text-[13px] text-neg">{error}</p>}
-    </Card>
+    </>
   );
 }
 

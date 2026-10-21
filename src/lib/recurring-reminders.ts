@@ -18,6 +18,13 @@ export const isRecurringReminder = (r: StoredRule) => !r.at_time;
 
 const startsOn = (r: StoredRule) => (r.created_at ? parisDay(new Date(r.created_at)) : "0000-00-00"); // rien avant le jour de sa création
 
+/** Ceux déjà cochés AUJOURD'HUI : l'écran les garde sous la liste pour pouvoir les rouvrir d'un tap. */
+export function checkedToday(rules: StoredRule[], checks: RecurringCheck[], today: string): DueReminder[] {
+  return rules
+    .filter((r) => isRecurringReminder(r) && checks.some((c) => c.rule_id === r.id && c.day === today))
+    .map((r) => ({ ruleId: r.id, title: r.title, label: ruleLabel(r), progress: r.per_week ? { done: checks.filter((c) => c.rule_id === r.id && c.day >= weekOf(today)[0] && c.day <= weekOf(today)[6]).length, of: r.per_week } : null }));
+}
+
 /** Les pense-bêtes récurrents à faire AUJOURD'HUI. */
 export function dueReminders(rules: StoredRule[], checks: RecurringCheck[], today: string): DueReminder[] {
   const week = weekOf(today);
