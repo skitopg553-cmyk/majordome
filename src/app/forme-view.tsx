@@ -11,6 +11,7 @@ import { addDays, parisDay } from "@/lib/task-groups";
 import { callApi } from "./api-client";
 import { confirmDelete, deleteEntry, type DeleteTarget } from "./delete-entry";
 import { NutritionCard, ScreenCard, type NutritionData } from "./forme-cards";
+import { SleepEditor } from "./rituals-deck";
 import { SportStats, Upcoming, WeekStrip } from "./forme-sport";
 import { Bar, Card, Header, Label } from "./ui";
 
@@ -44,7 +45,6 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
   const [data, setData] = useState<Data | null>(null);
   const [slots, setSlots] = useState<Slots>({ rules: [], exceptions: [], logs: [], oneoffs: [] }); // créneaux prévus : pour « séances prévues » et la régularité
   const [form, setForm] = useState<"sleep" | "workout" | null>(null);
-  const [hours, setHours] = useState(7.5);
   const [kind, setKind] = useState(KINDS[0]);
   const [minutes, setMinutes] = useState(60);
   const [busy, setBusy] = useState(false);
@@ -206,17 +206,8 @@ export default function FormeView({ accessCode, onUnauthorized, onAvatar }: { ac
           )}
           {week.avgSleep !== null && <p className="text-[13px] text-faint">Moyenne de la semaine : {hoursLabel(week.avgSleep)}</p>}
           {form === "sleep" && (
-            <div className="rise mt-4 flex items-center gap-3 border-t border-line pt-4">
-              <button onClick={() => setHours((h) => Math.max(1, h - 0.25))} aria-label="Moins" className="flex size-11 items-center justify-center rounded-full bg-raised text-xl">
-                −
-              </button>
-              <span className="flex-1 text-center text-[22px] font-semibold tabular-nums">{hoursLabel(hours)}</span>
-              <button onClick={() => setHours((h) => Math.min(16, h + 0.25))} aria-label="Plus" className="flex size-11 items-center justify-center rounded-full bg-raised text-xl">
-                +
-              </button>
-              <button onClick={() => save({ type: "sleep", hours })} disabled={busy} className="min-h-11 rounded-full bg-accent px-5 text-[14px] font-semibold text-ink disabled:opacity-50">
-                OK
-              </button>
+            <div className="rise mt-3 border-t border-line pt-3">
+              <SleepEditor accessCode={accessCode} onUnauthorized={onUnauthorized} sleeps={data.sleeps} today={today} onSaved={() => { setForm(null); load(); }} />
             </div>
           )}
           {form === "sleep" && lastNight && (

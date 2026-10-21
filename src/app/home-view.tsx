@@ -135,6 +135,16 @@ export default function HomeView({ accessCode, tasks: api, google, slots, google
             {expanded ? "Réduire" : `+${list.length - 5}`}
           </button>
         )}
+        {api.tasks.some((t) => t.recurring && t.status === "done") && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-faint">
+            Fait aujourd&apos;hui :
+            {api.tasks.filter((t) => t.recurring && t.status === "done").map((t) => (
+              <button key={t.id} onClick={() => api.toggle(t)} aria-label={`Rouvrir : ${t.title}`} className="min-h-11 underline decoration-faint/50 underline-offset-2 active:text-fg">
+                {t.title}
+              </button>
+            ))}
+          </p>
+        )}
         <form
           className="mt-1 flex gap-2"
           onSubmit={(e) => {

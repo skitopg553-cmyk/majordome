@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseRecurrence, ruleLabel, type StoredRule } from "./recurrence";
-import { dueReminders, ruleIdOf, virtualId } from "./recurring-reminders";
+import { checkedToday, dueReminders, ruleIdOf, virtualId } from "./recurring-reminders";
 
 const rule = (o: Partial<StoredRule>): StoredRule => ({ id: 1, title: "Créatine", kind: "daily", weekday: null, month_day: null, at_time: null, last_generated: null, created_at: "2026-10-01T08:00:00Z", ...o });
 const titles = (rules: StoredRule[], checks: { rule_id: number; day: string }[], today: string) => dueReminders(rules, checks, today).map((d) => d.title);
@@ -79,5 +79,14 @@ describe("phrases comprises en code", () => {
     expect(ruleLabel({ kind: "daily", weekday: null, month_day: null, per_week: 2 })).toBe("2 fois par semaine");
     expect(ruleLabel({ kind: "weekly", weekday: 1, month_day: null, days: "1,4" })).toBe("chaque lundi et jeudi");
     expect(ruleLabel({ kind: "weekly", weekday: 1, month_day: null, days: "1,2,3,4,5" })).toBe("en semaine");
+  });
+});
+
+describe("déjà cochés aujourd'hui (pour les rouvrir)", () => {
+  it("seulement ceux cochés aujourd'hui, avec la progression de la semaine pour « X fois par semaine »", () => {
+    const rules = [rule({ id: 1, title: "Créatine" }), rule({ id: 3, title: "Aspirateur", per_week: 2 }), rule({ id: 4, title: "Cours", at_time: "09:00" })];
+    const checks = [{ rule_id: 1, day: "2026-10-20" }, { rule_id: 3, day: "2026-10-19" }, { rule_id: 3, day: "2026-10-20" }, { rule_id: 4, day: "2026-10-20" }];
+    expect(checkedToday(rules, checks, "2026-10-20").map((d) => [d.title, d.progress])).toEqual([["Créatine", null], ["Aspirateur", { done: 2, of: 2 }]]);
+    expect(checkedToday(rules, checks, "2026-10-21")).toEqual([]);
   });
 });

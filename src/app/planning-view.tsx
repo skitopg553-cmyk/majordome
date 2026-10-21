@@ -196,7 +196,7 @@ export default function PlanningView({ tasks: api, google, slots, accessCode, on
       {/* La grille : 0 h-24 h ; glisser à gauche / à droite change de jour (ou de semaine) */}
       <div
         ref={scroller}
-        className="relative h-[58dvh] touch-pan-y overflow-y-auto overscroll-contain border-y border-line/70"
+        className="relative h-[48dvh] touch-pan-y overflow-y-auto overscroll-contain border-y border-line/70"
         onPointerDown={(e) => (swipe.current = { x: e.clientX, y: e.clientY })}
         onPointerUp={(e) => {
           const s = swipe.current;
