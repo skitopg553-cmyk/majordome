@@ -1,6 +1,6 @@
 # État de Majordome — 21/10/2026 (après la nuit du 20 au 21)
 
-> Fichier réécrit (pas allongé). Détails : `docs/nuit-20-10.md` (lots, tests, migrations, décisions), `docs/decisions.md`, `docs/qa.md`, `git log`. Tests : 773 verts, build vert, 9 parcours e2e verts (`npm run e2e`), `npm run tour` sans constat. Retour arrière : tag `avant-nuit-20-10` (commit `12fe864`) + « Promote to Production » du déploiement correspondant dans Vercel.
+> Fichier réécrit (pas allongé). Détails : `docs/nuit-20-10.md` (lots, tests, migrations, décisions), `docs/decisions.md`, `docs/qa.md`, `git log`. Tests : 774 verts, build vert, 9 parcours e2e verts (`npm run e2e`), `npm run tour` sans constat. Retour arrière : tag `avant-nuit-20-10` (commit `12fe864`) + « Promote to Production » du déploiement correspondant dans Vercel.
 
 ## Ce qui marche (fusionné dans main, déployé)
 - **Personnalité** : Majordome est un grand majordome britannique en français ; il vouvoie et dit « Monsieur » (prompt, phrases du code, écrans, voix OpenAI, miroir de la semaine). Franc, jamais culpabilisant.
@@ -21,7 +21,7 @@ Appliquées cette nuit (additives) : `0015_bilan_ponctuel` (tasks.habit_status),
 ## Limites honnêtes
 - Jamais appelé contre ElevenLabs / OpenAI temps réel / la vraie base depuis cette machine : routes testées par simulation (e2e, tests unitaires), pas en production. Noms d'événements et d'URL du temps réel écrits d'après la documentation : un ajustement est possible.
 - Dictée de la carte repas, son du briefing et reconnaissance vocale : non testables en automatique.
-- Voix cloud pas encore branchée dans le chat (en attente de ton choix). Pas de décochage d'un pense-bête qui revient ; sommeil manuel de Forme sans coucher/lever ; liste « À faire aujourd'hui » cachée sous la barre en vue Jour (voir `docs/qa.md`).
+- Voix cloud pas encore branchée dans le chat (en attente de ton choix). Défauts restants dans `docs/qa.md` (pense-bêtes qui reviennent visibles seulement le jour même, bouton « Nouvelle conversation » du chat serré). Corrigés le 21/10 : liste « À faire » visible en vue Jour, pense-bête récurrent rouvrable, nuit avec coucher/lever dans Forme.
 - Coque Android et `.github/` non touchés.
 
 ## Décisions à prendre (Ruben)
